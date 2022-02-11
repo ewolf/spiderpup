@@ -7,4 +7,6 @@ use Data::Dumper;
 
 use SpiderPup;
 
-SpiderPup->launch( root => '../www' );
+my $dir = $ARGV[0] || $ENV{SPIDERPUP} || '../www';
+
+SpiderPup->launch( root => $dir );
