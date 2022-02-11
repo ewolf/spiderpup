@@ -60,85 +60,13 @@ html:
               style: background-color: lightblue;
 ```
 
-## default css and javascript
-
-http://localhost:3000/examples/defaults.html
-
-Spiderpup looks for default css and javascript files that
-match the request name.
-
-www/css/examples/defaults.css
-```
-div {
-    background: yellow;
-}
-
-```
-
-www/js/examples/defaults.js
-```
-alert ('default javascript' );
-```
-
-www/js/recipes/defaults.yaml
-```
-html:
-  body:
-    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
-```
-
-## additional css and javascript
-
-http://localhost:3000/examples/head_additional.html
-
-www/css/examples/extended/head_additional_1.css
-
-```
-div {
-    border: solid 3px black;
-}
-
-```
-
-www/css/examples/extended/head_additional_2.css
-
-```
-div {
-    border: solid 3px black;
-    background: lightgreen;
-}
-
-```
-
-www/js/examples/head_additional_2.js
-```
-alert( "HELLO ADDITIONAL" );
-```
-
-www/examples/recipes/examples/head_additional.yaml
-```
----
-html:
-  head:
-    title: header additional
-    css:
-      - /css/examples/extra/head_additional_1.css
-      - /css/examples/extra/head_additional_2.css
-    javascript:
-      - /js/examples/extra/head_additional.js
-  body:
-    - div: You can include javascript and css files in the header.
-
-```
-
-
 ## components
 
 http://localhost:3000/examples/components.html
 
 This example shows how components can be defined and used and
 reused. Components can be embedded in other components. Each
-component must a single root element.
+component must have a single root element.
 
 ```
 ---
@@ -169,6 +97,7 @@ components:
         - span: 'hello '
         - span: there
 ```
+
 
 ## components and state data
 
@@ -281,6 +210,7 @@ components:
                 click: s => s.fun.inc(s)
 ```
 
+
 ## if branching
 
 http://localhost:3000/examples/if_branches.html
@@ -337,11 +267,78 @@ components:
                 click: s => s.fun.inc(s)
 ```
 
-## element handles
+## default css and javascript
 
-## component handles
+http://localhost:3000/examples/defaults.html
 
-## hello loops
+Spiderpup looks for default css and javascript files that
+match the request name.
+
+www/css/examples/defaults.css
+```
+div {
+    background: yellow;
+}
+
+```
+
+www/js/examples/defaults.js
+```
+alert ('default javascript' );
+```
+
+www/js/recipes/defaults.yaml
+```
+html:
+  body:
+    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
+```
+
+## additional css and javascript
+
+http://localhost:3000/examples/head_additional.html
+
+www/css/examples/extended/head_additional_1.css
+
+```
+div {
+    border: solid 3px black;
+}
+
+```
+
+www/css/examples/extended/head_additional_2.css
+
+```
+div {
+    border: solid 3px black;
+    background: lightgreen;
+}
+
+```
+
+www/js/examples/head_additional_2.js
+```
+alert( "HELLO ADDITIONAL" );
+```
+
+www/examples/recipes/examples/head_additional.yaml
+```
+---
+html:
+  head:
+    title: header additional
+    css:
+      - /css/examples/extra/head_additional_1.css
+      - /css/examples/extra/head_additional_2.css
+    javascript:
+      - /js/examples/extra/head_additional.js
+  body:
+    - div: You can include javascript and css files in the header.
+
+```
+
+## loops
 
 ```
 ---
@@ -355,4 +352,9 @@ html:
               textContent: s => 'hello ' + s.it.where
 ```
 
-http://localhost:3000/examples/hello_loops.html
+http://localhost:3000/examples/loops.html
+
+
+## element handles
+
+## component handles
