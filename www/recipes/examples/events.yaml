@@ -1,10 +1,10 @@
 ---
 html:
   body:
-    contents:
-      - button:
-          calculate:
-            textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-          on:
-            click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+    - h1: Hello Events
+    - button:
+        calculate:
+          textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
+        on:
+          click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         

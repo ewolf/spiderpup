@@ -10,6 +10,21 @@ server that transforms YAML into reactive html
 
 See https://github.com/ewolf/spiderpup/blob/main/doc/learning_spiderpup.md
 
+Spoiler : the following YAML file translates into a page with a reactive 
+button
+```
+---
+html:
+  body:
+    - h1: Hello Events
+    - button:
+        calculate:
+          textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
+        on:
+          click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+        
+```
+
 
 ## synopsis
 

@@ -10,11 +10,16 @@ $ cd spiderpup/scripts
 $ morbo spiderpup
 ```
 
-## hello world
+## spiderpup static basics
+
+These examples show spiderpup transforming YAML into html. They
+introduce spiderpup reusable components.
+
+### hello world
 
 http://localhost:3000/examples/hello_world.html
 
-www/recipes/examples/hello_world.yaml
+YAML file *.../spiderpup/www/recipes/examples/hello_world.yaml*.
 
 ```
 ---
@@ -24,7 +29,7 @@ html:
     - h2: this is spiderpup
 ```
 
-## hello again
+### hello again
 
 http://localhost:3000/examples/hello_again.html
 
@@ -38,7 +43,7 @@ like set the title and add styles to the page.
 
 The title of the page is set in the head section.
 
-www/recipes/examples/hello_again.yaml
+YAML file *.../spiderpup/www/recipes/examples/hello_again.yaml*
 
 ```
 ---
@@ -60,7 +65,7 @@ html:
               style: background-color: lightblue;
 ```
 
-## components
+### components
 
 http://localhost:3000/examples/components.html
 
@@ -68,6 +73,7 @@ This example shows how components can be defined and used and
 reused. Components can be embedded in other components. Each
 component must have a single root element.
 
+YAML file *.../spiderpup/www/recipes/examples/components.yaml*
 ```
 ---
 html:
@@ -98,8 +104,98 @@ components:
         - span: there
 ```
 
+## spiderpup files
 
-## components and state data
+These show how spiderpup includes javascript and css files.
+
+### default css and javascript
+
+http://localhost:3000/examples/defaults.html
+
+Spiderpup by default tries to load a css and a javascript
+file that mirrors the target path. For this example the
+target path is `/examples/default.html`. Spiderpup
+tries to load `/js/examples/default.js` and `/css/examples/default.css`.
+
+
+CSS file *.../spiderpup/www/css/examples/defaults.css*
+```
+div {
+    background: yellow;
+}
+
+```
+
+JS file *.../spiderpup/www/js/examples/defaults.js*
+```
+alert ('default javascript' );
+```
+
+YAML file *.../spiderpup/www/recipes/examples/defaults.yaml*
+```
+html:
+  body:
+    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
+```
+
+### additional css and javascript
+
+http://localhost:3000/examples/head_additional.html
+
+This example shows how to load additional css and javascript.
+
+YAML file *.../spiderpup/www/recipes/examples/head_additional.yaml*
+```
+---
+html:
+  head:
+    title: header additional
+    css:
+      - /css/examples/extra/head_additional_1.css
+      - /css/examples/extra/head_additional_2.css
+    javascript:
+      - /js/examples/extra/head_additional_A.js
+      - /js/examples/extra/head_additional_B.js
+  body:
+    - div: You can include javascript and css files in the header.
+
+```
+
+extra css `.../spiderpup/www/css/examples/extended/head_additional_1.css`
+
+```
+div {
+    border: solid 3px black;
+}
+
+```
+
+extra css `.../spiderpup/www/css/examples/extended/head_additional_2.css`
+
+```
+div {
+    border: solid 3px black;
+    background: lightgreen;
+}
+
+```
+
+extra js `.../spiderpup/www/js/examples/extended/head_additional_A.js`
+```
+alert( "HELLO ADDITIONAL A" );
+```
+
+extra js `.../spiderpup/www/js/examples/extended/head_additional_B.js`
+```
+alert( "HELLO ADDITIONAL B" );
+```
+
+## spiderpup state basics
+
+State is kept for the page and for each component placed 
+on it. State data is used to calculate how the page appears.
+
+### components and state data
 
 http://localhost:3000/examples/components_and_state.html
 
@@ -114,6 +210,7 @@ are called when the elements are placed or refreshed and
 the values applied to the particular element attribute.
 These functions take the component state as their argument.
 
+YAML file *.../spiderpup/www/recipes/examples/components_and_state.yaml*
 ```
 ---
 html:
@@ -133,7 +230,7 @@ components:
             textContent: s => 'greet ' + s.data.get( 'greeting' )
 ```
 
-## events and state
+### events and state
 
 http://localhost:3000/examples/events.html
 
@@ -151,20 +248,21 @@ data, the page contents are recalculated.
 Notice that the first argument to an event handler is always the 
 state, followed by the event object.
 
+YAML file *.../spiderpup/www/recipes/examples/events.yaml*
 ```
 ---
 html:
   body:
-    contents:
-      - button:
-          calculate:
-            textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-          on:
-            click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+    - h1: Hello Events
+    - button:
+        calculate:
+          textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
+        on:
+          click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         
 ```
 
-## components and functions
+### components and functions
 
 http://localhost:3000/examples/components_and_functions.html
 
@@ -175,6 +273,7 @@ state is automatically passed to them as the first argument.
 This example shows a simple control to set a positive number for
 pressure and temperature settings.
 
+YAML file *.../spiderpup/www/recipes/examples/components_and_functions.yaml*
 ```
 ---
 html:
@@ -210,14 +309,16 @@ components:
                 click: s => s.fun.inc()
 ```
 
+## spiderpup loops and branching
 
-## if branching
+### if branching
 
 http://localhost:3000/examples/if_branches.html
 
 Elements can have if / elseif / else branching. 'if' and 'elseif'
 are assigned functions that take the state as their first argument.
 
+YAML file *.../spiderpup/www/recipes/examples/if_branches.yaml*
 ```
 ---
 html:
@@ -267,79 +368,18 @@ components:
                 click: s => s.fun.inc(s)
 ```
 
-## default css and javascript
+### loops
 
-http://localhost:3000/examples/defaults.html
+http://localhost:3000/examples/loops.html
 
-Spiderpup looks for default css and javascript files that
-match the request name.
+An element can be looped. For this to happen, a 'foreach' function
+that returns an array, and a 'forval' value to label the iteration
+must be defined. That element will be placed once for each item in the
+'foreach' array. Each time the element is placed, the state is updated
+in two places. The array value is placed in `state.it[forval]` and the 
+index is placed in `state.idx[forval]` as shown in the following example.
 
-www/css/examples/defaults.css
-```
-div {
-    background: yellow;
-}
-
-```
-
-www/js/examples/defaults.js
-```
-alert ('default javascript' );
-```
-
-www/js/recipes/defaults.yaml
-```
-html:
-  body:
-    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
-```
-
-## additional css and javascript
-
-http://localhost:3000/examples/head_additional.html
-
-www/css/examples/extended/head_additional_1.css
-
-```
-div {
-    border: solid 3px black;
-}
-
-```
-
-www/css/examples/extended/head_additional_2.css
-
-```
-div {
-    border: solid 3px black;
-    background: lightgreen;
-}
-
-```
-
-www/js/examples/head_additional_2.js
-```
-alert( "HELLO ADDITIONAL" );
-```
-
-www/examples/recipes/examples/head_additional.yaml
-```
----
-html:
-  head:
-    title: header additional
-    css:
-      - /css/examples/extra/head_additional_1.css
-      - /css/examples/extra/head_additional_2.css
-    javascript:
-      - /js/examples/extra/head_additional.js
-  body:
-    - div: You can include javascript and css files in the header.
-
-```
-
-## loops
-
+YAML file *.../spiderpup/www/recipes/examples/loops.yaml*.
 ```
 ---
 html:
@@ -349,12 +389,12 @@ html:
             foreach: s => [ "world", "galaxy", "universe" ]
             forval: where
             calculate:
-              textContent: s => 'hello ' + s.it.where
+              textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
 ```
 
-http://localhost:3000/examples/loops.html
 
+## spiderpup state
 
-## element handles
+### element handles
 
-## component handles
+### component handles

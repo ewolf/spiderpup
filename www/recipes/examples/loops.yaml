@@ -6,4 +6,4 @@ html:
             foreach: s => [ "world", "galaxy", "universe" ]
             forval: where
             calculate:
-              textContent: s => 'hello ' + s.it.where
+              textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
