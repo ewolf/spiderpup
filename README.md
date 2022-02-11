@@ -10,7 +10,7 @@ server that transforms YAML into reactive html
 
 See https://github.com/ewolf/spiderpup/blob/main/doc/learning_spiderpup.md
 
-Spoiler : the following YAML file translates into a page with a reactive 
+**Spoiler** : the following YAML file translates into a page with a reactive 
 button
 ```
 ---
