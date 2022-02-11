@@ -1,0 +1,12 @@
+---
+html:
+  head:
+    title: hello again
+  body:
+    - div:
+        style: background-color: wheat;
+        contents:
+          - h1: hello world
+          - h2: 
+              textContent: this is spiderpup
+              style: background-color: lightblue;

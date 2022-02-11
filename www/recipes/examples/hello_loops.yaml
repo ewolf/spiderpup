@@ -1,0 +1,9 @@
+---
+html:
+  body:
+    - div:
+        - h1: 
+            foreach: s => [ "world", "galaxy", "universe" ]
+            forval: where
+            calculate:
+              textContent: s => 'hello ' + s.it.where

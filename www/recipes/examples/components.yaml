@@ -1,0 +1,23 @@
+---
+html:
+  head:
+    title: hello again
+  body:
+    - header:
+    - greeting:
+    - greeting:
+    - footer:
+
+components:
+  header:
+    - div:
+        - h1: I am the title
+        - h2: subtitle yay
+  footer:
+    - div:
+        style: position: absolute; bottom: 0; font-size: x-large
+        textContent: THIS IS THE END
+  greeting:
+    - div:
+        - span: 'hello '
+        - span: there
