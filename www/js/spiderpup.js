@@ -102,9 +102,12 @@ const parseInstructions = (instrs,funs) => {
         [ 'if', 'elseif', 'foreach' ].forEach( fun => node[fun] && (node[fun] = funs[node[fun]]) );
 
         node.contents = node.contents.map( con => {
-            const conname = Object.keys( con )[0];
-            const connode = con[conname] || {};
-            return makeRecipeNode( conname, connode );
+            if ( typeof con === 'object' ) {
+                const conname = Object.keys( con )[0];
+                const connode = con[conname] || {};
+                return makeRecipeNode( conname, connode );
+            } 
+            return makeRecipeNode( con, {} );
         } );
 
         return node;
