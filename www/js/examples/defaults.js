@@ -1,0 +1,1 @@
+alert ('default javascript' );
