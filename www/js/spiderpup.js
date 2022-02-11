@@ -63,7 +63,7 @@ const parseInstructions = (instrs,funs) => {
         node.id = serial++;
         node.name = name;
 
-        const hashes = [ 'events', 'calculate', 'attributes' ];
+        const hashes = [ 'on', 'calculate', 'attributes' ];
         if (isRecipeRoot) {
             if (node.contents.length !== 1) {
                 console.error( "recipe '" + name + "' must contain exactly one root element" );
@@ -81,7 +81,7 @@ const parseInstructions = (instrs,funs) => {
         node.contents || ( node.contents = [] );
 
         // transform function from function indexes to function references
-        [ 'calculate', 'events', 'functions' ].forEach( funhash =>
+        [ 'calculate', 'on', 'functions' ].forEach( funhash =>
             node[funhash] && Object.keys(node[funhash]).forEach( fun =>
                 node[funhash][fun] = funs[node[funhash][fun]] ) );
 
@@ -168,8 +168,8 @@ const parseInstructions = (instrs,funs) => {
             Object.keys( instanceNode.attributes ).forEach( attr => el.setAttribute( attr, el.attributes[attr] ) );
 
             // attach event handlers
-            Object.keys( instanceNode.events ).forEach( evname => {
-                const evfun = function() { instanceNode.events[evname]( state, arguments ) };
+            Object.keys( instanceNode.on ).forEach( evname => {
+                const evfun = function() { instanceNode.on[evname]( state, arguments ) };
                 el.addEventListener( evname, evfun );
             } );
         }
@@ -180,6 +180,7 @@ const parseInstructions = (instrs,funs) => {
 
 
         // now fill in the contents of the node to the existing or newly created element
+        if (recipeNode && recipeNode.name === 'submain' ) debugger;
         let attachEl = recipeNode ? findInternalContent(el) : el;
 
         const k2e = makeKey2el( attachEl );
@@ -327,7 +328,6 @@ const parseInstructions = (instrs,funs) => {
             // it takes a special yaml node so there is always one
             // root for the body recipe
             const bodyNode = makeRecipeNode( 'body', html.body );
-            console.log( recipeNodes, bodyNode, "NODEZ" );
 
             const state = makeState();
             state.refresh = () => build( { buildNode: bodyNode, state } );

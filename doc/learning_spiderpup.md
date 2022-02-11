@@ -53,16 +53,17 @@ html:
 http://localhost:3000/examples/components.html
 
 This example shows how components can be defined and used and
-reused.
-
+reused. Components can be embedded in other components. Each
+component must a single root element.
 
 ```
 ---
 html:
+  head:
+    title: hello again
   body:
     - header:
-    - greeting:
-    - greeting:
+    - main:
     - footer:
 
 components:
@@ -74,28 +75,31 @@ components:
     - div:
         style: position: absolute; bottom: 0; font-size: x-large
         textContent: THIS IS THE END
+  main:
+    - div:
+        - greeting:
+        - greeting:
+
   greeting:
     - div:
         - span: 'hello '
         - span: there
 ```
 
-## components and state
+## components and state data
 
 http://localhost:3000/examples/components_and_state.html
 
-Each component has its own state object attached to it.
-The state has a data object attached to it. Components
-can be defined with default data values. These defaults
-can be overridden when the component is placed into the
-dom. The data object has a get and a set method attached
-to it.
+Each component has its own state object attached to it
+which contains a data object. Components can be defined 
+with default data values. These defaults can be overridden 
+when the component is placed into the dom. The data object 
+has a get and a set method attached to it.
 
 The `calculate` section of an element has functions that
 are called when the elements are placed or refreshed and
 the values applied to the particular element attribute.
 These functions take the component state as their argument.
-
 
 ```
 ---
@@ -118,7 +122,9 @@ components:
 
 ## events and state
 
-This example shows a button who's text displays how many times
+http://localhost:3000/examples/events.html
+
+This short example shows a button who's text displays how many times
 it was clicked. `s.data.get` is with a field name and an optional
 second argument which is a default value to set the field to if it
 is not yet defined.
@@ -140,16 +146,56 @@ html:
       - button:
           calculate:
             textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-          events:
+          on:
             click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         
 ```
 
-http://localhost:3000/examples/events.html
+## components and functions
 
-## calculations
+http://localhost:3000/examples/components_and_functions.html
 
-http://localhost:3000/examples/calculations.html
+Components can have functions attached to them. The functions can
+be called from the state object's `fun` object. When called, the
+state should be passed to them as the first argument.
+
+This example shows a simple control to set a positive number for
+pressure and temperature settings.
+
+```
+---
+html:
+  body:
+    - NumberAdjuster:
+        data:
+          name: 'temperature'
+    - NumberAdjuster:
+        data:
+          name: 'pressure'
+
+components:
+  NumberAdjuster:
+    data:
+      value: 0
+      name: ''
+    functions:
+      inc: s => s.data.set( 'value', 1 + s.data.get('value') )
+      dec: s => s.data.get( 'value' ) > 0 && s.data.set( 'value', s.data.get('value') - 1 )
+    contents:
+      - div:
+          - button:
+              textContent: '-'
+              on:
+                click: s => s.fun.dec(s)
+          - span:
+              style: margin: 0 5px
+              calculate:
+                textContent: s => s.data.get('name') + ': ' + s.data.get('value')
+          - button:
+              textContent: '+'
+              on:
+                click: s => s.fun.inc(s)
+```
 
 ## hello loops
 

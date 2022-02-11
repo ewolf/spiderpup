@@ -2,6 +2,11 @@
 
 server that transforms YAML into reactive html 
 
+## descriptions
+
+YAML Ain't Markup Language except for when it is.
+For spiderpup, it is.
+
 ## synopsis
 
 ```

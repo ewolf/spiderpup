@@ -5,6 +5,6 @@ html:
       - button:
           calculate:
             textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-          events:
+          on:
             click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         

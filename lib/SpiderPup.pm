@@ -109,7 +109,7 @@ sub transform_recipe {
     }
     elsif(ref( $node ) eq 'HASH') {
         transform_fun_hash( $node->{methods}, $funs );
-        transform_fun_hash( $node->{events}, $funs );
+        transform_fun_hash( $node->{on}, $funs );
         transform_fun_hash( $node->{calculate}, $funs );
         transform_fun( $node, 'if', $funs );
         transform_fun( $node, 'elseif', $funs );

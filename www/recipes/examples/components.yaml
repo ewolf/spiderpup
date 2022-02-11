@@ -4,8 +4,7 @@ html:
     title: hello again
   body:
     - header:
-    - greeting:
-    - greeting:
+    - main:
     - footer:
 
 components:
@@ -17,6 +16,11 @@ components:
     - div:
         style: position: absolute; bottom: 0; font-size: x-large
         textContent: THIS IS THE END
+  main:
+    - div:
+        - greeting:
+        - greeting:
+
   greeting:
     - div:
         - span: 'hello '
