@@ -151,11 +151,11 @@ components:
                       class: row
                       # a handle allows this div element to be referred in the state
                       # variable as s.el.buttonBox
-                      handle: buttonBox
+                      attach-el: buttonBox
                       contents:
 
                         - span:
-                            handle: red
+                            attach-el: red
                             class: red
                             calculate:
                               textContent: s => s.data.get( 'red' ) + ' red clicks'
@@ -166,7 +166,7 @@ components:
                               click: (s,ev) => s.data.set( 'red', 1 + parseInt(s.data.get('red')))
 
                         - span:
-                            handle: green
+                            attach-el: green
                             class: green
                             textContent: green
                             on:
@@ -174,7 +174,7 @@ components:
 
                   - div:
                       - button:
-                          handle: switchButton
+                          attach-el: switchButton
                           textContent: click me to switch places of red and green
                           on:
                             # this click calls the toggle function defined in the functions of myapp

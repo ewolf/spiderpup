@@ -12,9 +12,9 @@ components:
       - div: 
           - h1: Test App
           - counter:
-              handle: A
+              attach-comp: A
           - counter: 
-              handle: B
+              attach-comp: B
               data:
                 count: 1
           - div:

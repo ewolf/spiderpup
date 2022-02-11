@@ -1,0 +1,19 @@
+---
+html:
+  body:
+    - h1: hello handles
+    - div:
+        - input:
+            type: text
+            attach-el: textfield
+            on:
+              change: s => s.refresh()
+        - button:
+            textContent: click
+            on:
+              click: s => s.refresh()
+        - div:
+            calculate:
+              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+
+  

@@ -138,7 +138,7 @@ const parseInstructions = (instrs,funs) => {
 
                 recipeNode.onLoad && recipeNode.onLoad( state );
 
-                const handle = instanceNode.handle;
+                const handle = instanceNode['attach-comp'];
                 handle && ( state.comp[handle] = subCompoState );
 
                 el.key = key;
@@ -169,7 +169,7 @@ const parseInstructions = (instrs,funs) => {
                     args.attachTo.append( el );
                 }
 
-                const handle = instanceNode.handle;
+                const handle = instanceNode['attach-el'];
                 handle && ( state.el[handle] = el );
 
             }
@@ -231,7 +231,7 @@ const parseInstructions = (instrs,funs) => {
                         // remove the old node and return
                         if (conel) {
                             attachEl.removeChild( conel );
-                            const handle = connode.handle;
+                            const handle = connode['attach-comp'];
                             handle && ( delete state.comp[handle] );
                         }
                         lastSucceeded = false;

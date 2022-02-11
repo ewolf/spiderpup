@@ -379,37 +379,58 @@ html:
 http://localhost:3000/examples/element_handles.html
 
 This introduces two things : element handles and state refresh.
-When an element is given a handle, a reference to that element is
-put in the state variable's `el` object, keyed with the handle given.
+When an element is given a handle with attach-el, 
+a reference to that element is put in the state variable's `el`
+object, keyed with the handle given.
 
 The state object can be made to refresh manually with the `refresh`
 method.
 
 YAML file *.../spiderpup/www/recipes/examples/element_handles.yaml*.
+
 ```
 ---
 html:
   body:
+    - h1: hello handles
     - div:
-        - input: 
+        - input:
             type: text
-            handle: inpt
+            attach-el: textfield
             on:
-              keyup: s => s.refresh()
-    - div:
-        calculate:
-          textContent: s => 'you typed in ' + s.el.inpt.value
+              change: s => s.refresh()
+        - button:
+            textContent: click
+            on:
+              click: s => s.refresh()
+        - div:
+            calculate:
+              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+
 ```
 
 
 ### component handles
 
+http://localhost:3000/examples/attach_component.html
 
-http://localhost:3000/examples/component_handles.html
 
 
-YAML file *.../spiderpup/www/recipes/examples/component_handles.yaml*.
+YAML file *.../spiderpup/www/recipes/examples/attach_component.yaml*.
 ```
+---
+html:
+  body:
+    - h1: hello handles
+    - div:
+        - input:
+            type: text
+            attach-el: textfield
+            on:
+              change: s => s.refresh();
+        - div:
+            calculate:
+              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
 ```
 
 ## spiderpup state
