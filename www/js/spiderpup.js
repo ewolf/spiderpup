@@ -31,7 +31,7 @@ const parseInstructions = (instrs,funs) => {
 
         state.data = {
             _data : data || {},
-            get : function(k) { return this._data[k] },
+            get : function(k,defval) { if (this._data[k] === undefined) this._data[k] = defval; return this._data[k] },
             set : function(k,v) { const changed = v !== this._data[k];
                                   this._data[k] = v;
                                   if (changed) { state.refresh() } }
@@ -162,7 +162,9 @@ const parseInstructions = (instrs,funs) => {
 
             // attach new element attributes (text/class/attributes)
             instanceNode.textContent && (el.textContent = instanceNode.textContent);
+            instanceNode.style && (el.style = instanceNode.style);
             instanceNode.class && instanceNode.class.split( / +/ ).forEach( cls => el.classList.add( cls ) );
+
             Object.keys( instanceNode.attributes ).forEach( attr => el.setAttribute( attr, el.attributes[attr] ) );
 
             // attach event handlers
@@ -266,6 +268,8 @@ const parseInstructions = (instrs,funs) => {
                 val.split( / +/ ).forEach( cls => el.classList.add( cls ) );
             } else if (attr === 'textContent') {
                 el.textContent = val;
+            } else if (attr === 'style') {
+                el.style = val;
             } else {
                 el.setAttribute( attr, el.attributes[attr] );
             }
@@ -278,6 +282,8 @@ const parseInstructions = (instrs,funs) => {
                 val.split( / +/ ).forEach( cls => el.classList.add( cls ) );
             } else if (attr === 'textContent') {
                 el.textContent = val;
+            } else if (attr === 'style') {
+                el.style = val;
             } else {
                 el.setAttribute( attr, el.attributes[attr] );
             }

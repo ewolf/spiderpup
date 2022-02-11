@@ -61,7 +61,7 @@ sub serve_html {
 
 sub transform_fun {
     my ($node, $name, $funs) = @_;
-    if ($node->{$name}) {
+    if (ref($node) eq 'HASH' && $node->{$name}) {
         my $fid = @$funs;
         push @$funs, $node->{$name};
         $node->{$name} = $fid;
