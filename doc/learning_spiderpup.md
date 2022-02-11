@@ -88,7 +88,8 @@ Each component has its own state object attached to it.
 The state has a data object attached to it. Components
 can be defined with default data values. These defaults
 can be overridden when the component is placed into the
-dom.
+dom. The data object has a get and a set method attached
+to it.
 
 The `calculate` section of an element has functions that
 are called when the elements are placed or refreshed and
@@ -118,7 +119,18 @@ components:
 ## events and state
 
 This example shows a button who's text displays how many times
-it was clicked.
+it was clicked. `s.data.get` is with a field name and an optional
+second argument which is a default value to set the field to if it
+is not yet defined.
+
+There is no component here; the body also gets a state object 
+associated with it.
+
+Whenever an event function is run and if there is a change to its
+data, the page contents are recalculated.
+
+Notice that the first argument to an event handler is always the 
+state, followed by the event object.
 
 ```
 ---
