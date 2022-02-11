@@ -197,6 +197,66 @@ components:
                 click: s => s.fun.inc(s)
 ```
 
+## if branching
+
+http://localhost:3000/examples/if_branches.html
+
+Elements can have if / elseif / else branching. 'if' and 'elseif'
+are assigned functions that take the state as their first argument.
+
+```
+---
+html:
+  body:
+    - NumberAdjuster:
+        data:
+          value: 15
+          incVal: 5
+          name: 'pressure'
+          
+components:
+  NumberAdjuster:
+    data:
+      incVal: 1
+      value: 0
+      name: ''
+    functions:
+      inc: s => s.data.set( 'value', s.data.get('incVal') + s.data.get('value') )
+      dec: >
+        s => {
+           s.data.set( 'value', s.data.get('value') - s.data.get('incVal') )
+           if (s.data.get( 'value' ) < 0) s.data.set('value',0)
+        }
+
+    contents:
+      - div:
+          - button:
+              textContent: '-'
+              on:
+                click: s => s.fun.dec(s)
+          - span:
+              style: margin: 0 5px
+              calculate:
+                textContent: s => s.data.get('name') + ': ' + s.data.get('value')
+          - span:
+              if: s => s.data.get('value') < 10
+              textContent: too low
+          - span:
+              elseif: s => s.data.get('value') > 35
+              textContent: too high
+          - span:
+              else:
+              textContent: good enough
+          - button:
+              textContent: '+'
+              on:
+                click: s => s.fun.inc(s)
+```
+
+## element handles
+
+## component handles
+
 ## hello loops
 
 ```

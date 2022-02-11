@@ -31,10 +31,11 @@ const parseInstructions = (instrs,funs) => {
 
         state.data = {
             _data : data || {},
+            _check : function() { const changed = this._changed; this._changed = false; return changed; },
+            _changed : false,
             get : function(k,defval) { if (this._data[k] === undefined) this._data[k] = defval; return this._data[k] },
-            set : function(k,v) { const changed = v !== this._data[k];
-                                  this._data[k] = v;
-                                  if (changed) { state.refresh() } }
+            set : function(k,v) { this._changed = v !== this._data[k];
+                                  this._data[k] = v; },
         };
         return state;
     } //makeState
@@ -169,7 +170,10 @@ const parseInstructions = (instrs,funs) => {
 
             // attach event handlers
             Object.keys( instanceNode.on ).forEach( evname => {
-                const evfun = function() { instanceNode.on[evname]( state, arguments ) };
+                const evfun = function() { 
+                    instanceNode.on[evname]( state, arguments );
+                    if ( state.data._check() ) state.refresh();
+                };
                 el.addEventListener( evname, evfun );
             } );
         }
