@@ -159,7 +159,7 @@ components:
                             class: red
                             calculate:
                               textContent: s => s.data.get( 'red' ) + ' red clicks'
-                            events:
+                            on:
                               # all functions, even even handlers are passed the s state var 
                               # as their first argument. NOTE : the event is passed in
                               # as the *second* argument
@@ -169,14 +169,14 @@ components:
                             handle: green
                             class: green
                             textContent: green
-                            events:
+                            on:
                               click: () => alert( 'Green' )
 
                   - div:
                       - button:
                           handle: switchButton
                           textContent: click me to switch places of red and green
-                          events:
+                          on:
                             # this click calls the toggle function defined in the functions of myapp
                             # (and overridden once in the body above).
                             # it then toggles the toggle which causes things to refresh

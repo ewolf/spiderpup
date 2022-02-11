@@ -1,6 +1,10 @@
 const parseInstructions = (instrs,funs) => {
     const recipeNodes = {};
 
+    const bigAttrs = 'textContent|style|type|title'.split( /\|/ );
+    const bigAttr = {};
+    bigAttrs.forEach( attr => bigAttr[attr] = true );
+
     let serial = 1;
 
     const makeKey = ( state, node, forIdx ) => {
@@ -171,8 +175,7 @@ const parseInstructions = (instrs,funs) => {
             }
 
             // attach new element attributes (text/class/attributes)
-            instanceNode.textContent && (el.textContent = instanceNode.textContent);
-            instanceNode.style && (el.style = instanceNode.style);
+            bigAttrs.forEach( attr => instanceNode[attr] !== undefined && (el[attr] = instanceNode[attr]) );
             instanceNode.class && instanceNode.class.split( / +/ ).forEach( cls => el.classList.add( cls ) );
 
             Object.keys( instanceNode.attributes ).forEach( attr => el.setAttribute( attr, el.attributes[attr] ) );
@@ -280,10 +283,8 @@ const parseInstructions = (instrs,funs) => {
             if (attr === 'class') {
                 el.removeAttribute( 'class' );
                 val.split( / +/ ).forEach( cls => el.classList.add( cls ) );
-            } else if (attr === 'textContent') {
-                el.textContent = val;
-            } else if (attr === 'style') {
-                el.style = val;
+            } else if (bigAttr[attr]) {
+                el[attr] = val;
             } else {
                 el.setAttribute( attr, el.attributes[attr] );
             }
@@ -294,10 +295,8 @@ const parseInstructions = (instrs,funs) => {
             if (attr === 'class') {
                 el.removeAttribute( 'class' );
                 val.split( / +/ ).forEach( cls => el.classList.add( cls ) );
-            } else if (attr === 'textContent') {
-                el.textContent = val;
-            } else if (attr === 'style') {
-                el.style = val;
+            } else if (bigAttr[attr]) {
+                el[attr] = val;
             } else {
                 el.setAttribute( attr, el.attributes[attr] );
             }

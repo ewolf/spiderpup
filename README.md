@@ -1,17 +1,21 @@
 # spiderpup project
 
-server that transforms YAML into reactive html 
+server that renders YAML as reactive, componentized html
 
 ## description
 
-
+Write YAML files, place them in the directory path corresponding
+to a url path. Start the spiderpup server, giving it the directory
+to use. Spiderpup now automaticaly serves the html and javascript 
+described in the YAML files.
 
 ## tutorial
 
 See https://github.com/ewolf/spiderpup/blob/main/doc/learning_spiderpup.md
 
 **Spoiler** : the following YAML file translates into a page with a reactive 
-button
+button that shows how many times it is clicked.
+
 ```
 ---
 html:
@@ -34,7 +38,6 @@ $ PERL5LIB=../lib; morbo spiderpup
 ```
 
 edit spiderpup/www/recipes/mypage.yaml
-edit spiderpup/www/css/mypage.css
 
 open http://127.0.0.1:3000/mypage.html
 

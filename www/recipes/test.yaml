@@ -28,7 +28,7 @@ components:
       - button:
           calculate:
             textContent: s => s.data.get( 'count' )
-          events:
+          on:
             click: >-
               (s,ev) => {
                  s.data.set( 'count', 1 + s.data.get( 'count' ) )

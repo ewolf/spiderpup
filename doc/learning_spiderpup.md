@@ -33,16 +33,6 @@ html:
 
 http://localhost:3000/examples/hello_again.html
 
-An element may contain a list as shown in the first example.
-This second example shows how an element may have fields set
-explicitly. Child elements are specified by the `contents` 
-field.
-
-This also shows that the head section of html can do a few things
-like set the title and add styles to the page.
-
-The title of the page is set in the head section.
-
 YAML file *.../spiderpup/www/recipes/examples/hello_again.yaml*
 
 ```
@@ -69,10 +59,6 @@ html:
 
 http://localhost:3000/examples/components.html
 
-This example shows how components can be defined and used and
-reused. Components can be embedded in other components. Each
-component must have a single root element.
-
 YAML file *.../spiderpup/www/recipes/examples/components.yaml*
 ```
 ---
@@ -95,6 +81,7 @@ components:
         textContent: THIS IS THE END
   main:
     - div:
+        # greet twice
         - greeting:
         - greeting:
 
@@ -105,8 +92,6 @@ components:
 ```
 
 ## spiderpup files
-
-These show how spiderpup includes javascript and css files.
 
 ### default css and javascript
 
@@ -141,8 +126,6 @@ html:
 ### additional css and javascript
 
 http://localhost:3000/examples/head_additional.html
-
-This example shows how to load additional css and javascript.
 
 YAML file *.../spiderpup/www/recipes/examples/head_additional.yaml*
 ```
@@ -199,16 +182,13 @@ on it. State data is used to calculate how the page appears.
 
 http://localhost:3000/examples/components_and_state.html
 
-Each component has its own state object attached to it
-which contains a data object. Components can be defined 
-with default data values. These defaults can be overridden 
-when the component is placed into the dom. The data object 
-has a get and a set method attached to it.
+Each instance of component has its own state object.
+That state object has a data field that is populated with
+a copy of the data from the component definition section.
+That data can be overridden at component placement.
 
-The `calculate` section of an element has functions that
-are called when the elements are placed or refreshed and
-the values applied to the particular element attribute.
-These functions take the component state as their argument.
+The instance state is passed to `calculate` functions as the
+only argument.
 
 YAML file *.../spiderpup/www/recipes/examples/components_and_state.yaml*
 ```
@@ -392,9 +372,46 @@ html:
               textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
 ```
 
-
-## spiderpup state
+## handles
 
 ### element handles
 
+http://localhost:3000/examples/element_handles.html
+
+This introduces two things : element handles and state refresh.
+When an element is given a handle, a reference to that element is
+put in the state variable's `el` object, keyed with the handle given.
+
+The state object can be made to refresh manually with the `refresh`
+method.
+
+YAML file *.../spiderpup/www/recipes/examples/element_handles.yaml*.
+```
+---
+html:
+  body:
+    - div:
+        - input: 
+            type: text
+            handle: inpt
+            on:
+              keyup: s => s.refresh()
+    - div:
+        calculate:
+          textContent: s => 'you typed in ' + s.el.inpt.value
+```
+
+
 ### component handles
+
+
+http://localhost:3000/examples/component_handles.html
+
+
+YAML file *.../spiderpup/www/recipes/examples/component_handles.yaml*.
+```
+```
+
+## spiderpup state
+
+
