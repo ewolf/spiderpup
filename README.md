@@ -2,10 +2,14 @@
 
 server that transforms YAML into reactive html 
 
-## descriptions
+## description
 
-YAML Ain't Markup Language except for when it is.
-For spiderpup, it is.
+
+
+## tutorial
+
+See https://github.com/ewolf/spiderpup/blob/main/doc/learning_spiderpup.md
+
 
 ## synopsis
 

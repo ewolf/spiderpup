@@ -322,8 +322,45 @@ const parseInstructions = (instrs,funs) => {
 
     const html = instrs.html;
     if (html) {
-        document.title = (html.head && html.head.title) || '';
         if (html.head) {
+            const head = document.head;
+
+            // documnt title
+            if (html.head.title) document.title = html.head.title;
+
+            // explicit style
+            let style = html.head.style
+            if (style) {
+                const stylel = document.createElement( 'style' );
+                stylel.setAttribute( 'type', 'text/css' );
+                if (stylel.styleSheet) { // IE
+                    stylel.styleSheet.cssText = style;
+                } else {
+                    stylel.appendChild(document.createTextNode(style));
+                }
+                head.appendChild( stylel );
+            }
+
+            // css files
+            const css = html.head.css;
+            const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
+            
+            cssFiles.forEach( file => {
+                const link = document.createElement( 'link' );
+                link.setAttribute( 'rel', 'stylesheet' );
+                link.setAttribute( 'media', 'screen' );
+                link.setAttribute( 'href', file );
+                head.appendChild( link );
+            } );
+
+            const js = html.head.javascript;
+            const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];            jsFiles.forEach( file => {
+                const scr = document.createElement( 'script' );
+                scr.setAttribute( 'src', file );
+                head.appendChild( scr );
+            } );
+       
+            
         }
 
         if (html.body) {

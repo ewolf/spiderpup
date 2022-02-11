@@ -48,8 +48,9 @@ sub serve_html {
         }
         $page =~ s/.html$//;
         if (-e "$root/recipes/$page.yaml") {
-            return $c->render( template => 'page',
+            my $defjs = -e "$root/js$page.js" ? "/js$page.js" : '';            return $c->render( template => 'page',
                                css      => "/css$page.css",
+                               js       => $defjs,
                                yaml     => "/_$page" );
         }
         return $c->render(text => "recipe NOTFOUND / $root/recipes/$page.yaml / $file");
@@ -210,6 +211,9 @@ __DATA__
 <html>
   <head>
     <title></title>
+    % if ( $js ) {
+      <script src="<%= $js %>"></script>
+    % }
     <script src="/js/spiderpup.js"></script>
     <script src="<%= $yaml %>"></script>
     <link rel="stylesheet" href="<%= $css %>" media="screen">

@@ -14,6 +14,8 @@ $ morbo spiderpup
 
 http://localhost:3000/examples/hello_world.html
 
+www/recipes/examples/hello_world.yaml
+
 ```
 ---
 html:
@@ -31,22 +33,104 @@ This second example shows how an element may have fields set
 explicitly. Child elements are specified by the `contents` 
 field.
 
+This also shows that the head section of html can do a few things
+like set the title and add styles to the page.
+
 The title of the page is set in the head section.
+
+www/recipes/examples/hello_again.yaml
 
 ```
 ---
 html:
   head:
     title: hello again
+    style: >
+      .mainstyle {
+         background-color: wheat;
+      }
+      
   body:
     - div:
-        style: background-color: wheat;
+        class: mainstyle
         contents:
           - h1: hello world
           - h2: 
               textContent: this is spiderpup
               style: background-color: lightblue;
 ```
+
+## default css and javascript
+
+http://localhost:3000/examples/defaults.html
+
+Spiderpup looks for default css and javascript files that
+match the request name.
+
+www/css/examples/defaults.css
+```
+div {
+    background: yellow;
+}
+
+```
+
+www/js/examples/defaults.js
+```
+alert ('default javascript' );
+```
+
+www/js/recipes/defaults.yaml
+```
+html:
+  body:
+    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
+```
+
+## additional css and javascript
+
+http://localhost:3000/examples/head_additional.html
+
+www/css/examples/extended/head_additional_1.css
+
+```
+div {
+    border: solid 3px black;
+}
+
+```
+
+www/css/examples/extended/head_additional_2.css
+
+```
+div {
+    border: solid 3px black;
+    background: lightgreen;
+}
+
+```
+
+www/js/examples/head_additional_2.js
+```
+alert( "HELLO ADDITIONAL" );
+```
+
+www/examples/recipes/examples/head_additional.yaml
+```
+---
+html:
+  head:
+    title: header additional
+    css:
+      - /css/examples/extra/head_additional_1.css
+      - /css/examples/extra/head_additional_2.css
+    javascript:
+      - /js/examples/extra/head_additional.js
+  body:
+    - div: You can include javascript and css files in the header.
+
+```
+
 
 ## components
 

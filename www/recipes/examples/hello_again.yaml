@@ -2,9 +2,14 @@
 html:
   head:
     title: hello again
+    style: >
+      .mainstyle {
+         background-color: wheat;
+      }
+      
   body:
     - div:
-        style: background-color: wheat;
+        class: mainstyle
         contents:
           - h1: hello world
           - h2: 
