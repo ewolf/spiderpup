@@ -48,7 +48,8 @@ sub serve_html {
         }
         $page =~ s/.html$//;
         if (-e "$root/recipes/$page.yaml") {
-            my $defjs = -e "$root/js$page.js" ? "/js$page.js" : '';            return $c->render( template => 'page',
+            my $defjs = -e "$root/js$page.js" ? "/js$page.js" : '';            
+            return $c->render( template => 'page',
                                css      => "/css$page.css",
                                js       => $defjs,
                                yaml     => "/_$page" );
@@ -103,8 +104,8 @@ sub transform_data {
 sub transform_recipe {
     my ($node, $funs) = @_;
     if(ref( $node ) eq 'ARRAY') {
-        for my $inghash (@$node) {
-            my ($ingredient) = values %$inghash;
+        for my $ingdef (@$node) {
+            my ($ingredient) = ref $ingdef eq 'HASH' ? values %$ingdef : $ingdef;
             transform_recipe($ingredient, $funs);
         }
     }
@@ -122,13 +123,26 @@ sub transform_recipe {
 }
 
 sub yaml_to_js {
-    my $file = shift;
+    my ($root,$file) = @_;
+    my $yaml_file = "$root/recipes/$file";
 
-    if (-e $file) {
+    if (-e $yaml_file) {
+        my $yaml = YAML::LoadFile( $yaml_file );
 
-        my $yaml = YAML::LoadFile( $file );
+        # check for imported components
+        if (my $file_imports = $yaml->{import}) {
+            for my $i_file (@$file_imports) {
+                my $i_yaml = YAML::LoadFile( "$root/include/$i_file.yaml" );
+                if (my $compos = $i_yaml->{components}) {
+                    for my $name (keys %$compos) {
+                        $yaml->{components}{$name} = $compos->{$name};
+                    }
+                }
+            }            
+        }
 
         my $funs = [];
+
         # functions and onLoad only appear in the root of the recipe
         transform_fun_hash( $yaml->{functions}, $funs );
 
@@ -136,6 +150,8 @@ sub yaml_to_js {
             transform_recipe( $recipe, $funs );
             transform_fun( $recipe, 'onLoad', $funs );
         }
+
+
         my $body = $yaml->{html}{body};
         $body && transform_recipe( $body, $funs );
 
@@ -152,7 +168,9 @@ sub serve_recipe {
     $page //= $c->req->url->to_abs->path;
     $page =~ s~^/_/~/~;
 
-    my $js = yaml_to_js( "$root/recipes$page.yaml" );
+    my $js = yaml_to_js( $root, "$page.yaml" );
+
+print STDERR Data::Dumper->Dump([$js,"JS"]);
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );

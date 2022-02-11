@@ -91,6 +91,37 @@ components:
         - span: there
 ```
 
+### includes
+
+http://localhost:3000/examples/includes.html
+
+YAML file *.../spiderpup/www/includes/examples/impy.yaml*
+```
+---
+components:
+  myform:
+    functions:
+      foo: () => 1
+    contents:
+      - form: 
+          - mydiv:
+  mydiv:
+    - div: my div
+```
+
+YAML file *.../spiderpup/www/recipes/examples/includes.yaml*
+```
+---
+import:
+  - examples/impy
+
+html:
+  body:
+    - myform:
+        functions:
+          foo: () => 2
+```
+
 ## spiderpup files
 
 ### default css and javascript
