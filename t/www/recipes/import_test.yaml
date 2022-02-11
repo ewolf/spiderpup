@@ -1,0 +1,9 @@
+---
+import:
+  - impy
+
+html:
+  body:
+    - myform:
+        functions:
+          foo: () => 2

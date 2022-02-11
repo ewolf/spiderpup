@@ -1,0 +1,10 @@
+---
+components:
+  myform:
+    functions:
+      foo: () => 1
+    contents:
+      - form: 
+          - mydiv
+  mydiv:
+    - div: my div

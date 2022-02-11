@@ -1,0 +1,10 @@
+---
+import:
+  - examples/impy
+
+html:
+  body:
+    - myform:
+        functions:
+          foo: () => 2
+
