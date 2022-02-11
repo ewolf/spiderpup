@@ -170,7 +170,7 @@ http://localhost:3000/examples/components_and_functions.html
 
 Components can have functions attached to them. The functions can
 be called from the state object's `fun` object. When called, the
-state should be passed to them as the first argument.
+state is automatically passed to them as the first argument.
 
 This example shows a simple control to set a positive number for
 pressure and temperature settings.
@@ -199,7 +199,7 @@ components:
           - button:
               textContent: '-'
               on:
-                click: s => s.fun.dec(s)
+                click: s => s.fun.dec()
           - span:
               style: margin: 0 5px
               calculate:
@@ -207,7 +207,7 @@ components:
           - button:
               textContent: '+'
               on:
-                click: s => s.fun.inc(s)
+                click: s => s.fun.inc()
 ```
 
 

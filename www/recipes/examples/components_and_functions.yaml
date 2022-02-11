@@ -21,7 +21,7 @@ components:
           - button:
               textContent: '-'
               on:
-                click: s => s.fun.dec(s)
+                click: s => s.fun.dec()
           - span:
               style: margin: 0 5px
               calculate:
@@ -29,4 +29,4 @@ components:
           - button:
               textContent: '+'
               on:
-                click: s => s.fun.inc(s)
+                click: s => s.fun.inc()

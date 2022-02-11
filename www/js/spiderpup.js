@@ -12,12 +12,6 @@ const parseInstructions = (instrs,funs) => {
 
     const makeState = (parentState, recipeNode, instanceNode) => {
         let data, instanceFuns;
-        if (recipeNode) {
-            data = {...recipeNode.data};
-            instanceFuns = {...recipeNode.functions};
-            instanceNode.data && Object.keys( instanceNode.data ).forEach( fld => data[fld] = instanceNode.data[fld] );
-            instanceNode.functions && Object.keys( instanceNode.functions ).forEach( funname => instanceFuns[funname] = instanceNode.functions[funname] );
-        }
 
         const state = {
             instanceID  : serial++,
@@ -28,6 +22,21 @@ const parseInstructions = (instrs,funs) => {
             it          : {}, // iterator name -> iterator value
             el          : {}, // handle -> element
         };
+
+        if (recipeNode) {
+            data = {...recipeNode.data};
+            instanceFuns = {};
+            Object.keys( recipeNode.functions )
+                .map( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, arguments ) } );
+            instanceNode.data && Object.keys( instanceNode.data )
+                .forEach( fld => data[fld] = instanceNode.data[fld] );
+            instanceNode.functions && 
+                Object.keys( instanceNode.functions )
+                .forEach( funname => 
+                    instanceFuns[funname] = function() { instanceNode.functions[funname]( state, arguments ) } );
+        }
+
+        state.fun = instanceFuns;
 
         state.data = {
             _data : data || {},
