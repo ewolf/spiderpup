@@ -104,7 +104,7 @@ components:
       foo: () => 1
     contents:
       - form: 
-          - mydiv:
+          - mydiv
   mydiv:
     - div: my div
 ```
@@ -333,6 +333,12 @@ YAML file *.../spiderpup/www/recipes/examples/if_branches.yaml*
 ```
 ---
 html:
+  head:
+    style: >-
+      .low { border: solid red 8px }
+      .good { border: solid green 8px }
+      .high { border: solid purple 8px }
+    
   body:
     - NumberAdjuster:
         data:
@@ -356,27 +362,31 @@ components:
 
     contents:
       - div:
-          - button:
-              textContent: '-'
-              on:
-                click: s => s.fun.dec(s)
-          - span:
-              style: margin: 0 5px
-              calculate:
-                textContent: s => s.data.get('name') + ': ' + s.data.get('value')
-          - span:
-              if: s => s.data.get('value') < 10
-              textContent: too low
-          - span:
-              elseif: s => s.data.get('value') > 35
-              textContent: too high
-          - span:
-              else:
-              textContent: good enough
-          - button:
-              textContent: '+'
-              on:
-                click: s => s.fun.inc(s)
+          style: display: inline-block
+          calculate:
+            class: s => s.data.get('value') < 10 ? 'low' : s.data.get('value') > 35 ? 'high' : 'good'
+          contents:
+            - button:
+                textContent: '-'
+                on:
+                  click: s => s.fun.dec(s)
+            - span:
+                style: margin: 0 5px
+                calculate:
+                  textContent: s => s.data.get('name') + ': ' + s.data.get('value')
+            - span:
+                if: s => s.data.get('value') < 10
+                textContent: too low
+            - span:
+                elseif: s => s.data.get('value') > 35
+                textContent: too high
+            - span:
+                else:
+                  textContent: good enough
+            - button:
+                textContent: '+'
+                on:
+                  click: s => s.fun.inc(s)
 ```
 
 ### loops
@@ -407,7 +417,7 @@ html:
 
 ### element handles
 
-http://localhost:3000/examples/element_handles.html
+http://localhost:3000/examples/attach_element.html
 
 This introduces two things : element handles and state refresh.
 When an element is given a handle with attach-el, 
@@ -417,7 +427,7 @@ object, keyed with the handle given.
 The state object can be made to refresh manually with the `refresh`
 method.
 
-YAML file *.../spiderpup/www/recipes/examples/element_handles.yaml*.
+YAML file *.../spiderpup/www/recipes/examples/attach_handles.yaml*.
 
 ```
 ---
