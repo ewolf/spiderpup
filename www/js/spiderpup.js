@@ -31,13 +31,13 @@ const parseInstructions = (instrs,funs) => {
             data = {...recipeNode.data};
             instanceFuns = {};
             Object.keys( recipeNode.functions )
-                .map( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, arguments ) } );
+                .map( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, ...arguments ) } );
             instanceNode.data && Object.keys( instanceNode.data )
                 .forEach( fld => data[fld] = instanceNode.data[fld] );
             instanceNode.functions && 
                 Object.keys( instanceNode.functions )
                 .forEach( funname => 
-                    instanceFuns[funname] = function() { instanceNode.functions[funname]( state, arguments ) } );
+                    instanceFuns[funname] = function() { instanceNode.functions[funname]( state, ...arguments ) } );
         }
 
         state.fun = instanceFuns;
@@ -183,7 +183,7 @@ const parseInstructions = (instrs,funs) => {
             // attach event handlers
             Object.keys( instanceNode.on ).forEach( evname => {
                 const evfun = function() { 
-                    instanceNode.on[evname]( state, arguments );
+                    instanceNode.on[evname]( state, ...arguments );
                     if ( state.data._check() ) state.refresh();
                 };
                 el.addEventListener( evname, evfun );
