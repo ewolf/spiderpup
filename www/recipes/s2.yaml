@@ -1,0 +1,18 @@
+html:
+  head:
+    title: foooooo
+  body: 
+    - foo:
+    - foo:
+        - div: MORE
+
+components:
+  foo:
+    contents:
+      - div:
+          - span: FEE
+          - span: ' FIE' 
+          - span: FOO
+          - div:
+              internalContent: 1
+          - span: END

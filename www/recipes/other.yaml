@@ -1,0 +1,5 @@
+include:
+  again: ./again.yaml
+
+functions:
+  bar: () => console.log( 'bar' );

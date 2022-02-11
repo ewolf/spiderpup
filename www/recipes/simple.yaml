@@ -1,0 +1,7 @@
+html:
+  head:
+    title: foooooo
+  body: 
+    - div: BEEP
+
+    

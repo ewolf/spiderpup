@@ -1,0 +1,26 @@
+.red { background: red; }
+.green { background: green; }
+
+.red,
+.green {
+    margin: 3px;
+    padding: 2px;
+    border: solid black 2px;
+    cursor: pointer;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+.myapp {
+    border: solid 4px grey;
+    padding: 5px;
+    margin: 10px;
+}

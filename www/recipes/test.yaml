@@ -1,0 +1,37 @@
+html:
+  head:
+    title: example
+  body:
+    - testapp:
+
+components:
+  testapp:
+    data:
+      count: 0
+    contents:
+      - div: 
+          - h1: Test App
+          - counter:
+              handle: A
+          - counter: 
+              handle: B
+              data:
+                count: 1
+          - div:
+              calculate: 
+                textContent: s => { const a = s.comp.A.data.get( 'count' ), b = s.comp.B.data.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+              
+  counter:
+    data:
+      count: 0
+    contents:
+      - button:
+          calculate:
+            textContent: s => s.data.get( 'count' )
+          events:
+            click: >-
+              (s,ev) => {
+                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
+                 s.parent.refresh();
+              }
+          

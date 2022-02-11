@@ -1,0 +1,7 @@
+html:
+  body:
+    - div:
+        foreach: () => [1,2,3,4,5]
+        forval: I
+        calculate:
+          textContent: s => s.idx.I + ') ' + (2 * s.it.I)
