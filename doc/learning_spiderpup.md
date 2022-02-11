@@ -414,23 +414,52 @@ html:
 
 http://localhost:3000/examples/attach_component.html
 
-
+Subcomponent state can be attached to a state object. In this example,
+the `testapp` component has two `counter` components embedded in it.
+Each instance of a component has its own state. Th state of a subcomponent
+can be attached in the `comp` object of the state. A testapp state (s)
+here has references to its child components thru s.comp.A and s.comp.B.
 
 YAML file *.../spiderpup/www/recipes/examples/attach_component.yaml*.
 ```
 ---
 html:
+  head:
+    title: example
   body:
-    - h1: hello handles
-    - div:
-        - input:
-            type: text
-            attach-el: textfield
-            on:
-              change: s => s.refresh();
-        - div:
-            calculate:
-              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+    - testapp:
+
+components:
+  testapp:
+    data:
+      count: 0
+    contents:
+      - div: 
+          - h1: Test App
+          - counter:
+              attach-comp: A
+          - counter: 
+              attach-comp: B
+              data:
+                count: 1
+          - div:
+              calculate: 
+                textContent: s => { const a = s.comp.A.data.get( 'count' ), b = s.comp.B.data.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+              
+  counter:
+    data:
+      count: 0
+    contents:
+      - button:
+          calculate:
+            textContent: s => s.data.get( 'count' )
+          on:
+            click: >-
+              (s,ev) => {
+                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
+                 s.parent.refresh();
+              }
+          
 ```
 
 ## spiderpup state

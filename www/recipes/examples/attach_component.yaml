@@ -1,19 +1,39 @@
 ---
 html:
+  head:
+    title: example
   body:
-    - h1: hello handles
-    - div:
-        - input:
-            type: text
-            attach-el: textfield
-            on:
-              change: s => s.refresh()
-        - button:
-            textContent: click
-            on:
-              click: s => s.refresh()
-        - div:
-            calculate:
-              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+    - testapp:
 
+components:
+  testapp:
+    data:
+      count: 0
+    contents:
+      - div: 
+          - h1: Test App
+          - counter:
+              attach-comp: A
+          - counter: 
+              attach-comp: B
+              data:
+                count: 1
+          - div:
+              calculate: 
+                textContent: s => { const a = s.comp.A.data.get( 'count' ), b = s.comp.B.data.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+              
+  counter:
+    data:
+      count: 0
+    contents:
+      - button:
+          calculate:
+            textContent: s => s.data.get( 'count' )
+          on:
+            click: >-
+              (s,ev) => {
+                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
+                 s.parent.refresh();
+              }
+          
   
