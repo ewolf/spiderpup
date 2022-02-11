@@ -1,0 +1,13 @@
+---
+html:
+  body:
+    - div:
+        - input: 
+            type: text
+            handle: inpt
+            on:
+              keyup: s => s.refresh()
+    - div:
+        calculate:
+          textContent: s => 'you typed in ' + s.el.inpt.value
+

@@ -1,0 +1,3 @@
+html:
+  body:
+    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
