@@ -13,54 +13,74 @@ use YAML;
 my %config;
 my $root;
 
+#
+# server function that serves up the named file and type.
+# if no filename is given, try to detect via the request.
+# if no file exists for the request, serve a 404.
+#
 sub serve_file {
-    my ($c,$file,$type) = @_;
-    if (! $file) {
-        $file = "$root".$c->req->url->to_abs->path;
+    my ($c,$filename,$type) = @_;
+    if (! $filename) {
+        $filename = "$root".$c->req->url->to_abs->path;
     }
 
-    if (-e $file) {
-        app->log->debug( "**FILE**, $file" );
-        my $text = read_file( $file );
+    if (-e $filename) {
+        app->log->debug( "**FILE**, $filename" );
+        my $text = read_file( $filename );
         $type && $c->res->headers->content_type( $type );
         return $c->render( text => $text );
     } else {
         # 404
-        $c->render(text => "FILE NOTFOUND / $file");
+        $c->render(text => "FILE NOTFOUND / $filename");
     }
 } #serve_file
 
+#
+# server function that detects a request for an html page
+# and tries to serve it. If a matching page exists in the html
+# directory, it is served, otherwise it checks to see if a
+# corresponding recipe exists in the recipes directory. If
+# so, it builds a page from the 'page' template that is
+# built to load the yaml constructed javascript, plus any
+# corresponding css or javascript.
+#
 sub serve_html {
     my $c = shift;
     my $page = $c->req->url->to_abs->path;
 
     $page = ($page eq '' || $page eq '/') ? '/index.html' : $page;
-    
-    my $file = "$root/html$page";
 
-    my $css = $file;
+    my $filename = "$root/html$page";
 
-    app->log->debug( "**HTML** $page, $file" );
+    my $css = $filename;
+
+    app->log->debug( "**HTML** $page, $filename" );
 
     if ($page =~ /\.html$/) {
-        if (-e $file) {
-            return serve_file( $c, $file );
+        if (-e $filename) {
+            return serve_file( $c, $filename );
         }
         $page =~ s/.html$//;
-        if (-e "$root/recipes/$page.yaml") {
-            my $defjs = -e "$root/js$page.js" ? "/js$page.js" : '';            
+        if (-e "$root/recipes$page.yaml") {
+            my $defjs  = -e "$root/js$page.js" ? "/js$page.js" : '';
+            my $defcss = -e "$root/css$page.css" ? "/css$page.css" : '';
             return $c->render( template => 'page',
-                               css      => "/css$page.css",
+                               css      => $defcss,
                                js       => $defjs,
                                yaml     => "/_$page" );
         }
-        return $c->render(text => "recipe NOTFOUND / $root/recipes/$page.yaml / $file");
+        return $c->render(text => "recipe NOTFOUND / $root/recipes$page.yaml / $filename");
     }
 
     # 404
-    $c->render(text => "HTML NOTFOUND / '$page' / $file");
+    $c->render(text => "HTML NOTFOUND / '$page' / $filename");
 } #serve_html
 
+#
+# in a node, moves the named function (if any) into
+# the $funs array and then replaces it with its index
+# in the $funs array
+#
 sub transform_fun {
     my ($node, $name, $funs) = @_;
     if (ref($node) eq 'HASH' && $node->{$name}) {
@@ -70,7 +90,11 @@ sub transform_fun {
     }
 }
 
-
+#
+# in a node, moves the nameds function of a hash (if any)
+# into the $funs array and then replaces thm with
+# their indexes in the $funs array
+#
 sub transform_fun_hash {
     my ($node, $funs) = @_;
     if ($node) {
@@ -83,6 +107,9 @@ sub transform_fun_hash {
 }
 
 # UGH, perl YAML turns all the data to strings
+# turn obvious number into numbers and booleans into
+# boolans. for json, \1 and \0 translat to true and
+# false, respectively.
 sub transform_data {
     my $data = shift;
     if ($data) {
@@ -100,11 +127,15 @@ sub transform_data {
     }
 }
 
-
+#
+# pulls out the functions in a recipe to the funs array and replaces them
+# with that index in the funs array they were pulled to. Also transforms
+# the data into numbers when appropriate.
+#
 sub transform_recipe {
     my ($node, $funs) = @_;
     if(ref( $node ) eq 'ARRAY') {
-        for my $ingdef (@$node) {
+       for my $ingdef (@$node) {
             my ($ingredient) = ref $ingdef eq 'HASH' ? values %$ingdef : $ingdef;
             transform_recipe($ingredient, $funs);
         }
@@ -122,55 +153,78 @@ sub transform_recipe {
     }
 }
 
+#
+# 
+#
 sub yaml_to_js {
-    my ($root,$file) = @_;
-    my $yaml_file = "$root/recipes/$file";
+    my ($root,$filename) = @_;
+
+    my $funs       = [];
+    my $filespaces = {};
+
+    my $default_filename = [load_namespace( $root, $filename, $filespaces, $funs )];
+print STDERR Data::Dumper->Dump([$filespaces,"YAYAY"]);
+    my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
+        "const filespaces = ".to_json( $filespaces ) . ";\n" .
+        "const defaultNamespace = ".to_json($default_filename)."[0];\n"; # put the default_filename in an array so it can be json escaped
+
+    print STDERR "$js\n";
+
+    return $js;
+}
+
+sub load_namespace {
+    my ( $root, $filename, $filespaces, $funs ) = @_;
+
+    my $yaml_file = "$root/$filename";
+
+    return $yaml_file if $filespaces->{$yaml_file};
 
     if (-e $yaml_file) {
         my $yaml = YAML::LoadFile( $yaml_file );
 
-        # check for imported components
-        if (my $file_imports = $yaml->{import}) {
-            for my $i_file (@$file_imports) {
-                my $i_yaml = YAML::LoadFile( "$root/include/$i_file.yaml" );
-                if (my $compos = $i_yaml->{components}) {
-                    for my $name (keys %$compos) {
-                        $yaml->{components}{$name} = $compos->{$name};
-                    }
-                }
-            }            
-        }
 
-        my $funs = [];
+        # check for imported components
+        # if (my $imports = $yaml->{import}) {
+        #     for my $imp (@$imports) {
+        #         my ($imp_file) = keys %$imp;
+        #         my $namespace = $imp->{$imp_file};
+        #         my $imp_yaml = YAML::LoadFile( "$root/include/$imp_file.yaml" );
+        #         my $imp_compos = $imp_yaml->{components}||{};
+        #         for my $inc_compo_name (keys %$imp_compos) {
+        #             my $inc_recipe = $imp_compos->{$inc_compo_name};
+        #             $yaml->{components}{"$namespace.$inc_compo_name"} = $inc_recipe;
+        #         }
+        #     }
+        # }
 
         # functions and onLoad only appear in the root of the recipe
         transform_fun_hash( $yaml->{functions}, $funs );
 
-        for my $recipe (values %{$yaml->{components}||{}}) {
+        for my $recipe (values %{$yaml->{components}}) {
             transform_recipe( $recipe, $funs );
             transform_fun( $recipe, 'onLoad', $funs );
         }
 
-
         my $body = $yaml->{html}{body};
         $body && transform_recipe( $body, $funs );
 
-        my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
-            "const instructions = ".to_json( $yaml  ).";\n";
-
-        return $js;
+        $filespaces->{$yaml_file} = $yaml;
+        print STDERR Data::Dumper->Dump([$filespaces,"FCS"]);
     }
-
+    return $yaml_file;
 }
 
+#
+# Loads in yaml corresponding to the path, builds a javascript
+# page from that and serves that.
+# 
 sub serve_recipe {
     my ($c,$page) = @_;
     $page //= $c->req->url->to_abs->path;
     $page =~ s~^/_/~/~;
 
-    my $js = yaml_to_js( $root, "$page.yaml" );
-
-print STDERR Data::Dumper->Dump([$js,"JS"]);
+    my $js = yaml_to_js( $root, "recipes$page.yaml" );
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );
@@ -181,7 +235,9 @@ print STDERR Data::Dumper->Dump([$js,"JS"]);
     $c->render(text => "YAML NOTFOUND / $page");
 } #serve_recipe
 
-
+#
+# Active the server
+#
 sub launch {
     my $pkg = shift;
     %config = @_;
@@ -204,8 +260,8 @@ sub launch {
     get '/css/*' => \&serve_file;
     get '/recipes/*' => sub {
 	my $c = shift;
-	my $file = "$root".$c->req->url->to_abs->path;
-	serve_file( $c, $file, 'text/plain' );
+	my $filename = "$root".$c->req->url->to_abs->path;
+	serve_file( $c, $filename, 'text/plain' );
     };
 
     any '/_/*' => \&serve_recipe;
