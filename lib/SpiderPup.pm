@@ -182,26 +182,24 @@ sub load_namespace {
 
     if (-e $yaml_file) {
         my $yaml = YAML::LoadFile( $yaml_file );
+        $yaml->{namespaces} //= {};
 
+        # check for imports
+        if (my $imports = $yaml->{import}) {
+            for my $imp (@$imports) {
+                my ($imp_filename) = keys %$imp;
+                my $namespace = $imp->{$imp_filename};
 
-        # check for imported components
-        # if (my $imports = $yaml->{import}) {
-        #     for my $imp (@$imports) {
-        #         my ($imp_file) = keys %$imp;
-        #         my $namespace = $imp->{$imp_file};
-        #         my $imp_yaml = YAML::LoadFile( "$root/include/$imp_file.yaml" );
-        #         my $imp_compos = $imp_yaml->{components}||{};
-        #         for my $inc_compo_name (keys %$imp_compos) {
-        #             my $inc_recipe = $imp_compos->{$inc_compo_name};
-        #             $yaml->{components}{"$namespace.$inc_compo_name"} = $inc_recipe;
-        #         }
-        #     }
-        # }
+                $yaml->{namespaces}{$namespace} = load_namespace( $root, "include/$imp_filename.yaml", $filespaces, $funs );
+            }
+        }
 
         # functions and onLoad only appear in the root of the recipe
         transform_fun_hash( $yaml->{functions}, $funs );
 
-        for my $recipe (values %{$yaml->{components}}) {
+        for my $recipe_name (keys %{$yaml->{components}}) {
+            die "recipe '$recipe_name' in '$yaml_file' may not have a . in the name" if $recipe_name =~ /\./;
+            my $recipe = $yaml->{components}{$recipe_name};
             transform_recipe( $recipe, $funs );
             transform_fun( $recipe, 'onLoad', $funs );
         }
