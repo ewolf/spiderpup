@@ -238,6 +238,8 @@ sub prepare_handlers {
 
     $root = $spider_root;
 
+    push @{$app->renderer->paths}, "$root/templates";
+
     my $routes = $app->routes;
 
     $routes->get( '/js/*' => sub { serve_file( shift,
@@ -275,19 +277,3 @@ sub launch {
 } #launch
 
 1;
-
-__DATA__
-
-@@ page.html.ep
-<html>
-  <head>
-    <title></title>
-    % if ( $js ) {
-      <script src="<%= $js %>"></script>
-    % }
-    <script src="/js/spiderpup.js"></script>
-    <script src="<%= $yaml %>"></script>
-    <link rel="stylesheet" href="<%= $css %>" media="screen">
-  </head>
-  <body></body>
-</html>
