@@ -1,0 +1,24 @@
+---
+html:
+  head:
+    style: span { margin: 5px }
+  body:
+    - with-specified-internal:
+      - span: MIDDLE
+    - no-specified-internal:
+      - span: AFTER FINISH
+
+components:
+  with-specified-internal:
+    - div:
+        - span: first
+        - span: 
+            internalContent: 1
+        - span: last
+  no-specified-internal:
+    - div:
+        - span: start
+        - span: finish
+
+        
+  
