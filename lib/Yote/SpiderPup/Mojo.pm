@@ -13,6 +13,9 @@ use base 'Yote::SpiderPup';
 
 my $magic = File::LibMagic->new;
 
+our $root_directory;
+our $yote;
+
 #
 # server function that serves up the named file and type.
 # if no filename is given, try to detect via the request.

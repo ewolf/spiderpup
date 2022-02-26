@@ -6,13 +6,12 @@ Designer Input. The YAML files.
 
 The YAML files have the following top level keywords:
 
-
-# body for page
+ # body for page
  * body: special component recipe node
  * preLoad: called when namespace is loaded
  * onLoad: called when namespace is rendered
 
-# html header stuff (only used if body is given)
+ # html header stuff (only used if body is given)
  * include
    - css : single or list of css files to include
    - javascript : single or list of css files to include
@@ -22,14 +21,14 @@ The YAML files have the following top level keywords:
  * css : string css to include
  * less : string less that will be translated into css to include
 
-# namespace things
+ # namespace things
  * import: alias -> YAML filename
  * components: name -> component recipe node
  * data: name  -> function or value
  * functions: name -> function
  * listen: function called to listen to a general broadcast
 
-# component recipe nodes
+ # component recipe nodes
  * contents: list of element or component instance nodes
              must include exactly one element which will either
              be a component instance or element node
@@ -39,7 +38,7 @@ The YAML files have the following top level keywords:
  * preLoad: called when namespace is loaded
 
 
-# component instance nodes
+ # component instance nodes
  * contents: list of element or component instance nodes
              that are in the scope of the instance that
              creates the component and are placed
@@ -58,7 +57,7 @@ The YAML files have the following top level keywords:
  * foreach: a function that returns a list to iterate over (TODO: should be iterator?)
  * on_<eventname>: a function that handles events emitted by the instance
 
-# element nodes
+ # element nodes
  * contents: list of element or component instance nodes
              that are in the scope of the instance that
              creates the component and are placed
