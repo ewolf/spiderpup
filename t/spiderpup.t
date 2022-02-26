@@ -336,8 +336,7 @@ $loader = sub {
 $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 $js = Yote::SpiderPup::to_json( $namespaces, 1 );
-is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"div":"div one"}],"two":[{"div":"div two"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
-
+is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"attrs":{"textContent":"div one"},"tag":"div"}],"two":[{"attrs":{"textContent":"div two"},"tag":"div"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
 is_deeply( $namespaces,
            {
                '/' => {
@@ -347,8 +346,8 @@ is_deeply( $namespaces,
                                {
                                    'tag' => 'slotty',
                                    'fill_contents' => {
-                                       'one' => [ { "div" => "div one" } ],
-                                       'two' => [ { "div" => "div two" } ],
+                                       'one' => [ { "tag" => "div", attrs => { textContent => "div one" } } ],
+                                       'two' => [ { "tag" => "div", attrs => { textContent => "div two" } } ],
                                    },
                                },
                                { 'tag' => 'div' },

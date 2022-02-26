@@ -56,10 +56,7 @@ sub encode_attrs {
         elsif ($field =~ /^on_(.*)/) {
             $node->{on}{$1} = $val;
         }
-        elsif ($field eq 'fill_contents') {
-            $node->{fill_contents} = $val;
-        }
-        elsif( $field ne 'contents' ) {
+        elsif( $field ne 'contents' && $field ne 'fill_contents' ) {
             # is considered a property (and contents is handled elsewhere)
             $node->{attrs}{$field} = $val;
         }
