@@ -601,7 +601,6 @@ const prepElementNode = (node,namespace) => {
 
 const findFill = (el,name,recur) => {
   if (name !== undefined) {
-    debugger;
     if ( el.fill === name ) return el;
     const chilInts = Array.from( el.children || [] )
           .map( chld => findFill( chld, name, true ) )

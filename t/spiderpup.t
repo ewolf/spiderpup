@@ -16,7 +16,7 @@ use Yote::SpiderPup;
 
 my $base = ( getcwd =~ m~/t$~ ? '.' : 't' ) . '/www';
 
-# convert to perl structures. 
+# convert to perl structures.
 # yank functions and put them in $funs
 sub convert_json {
     my ( $json_str, $funs ) = @_;
@@ -95,7 +95,7 @@ is ( $txt,
 ($funs, my $filespaces,my $defNS) = spiderpup_data( "import_test.yaml", 'alpha' );
 is ($defNS, 't/www/recipes/import_test.yaml', 'correct default namespace' );
 
-is_deeply( $funs, [ 
+is_deeply( $funs, [
                '()=>{return 1}',
                'c=>{ if( true ) { return 7.1; } }',
                '()=>{return 2}',
@@ -118,15 +118,15 @@ throws_ok(
             return {
                 components => {
                     burp => {
-                        
+
                     },
                 }
             };
         };
-        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
-    }, 
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader );
+    },
     qr/recipe 'burp' must contain contents/,
-    'component without contents' 
+    'component without contents'
 );
 
 throws_ok(
@@ -140,10 +140,10 @@ throws_ok(
                 }
             };
         };
-        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
-    }, 
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader );
+    },
     qr/recipe 'burp' must contain contents/,
-    'component without contents' 
+    'component without contents'
 );
 
 ($funs, $filespaces, $defNS) = spiderpup_data( "error.yaml" );
@@ -163,43 +163,321 @@ throws_ok(
                 }
             };
         };
-        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
-    }, 
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader );
+    },
     qr/'burp.urp' in '\/' may not have a '.' in the name/,
-    'component without contents' 
+    'component without contents'
 );
 
 my $loader = sub {
     return {
         components => {
-            'spano' => { 
+            'spano' => {
                 data => { items => [ "A", "B", undef ] },
-                contents => [ 'span' ]},
-        }
+                contents => [ 'span' ],
+                onLoad => 'function() { console.log( "got load" ) }',
+                preLoad => 'function() { console.log( "starting load" ) }',
+                listen => 'function() { console.log( "heard something" ) }',
+            },
+        },
     };
 };
 my $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 
-is_deeply( $namespaces, 
+is_deeply( $namespaces,
            {
                '/' => {
                    'components' => {
                        'spano' => {
-                           'contents' => [
-                               {
-                                   'tag' => 'span',
-                               }
-                               ],
+                           'contents' => [ {
+                               'tag' => 'span',
+                                           } ],
                            'data' => { 'items' => [ "A", "B", undef ] },
+                           'listen' => 'function() { console.log( "heard something" ) }',
+                           'onLoad' => 'function() { console.log( "got load" ) }',
+                           'preLoad' => 'function() { console.log( "starting load" ) }',
                        }
                    },
                        'namespaces' => {},
                        'functions' => {},
-                       'data' => {}
-               }    
-           }, 
+                       'data' => {},
+
+               },
+           },
            'very simple namespace' );
 
+
+
+$loader = sub {
+    return {
+        preLoad => '() => { console.log( "starting to load" ) }',
+        onLoad => '() => { console.log( "loaded" ) }',
+        listen => '() => console.log("I HEAR U")',
+        functions => {
+            beep => 'function() { alert("BEEP") }',
+            leep => 'c=>alert("leep")',
+        },
+        body => {
+            'contents' => [
+                { 'div' => {
+                    if => 'c => true',
+                    textContent => "first",
+                    handle => "FIRSTY",
+                }},
+                { 'div' => {
+                    elseif => '() => true',
+                    textContent => "second",
+                    on_click => 'function() { alert("CLEEK") }',
+                }},
+                { 'div' => {
+                  else => 'True',
+                  textContent => 'c => "third "+c.it.doh+" = "+c.idx.doh"',
+                  forval => 'doh',
+                  foreach => [ 1,2,3,4 ],
+                }},
+            ],
+        },
+    };
+};
+$namespaces = {};
+Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
+my $js = Yote::SpiderPup::to_json( $namespaces, 1 );
+is ($js, '{"/":{"components":{},"data":{},"functions":{"beep":function() { alert("BEEP") },"leep":c=>{return alert("leep")}},"html":{"body":{"contents":[{"attrs":{"textContent":"first"},"handle":"FIRSTY","if":c=>{return true},"tag":"div"},{"attrs":{"textContent":"second"},"elseif":()=>{return true},"on":{"click":function() { alert("CLEEK") }},"tag":"div"},{"attrs":{"textContent":c=>{return "third "+c.it.doh+" = "+c.idx.doh"}},"else":1,"foreach":[1,2,3,4],"forval":"doh","tag":"div"}],"listen":()=>{return console.log("I HEAR U")},"onLoad":()=>{ console.log( "loaded" ) },"preLoad":()=>{ console.log( "starting to load" ) }}},"namespaces":{}}}', "json checks out" );
+is_deeply( $namespaces,
+           {
+               '/' => {
+                   html => {
+                       body => {
+                           contents => [
+                               {
+                                   'if' => 'c => true',
+                                   'attrs' => {
+                                      'textContent' => 'first',
+                                   },
+                                   'handle' => 'FIRSTY',
+                                   'tag' => 'div'
+                               },
+                               {
+                                   'elseif' => '() => true',
+                                   'attrs' => {
+                                       'textContent' => 'second'
+                                   },
+                                   'tag' => 'div',
+                                   'on' => { 'click' => 'function() { alert("CLEEK") }' },
+                               },
+                               {
+                                   'foreach' => [ 1, 2, 3, 4 ],
+                                   'else' => 1,
+                                   'forval' => 'doh',
+                                   'tag' => 'div',
+                                   'attrs' => {
+                                      'textContent' => 'c => "third "+c.it.doh+" = "+c.idx.doh"'
+                                   }
+                               },
+                               ],
+                           listen => '() => console.log("I HEAR U")',
+                           onLoad => '() => { console.log( "loaded" ) }',
+                           preLoad => '() => { console.log( "starting to load" ) }',
+                       }
+                   },
+                   data => {},
+                   namespaces => {},
+                   functions => {
+                       beep => 'function() { alert("BEEP") }',
+                       leep => 'c=>alert("leep")',
+                   },
+                   components => {},
+               },
+           },
+           'body with branches and loops' );
+
+
+$loader = sub {
+    return {
+        body => {
+            'contents' => [
+                { 'slotty' => {
+                    fill_contents => {
+                        one => [
+                            { 'div' => 'div one' },
+                            ],
+                        two => [
+                            { 'div' => 'div two' },
+                            ],
+                    } } },
+                { 'div' => undef },
+            ],
+        },
+        components => {
+            'slotty' => {
+                data => { hasSlot => 'false', hasYarg => 'FALSE' },
+                contents => [
+                    {
+                        'div' => {
+                            contents => [
+                                { 'div' => {
+                                    'fill' => 'one',
+                                  }},
+                                { 'div' => {
+                                    'fill' => 'two',
+                                  }},
+                                { 'div' => {
+                                    'fill' => 'true',
+                                  }},
+                                ]
+                        },
+                    },
+                ],
+            }
+        },
+    };
+};
+$namespaces = {};
+Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
+$js = Yote::SpiderPup::to_json( $namespaces, 1 );
+is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"div":"div one"}],"two":[{"div":"div two"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
+
+is_deeply( $namespaces,
+           {
+               '/' => {
+                   html => {
+                       body => {
+                           contents => [
+                               {
+                                   'tag' => 'slotty',
+                                   'fill_contents' => {
+                                       'one' => [ { "div" => "div one" } ],
+                                       'two' => [ { "div" => "div two" } ],
+                                   },
+                               },
+                               { 'tag' => 'div' },
+                               ],
+                       }
+                   },
+                   components => {
+                       slotty => {
+                           data => { hasSlot => 'false', hasYarg => 'FALSE' },
+                           contents => [
+                               {
+                                   'tag' => 'div',
+                                   contents => [
+                                       { 'tag' => 'div',
+                                         'fill' => 'one' },
+                                       { 'tag' => 'div',
+                                         'fill' => 'two' },
+                                       { 'tag' => 'div',
+                                         'fill' => 'true' },
+                                    ]
+                               },
+                               ],
+                           }
+                   },
+                   data => {},
+                   namespaces => {},
+                   functions => {},
+               },
+           },
+           'body with fill content' );
+
+$filespaces = {};
+my $yaml_file = Yote::SpiderPup::load_namespace( $base, 'recipes/import_test_again.yaml', $filespaces );
+is ($yaml_file, "$base/recipes/import_test_again.yaml", "load namespace return");
+
+is_deeply ($filespaces,
+           {
+               't/www/recipes/impy.yaml' => {
+                   'components' => {
+                       'mydiv' => {
+                           'contents' => [
+                               {
+                                   'attrs' => {
+                                       'textContent' => 'my div'
+                                   },
+                                       'tag' => 'div'
+                               } ]
+                       },
+                       'myform' => {
+                           'functions' => {
+                               'foo' => '() => 1'
+                           },
+                           'contents' => [ {
+                               'contents' => [ { 'tag' => 'mydiv' } ],
+                               'tag' => 'form'
+                            } ]
+                       }
+                   },
+                   'data' => {},
+                   'namespaces' => {},
+                   'functions' => {}
+               },
+               't/www/recipes/import_test_again.yaml' => {
+                   'components' => {},
+                   'html' => {
+                       'body' => {
+                           'contents' => [ {
+                               'tag' => 'bar.myform',
+                               'functions' => {
+                                   'foo' => '() => 2'
+                               }
+                           } ]
+                       }
+                   },
+                   'data' => {},
+                   'namespaces' => {
+                       'bar' => 't/www/recipes/impy_two.yaml',
+                       'impy' => 't/www/recipes/impy.yaml'
+                   },
+                   'functions' => {}
+               },
+               't/www/recipes/impy_two.yaml' => {
+                   'functions' => {},
+                   'components' => {
+                       'myimpy' => {
+                           'attrs' => {
+                               'class' => 'myclass'
+                           },
+                           'contents' => [ {
+                               'contents' => [ {
+                                   'attrs' => {
+                                       'textContent' => 'its mine'
+                                   },
+                                   'tag' => 'span'
+                               } ],
+                               'tag' => 'impy'
+                           } ]
+                       }
+                   },
+                   'data' => {},
+                   'namespaces' => {
+                       'impy' => 't/www/recipes/impy.yaml'
+                   }
+               }
+           },
+           'namespace where two spaces each call a third'
+    );
+
+
+throws_ok(
+    sub {
+        my $loader = sub {
+            return {
+                body => {
+                    contents => [ { tag => "div" } ],
+                },
+                import => {
+                    i1 => "import_one",
+                    "this.for.that" => "import_dead",
+                }
+            };
+        };
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader );
+    },
+    qr/namespace may not contain '.' and got 'this.for.that'/,
+    'namespace alias check'
+);
+
+my $yaml_file = Yote::SpiderPup::load_namespace( $base, 'recipes/test_not_exist.yaml', $filespaces );
+is( $yaml_file, undef, 'unable to load non existant file' );
 
 done_testing;
