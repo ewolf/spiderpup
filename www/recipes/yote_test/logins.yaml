@@ -1,0 +1,314 @@
+---
+
+less: >-
+  .login-widget {
+      ul {
+          position: absolute;
+          right: 4px;
+          padding: 10px;
+          border: solid blue 3px;
+          margin: 0;
+          background-color: #dfd;
+      }
+      li {
+          list-style-type: none;
+          cursor: pointer;
+      }
+      li:hover {
+          background-color: #aca;
+      }
+      li.divider {
+          height: 1px;
+          margin: 0.25rem 0;
+          padding: 0;
+          background-color: #dbdbdb;
+      }
+  }
+  .login-body-widget {
+    background-color: lightyellow;
+  }
+  
+components:
+
+  siteHeader:
+    functions:
+      attach: >-
+        (c,bodyWidget) => {
+          c.comp.loginHeaderWidget.set( 'bodyWidget', bodyWidget );
+          bodyWidget.set( 'headerWidget', c.comp.loginHeaderWidget );
+        }
+    contents:
+      - header:
+          - div:
+              - div:                  
+                  class: button
+                  on_click: (c,e) => c.broadcast( 'pageMode', 'default' )
+                  contents:
+                    - img:
+                        if: c => c.get( 'logoImage' )
+                        src: c => c.get( 'logoImage' )
+                    - div:
+                        else:
+                        textContent: c => c.get( 'logoText' ) || 'LOGO'
+              - loginHeaderWidget:
+                  handle: loginHeaderWidget
+
+  # this is meant to go in the top right header
+  # 
+  # it is empty unless 'app' is in the data.
+  # if 'login' is in data, user is logged in.
+  # the data is expected to come from the enclosing
+  # page.
+  #
+  # when not logged in
+  #   appears with the text 'log in'
+  #   a click broadcasts pageMode login-control
+  #
+  # when logged in
+  #   shows the avatar and a down arrow
+  #   is clickable
+  #   clicking reveals a menu underneath with
+  #     account controls
+  #       log out - broadcasts 'logout'
+  #
+  loginHeaderWidget:
+    functions:
+      logout_done: >-
+        c => {
+          c.set('show-menu',undefined);
+          c.broadcast( 'logout' );
+        }
+      logout: >-
+        c => yote.logout( c.get('appName') )
+             .then( msg => c.fun.logout_done() )
+             .catch( err => c.fun.logout_done() )
+
+      connectToLoginBodyWidget: >-
+        (c,w) => {
+          c;
+        }
+    listen: >-
+      (c,key,msg) => {
+        if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
+          c.set( 'show-menu', false );
+        }
+      }
+    contents:
+      - div:
+          class: login-widget
+          contents:
+            - div:
+                # logged in / logout
+                if: c => c.get( 'login' )
+                contents:
+                  - button:
+                      type: button
+                      on_click: >-
+                         (c,e) => {
+                           const show = !!!c.get('show-menu');
+                           c.set( 'show-menu', show );
+                           if (show) {
+                           
+                           }
+                         }
+                      contents:
+                        - span:
+                            innerHTML: () => 'avatar &#8964';
+            - div:
+                # button to open login / create thingo
+                elseif: c => c.get( 'app' )
+                contents:
+                  - button:
+                      type: button
+                      textContent: log in
+                      # maybee catch the pageMode change?
+                      on_click: (c,e) => {  c.get('bodyWidget').set('mode','show-login'); c.broadcast( 'pageMode', 'login-control' ); }
+            - ul:
+                handle: menu
+                if: c => c.get( 'show-menu' )
+                contents:
+                  - li: identity
+                  - li: 
+                      class: divider
+                  - li: set status
+                  - li: 
+                      textContent: edit profile
+                      on_click: c => c.broadcast( 'pageMode', 'login-control' )
+                  - li:
+                      class: divider
+                  - li:
+                      textContent: log out
+                      on_click: c => c.fun.logout()
+
+  loginBodyWidget:
+    functions:
+      clear: >-
+        c => {
+          c.set( 'err' );
+          ['login','loginPassword','email','login','password']
+            .forEach( ctl => c.el[ctl] && (c.el[ctl].value = '' ) );
+        }
+
+      login: >-
+        (c,login,password) => {
+          c.get('app')
+            .login( { login, password } )
+            .then( acct => { c.fun.clear();
+                             c.broadcast( 'login', acct );
+                           })
+            .catch( err => { c.set( 'err', err ); c.refresh() } );
+        }
+      createAccount: >-
+        (c,handle,email,password) => {
+          c.get('app')
+            .create_account( { handle, email, password } )
+                     .then( acct => { c.fun.clear();
+                                      c.broadcast( 'login', acct );
+                                     } )
+           .catch( err => { c.set( 'err', err ); c.refresh() } )
+        }
+
+    listen: >-
+      (c,key,msg) => {
+        if (key === 'keyup' && msg === 'Escape' ) {
+          c.set( 'mode', 'login' );
+          c.fun.clear();
+        }
+      }
+    onLoad: >-
+      c => {
+        c.comp.loginForm.set( 'createAccountForm', c.comp.createAccountForm );
+        c.comp.createAccountForm.set( 'loginForm', c.comp.loginForm );
+      }
+    contents:
+      - section:
+          class: login-body-widget
+          style: display: inline-block; border: solid 3px black; padding: .5em;
+          contents:
+            - createAccountForm:
+                handle: createAccountForm
+                if: c => c.get( 'mode' ) === 'show-create-account'
+            - editProfileForm:
+                handle: editProfileForm
+                elseif: c => c.get( 'mode' ) === 'show-edit-profile'
+            - loginForm:
+                handle: loginForm
+                else:
+            - div:
+                # error
+                if: c => c.get( 'err' )
+                style: background-color: pink; border: solid 1px; padding: 2px;
+                textContent: c => c.get( 'err' )
+  
+  loginForm:
+    functions:
+      clear: >-
+        c => {
+          c.set( 'err' );
+          ['login','loginPassword','email','login','password']
+            .forEach( ctl => c.el[ctl] && (c.el[ctl].value = '' ) );
+        }
+      check: >
+        c => {
+          ['login','password'].forEach( ctrl => {
+            c.el[ctrl].style['background-color'] = c.el[ctrl].value ? null : 'pink';
+          } )
+        }
+    contents:
+      - form:
+          on_submit: >-
+            (c,ev) => { 
+              ev.preventDefault(); 
+              c.fun.login( c.el.login.value, c.el.password.value )
+            }
+          contents:
+            - div:
+                style: display:flex; flex-direction: column
+                contents:
+                  - input:
+                      handle: login
+                      placeholder: login or email
+                      type: text
+                      style: margin: 3px auto
+                      required: true
+                      on_keyup: c => c.fun.check()
+                  - input:
+                      handle: password
+                      style: margin: 3px auto
+                      type: password
+                      placeholder: password
+                      required: true
+                      on_keyup: c => c.fun.check()
+                  - button:
+                      style: margin: 3px auto
+                      type: submit
+                      textContent: Log In
+                  - a:
+                      href: '#'
+                      on_click: >-
+                        (c,ev) => { 
+                           ev.preventDefault();
+                           c.parent.set('mode', 'show-create-account');
+                           c.fun.clear();
+                           c.parent.refresh() 
+                        }
+                      textContent: 'create account'
+
+  createAccountForm:
+    functions:
+      clear: c => ['handle','email','password'].forEach( ctrl => (c.el[ctrl].value = '' ) )
+
+      check: >-
+        (c,ev) => {
+          ['handle','email','password'].forEach( ctrl => 
+            (c.el[ctrl].style['background-color'] = c.el[ctrl].value ? null : 'pink')
+          )
+        }
+
+    contents:
+      - form:
+          on_submit: >-
+            (c,ev) => { ev.preventDefault();
+              c.fun.createAccount( c.el.handle.value,
+                                   c.el.email.value,
+                                   c.el.password.value ) }
+          contents:
+            - div:
+                style: display:flex; flex-direction: column
+                contents:
+                  - input:
+                      handle: handle
+                      placeholder: handle
+                      type: text
+                      style: margin: 3px auto
+                      required: true
+                      on_keyup: c => c.fun.check()
+                  - input:
+                      handle: email
+                      placeholder: email
+                      type: text
+                      style: margin: 3px auto
+                      required: true
+                      on_keyup: c => c.fun.check()
+                  - input:
+                      handle: password
+                      style: margin: 3px auto
+                      type: password
+                      placeholder: password
+                      required: true
+                      on_keyup: c => c.fun.check()
+                  - button:
+                      style: margin: 3px auto
+                      type: submit
+                      textContent: Create Account
+  editProfileForm:
+    functions:
+      clear: e => e
+      check: >-
+        (c,ev) => {
+          ['handle','email','password'].forEach( ctrl => {
+            c.el[ctrl].style['background-color'] = c.el[ctrl].value ? null : 'pink';
+          } )
+        }
+    contents:
+      - form:      

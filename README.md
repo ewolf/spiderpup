@@ -33,7 +33,7 @@ html:
 ## synopsis
 
 ```
-$ cd spiderpup/scripts
+$ cd spiderpup/script
 $ PERL5LIB=../lib; morbo spiderpup
 ```
 

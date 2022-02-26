@@ -17,6 +17,11 @@ introduce spiderpup reusable components.
 
 ### hello world
 
+This shows how spiderpup builds html tags from its description.
+Simple tags witout properties, like body in this example, can 
+have a list of child tags placed inside of it. Simple tags
+without child tags can be given text to place inside of them.
+
 http://localhost:3000/examples/hello_world.html
 
 YAML file *.../spiderpup/www/recipes/examples/hello_world.yaml*.
@@ -30,6 +35,12 @@ html:
 ```
 
 ### hello again
+
+This example shows tags that contain properties and children.
+The div tag placed inside the body is given the 'class' property
+and the 'contents' property to hold child tags placed in it.
+The h2 tag inside of it is given an explicit 'style'
+and 'textContent' properties.
 
 http://localhost:3000/examples/hello_again.html
 
@@ -56,6 +67,11 @@ html:
 ```
 
 ### components
+
+Components are resuable snippets that can contain
+other components inside them. The components act like
+html tags. In this example, the 'main' component
+has the 'greeting' component included twice inside of it.
 
 http://localhost:3000/examples/components.html
 
@@ -93,7 +109,12 @@ components:
 
 ### internal content
 
-
+This shows where a defined component places any contents given to it.
+The 'with-specified-internal' component has a span inside of it
+with the 'internalContent' property. Any contents given to the
+component are placed within that span. The 'no-specified-internal'
+component does not have a child with 'internalContent' so any 
+content given to it is placed at the end.
 
 http://localhost:3000/examples/internal.html
 
@@ -106,6 +127,7 @@ html:
     style: span { margin: 5px }
   body:
     - with-specified-internal:
+      - span: IN THE
       - span: MIDDLE
     - no-specified-internal:
       - span: AFTER FINISH
@@ -126,7 +148,7 @@ components:
 ### includes
 
 spiderpup recipes may include other recipes. Included recipes
-must be in the www/include directory
+must be in the www/include directory.
 
 http://localhost:3000/examples/includes.html
 
@@ -147,7 +169,7 @@ YAML file *.../spiderpup/www/include/examples/impy.yaml*
 ```
 ---
 import:
-  - examples/more_impy: bar
+  - bar: examples/more_impy
   
 components:
   myform:
@@ -172,35 +194,6 @@ components:
 
 ## spiderpup files
 
-### default css and javascript
-
-http://localhost:3000/examples/defaults.html
-
-Spiderpup by default tries to load a css and a javascript
-file that mirrors the target path. For this example the
-target path is `/examples/default.html`. Spiderpup
-tries to load `/js/examples/default.js` and `/css/examples/default.css`.
-
-
-CSS file *.../spiderpup/www/css/examples/defaults.css*
-```
-div {
-    background: yellow;
-}
-
-```
-
-JS file *.../spiderpup/www/js/examples/defaults.js*
-```
-alert ('default javascript' );
-```
-
-YAML file *.../spiderpup/www/recipes/examples/defaults.yaml*
-```
-html:
-  body:
-    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
-```
 
 ### additional css and javascript
 
@@ -316,8 +309,7 @@ html:
     - button:
         calculate:
           textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-        on:
-          click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+        on_click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         
 ```
 
@@ -356,16 +348,14 @@ components:
       - div:
           - button:
               textContent: '-'
-              on:
-                click: s => s.fun.dec()
+              on_click: s => s.fun.dec()
           - span:
               style: margin: 0 5px
               calculate:
                 textContent: s => s.data.get('name') + ': ' + s.data.get('value')
           - button:
               textContent: '+'
-              on:
-                click: s => s.fun.inc()
+              on_click: s => s.fun.inc()
 ```
 
 ## spiderpup loops and branching
@@ -416,8 +406,7 @@ components:
           contents:
             - button:
                 textContent: '-'
-                on:
-                  click: s => s.fun.dec(s)
+                on_click: s => s.fun.dec(s)
             - span:
                 style: margin: 0 5px
                 calculate:
@@ -433,8 +422,7 @@ components:
                   textContent: good enough
             - button:
                 textContent: '+'
-                on:
-                  click: s => s.fun.inc(s)
+                on_click: s => s.fun.inc(s)
 ```
 
 ### loops
@@ -456,9 +444,9 @@ html:
     - div:
         - h1: 
             foreach: s => [ "world", "galaxy", "universe" ]
-            forval: where
+            forval: whereami
             calculate:
-              textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
+              textContent: s => 'hello ' + s.it.whereami + ' (' + s.idx.whereami + ')'
 ```
 
 ## handles
@@ -468,7 +456,7 @@ html:
 http://localhost:3000/examples/attach_element.html
 
 This introduces two things : element handles and state refresh.
-When an element is given a handle with attach-el, 
+When an element is given a handle with 'handle',
 a reference to that element is put in the state variable's `el`
 object, keyed with the handle given.
 
@@ -485,13 +473,11 @@ html:
     - div:
         - input:
             type: text
-            attach-el: textfield
-            on:
-              change: s => s.refresh()
+            handle: textfield
+            on_change: s => s.refresh()
         - button:
             textContent: click
-            on:
-              click: s => s.refresh()
+            on_click: s => s.refresh()
         - div:
             calculate:
               textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
@@ -505,7 +491,7 @@ http://localhost:3000/examples/attach_component.html
 
 Subcomponent state can be attached to a state object. In this example,
 the `testapp` component has two `counter` components embedded in it.
-Each instance of a component has its own state. Th state of a subcomponent
+Each instance of a component has its own state. The state of a subcomponent
 can be attached in the `comp` object of the state. A testapp state (s)
 here has references to its child components thru s.comp.A and s.comp.B.
 
@@ -526,9 +512,9 @@ components:
       - div: 
           - h1: Test App
           - counter:
-              attach-comp: A
+              handle: A
           - counter: 
-              attach-comp: B
+              handle: B
               data:
                 count: 1
           - div:
@@ -542,8 +528,7 @@ components:
       - button:
           calculate:
             textContent: s => s.data.get( 'count' )
-          on:
-            click: >-
+          on_click: >-
               (s,ev) => {
                  s.data.set( 'count', 1 + s.data.get( 'count' ) )
                  s.parent.refresh();

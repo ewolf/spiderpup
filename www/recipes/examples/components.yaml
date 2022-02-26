@@ -1,11 +1,11 @@
 ---
-html:
-  head:
-    title: hello again
-  body:
-    - header:
-    - main:
-    - footer:
+
+title: hello again
+
+body:
+  - header:
+  - main:
+  - footer:
 
 components:
   header:

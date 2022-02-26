@@ -1,12 +1,14 @@
 ---
-html:
-  head:
-    title: header additional
-    css:
-      - /css/examples/extra/head_additional_1.css
-      - /css/examples/extra/head_additional_2.css
-    javascript:
-      - /js/examples/extra/head_additional_A.js
-      - /js/examples/extra/head_additional_B.js
-  body:
-    - div: You can include javascript and css files in the header.
+
+title: header additional
+
+include:
+  css:
+    - /css/examples/extra/head_additional_1.css
+    - /css/examples/extra/head_additional_2.css
+  javascript:
+    - /js/examples/extra/head_additional_A.js
+    - /js/examples/extra/head_additional_B.js
+
+body:
+  - div: You can include javascript and css files in the header.

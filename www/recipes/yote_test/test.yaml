@@ -1,0 +1,10 @@
+---
+
+
+include:
+  javascript:
+    - /js/yote_test/test.js
+
+body:
+  textContent: x
+

@@ -1,0 +1,11 @@
+<html>
+  <head>
+    <title></title>
+    <script src="/js/spiderpup.js"></script>
+    % if ( $yote ) {
+      <script src="/js/yote.js"></script>
+    % }
+    <script src="<%= $yaml %>"></script>
+  </head>
+  <body></body>
+</html>

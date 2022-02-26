@@ -1,39 +1,34 @@
 ---
-html:
-  head:
-    title: example
-  body:
-    - testapp:
+
+title: example
+body:
+  - testapp:
 
 components:
   testapp:
-    data:
-      count: 0
     contents:
       - div: 
           - h1: Test App
           - counter:
-              attach-comp: A
+              handle: A
           - counter: 
-              attach-comp: B
+              handle: B
               data:
                 count: 1
           - div:
               calculate: 
-                textContent: s => { const a = s.comp.A.data.get( 'count' ), b = s.comp.B.data.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+                textContent: c => { const a = c.comp.A.get( 'count' ), b = c.comp.B.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
               
   counter:
     data:
       count: 0
     contents:
       - button:
-          calculate:
-            textContent: s => s.data.get( 'count' )
-          on:
-            click: >-
-              (s,ev) => {
-                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
-                 s.parent.refresh();
+          textContent: c => c.get( 'count' )
+          on_click: >-
+              (c,ev) => {
+                 c.set( 'count', 1 + c.get( 'count' ) )
+                 c.parent.refresh();
               }
           
   

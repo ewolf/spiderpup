@@ -1,0 +1,277 @@
+---
+
+import:
+  logins: yote_test/logins
+
+css: >-
+  @keyframes blinker {
+    50% {
+      border: solid 3px green;
+      opacity: 0;
+    }
+  }
+  
+
+less: >-
+  .loading {
+    color: blue;
+    animation: blinker 4s linear infinite;
+  }
+
+  .counter {
+    border: solid 3px brown;
+    margin: 12px;
+    padding: 5px;
+    span {
+      margin: 0 10px;
+    }
+  }
+  body {
+    .button {
+       border: solid 1px black;
+       cursor: pointer;
+    }
+    margin: 0;
+    header {
+       background-color: pink;
+
+       height: 2em;
+       top: 0;
+       width: 100%;
+       position: fixed;
+
+       > div {
+        padding: 4px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+       }
+    }
+    .demo {
+      display: flex;
+      flex-direction: row;
+      border: solid 2px black;
+      form {
+        padding: 2px;
+        margin: 0 3px;
+        border: solid 2px black;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    main {
+       margin-top: 2em;
+       display: flex;
+       > div {
+          margin: 0 auto;
+       }
+       form {
+         margin-block-end: 0;
+         a {
+           text-align: center;
+         }
+       }
+    }
+  }
+
+javascript: >-
+  function does() { console.log('hoeet') }
+  const stilldoes = () => console.log( 'still' );
+  console.log('loaded javascript');
+
+functions:
+  pageMode: >-
+    (c,mode) => {
+      if ( c.get( 'pageMode' ) !== mode ) {
+        history.pushState( { pageMode: mode }, undefined, mode === 'default' ? '/yote_test/hello.html' : `?pageMode=${mode}` );
+        c.set( 'pageMode', mode );
+        c.refresh();
+      }
+    }
+  greetings: (body,ev) => alert( `hello there from ${ev.target}` )
+
+data:
+  appName: test
+  pageMode: default
+
+onLoad: >-
+  c => {
+    // listen to page change event
+    //c.namespace.logins.functions.tease();
+    addEventListener( 'popstate', ev => {
+      c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
+      c.refresh();
+    } );
+
+    does();
+    stilldoes();
+    yote.fetchAppTryLogin( c.get( 'appName' ) )
+      .then( app => {
+        if (app) {
+          c.broadcast( 'app', app );
+          if (app.acct) {
+            c.broadcast( 'login', app.acct );
+          }
+        }
+      });
+      
+      // connect the widgets together
+      //c.comp.header.fun.attach( c.comp.loginBodyWidget );
+      // try to look at the url. maybe it wants login?
+      const usp = new URLSearchParams( window.location.search );
+      for (const [key, value] of usp) {
+         if (key === 'pageMode') {
+           c.set( 'pageMode', value );
+         }
+      }
+      c.comp.header.fun.attach(c.comp.loginBodyWidget)
+  }
+
+listen: >-
+  (c,msg,data) => {
+    switch( msg ) {
+      case "login":
+        c.set( msg, data );
+        c.fun.pageMode( 'default' );
+        break;
+      case "app":
+        c.set( msg, data );
+        break;
+      case "pageMode":
+        // maybe navigate to a new url
+        // catch that and have that in the history?
+        // so there is no reload
+        c.fun.pageMode( data );
+        //c.set( msg, data );
+        break;
+      case "logout":
+        c.set( 'login', undefined );
+        c.fun.pageMode( 'default' );
+        break;
+    }
+  }
+
+title: fun example
+
+body:
+  style: background: wheat;
+  on_keyup: >-
+    (c,ev) => { 
+       if (ev.key === 'Escape') { 
+          c.broadcast( 'keyup', 'Escape');
+          c.broadcast( 'pageMode', 'default' );
+      } 
+    }
+  contents:
+    - logins.siteHeader:
+        handle: header
+    - main:
+        - div:
+            - h1: c => c.get( 'pageMode' )
+
+            - logins.loginBodyWidget:
+                handle: loginBodyWidget
+                if: c => c.get( 'pageMode' ) === 'login-control'
+            - div:
+                if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'login-control'
+                textContent: logged in stuff
+            - div:
+                if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'login-control'
+                contents:
+                  - div:
+                      - form:
+                          on_submit: >-
+                            (c,ev) => { ev.preventDefault();
+                               yote.apps.test.echo( c.el.something.value )
+                                 .then( r => alert( 'hello world ' + r ) ); }
+                          contents:
+                            - input:
+                                placeholder: say something
+                                handle: something
+                                required: true
+                            - button: click me
+                      - counter:
+                          data:
+                            title: counter 1
+                      - counter:
+                          data:
+                            clicks: 12
+                      - button:
+                          type: button
+                          on_click: (body,ev) => body.fun.greetings(ev)
+                          textContent: click me
+                          style: font-weight: bold;
+                  - hr:
+                  - demo:
+            - div:
+                if: c => ! c.get('app')
+                textContent: app not yet loaded
+
+components:
+
+  counter:
+    data:
+      clicks: 0
+      title: no title set
+    functions:
+      inc: c => c.set( 'clicks', 1 + c.get( 'clicks' ) )
+      dec: c => c.set( 'clicks', c.get( 'clicks' ) -1 )
+    contents:
+      - div:
+          class: counter
+          contents:
+            - h2: c => c.get( 'title' )
+            - div:
+                - button:
+                    textContent: '<'
+                    on_click: c => c.fun.dec()
+                - span: c => `${c.get('clicks')} clicks`
+                - button:
+                    textContent: '>'
+                    on_click: c => c.fun.inc()
+  demo:
+    data:
+      yamlText: ''
+      loaded: false
+    onLoad: >-
+      c => {
+        yote.apps.test.fetch_yaml()
+           .then( txt => {
+              c.set( 'yamlText', txt );
+              c.set( 'loaded', true );
+              c.refresh();
+          } );
+      }
+    contents:
+      - div:
+          class: demo
+          contents:
+            - form:
+                if: c => c.get( 'loaded' ) 
+                on_submit: >-
+                  (c,ev) => {
+                    ev.preventDefault();
+                    c.set( 'loaded', false );
+                    yote.apps.test.install_yaml(c.el.yaml.value)
+                      .then( r => { 
+                         c.set( 'loaded', true );
+                         c.refresh();
+                      } )
+                  }
+                contents:
+                  - h3: Spiderpup Yaml
+                  - textarea:
+                      handle: yaml
+                      textContent: c => c.get( 'yamlText' )
+                      on_keyup: (c,ev) => c.set( 'yamlText', ev.target.value )
+                  - button: generate output
+            - div:
+                if: c => c.get( 'loaded' ) 
+                contents:
+                  - h3: Yaml output
+                  - iframe:
+                      src: /yote_test/test.html
+            - div:
+                class: loading
+                else:
+                textContent: loading
