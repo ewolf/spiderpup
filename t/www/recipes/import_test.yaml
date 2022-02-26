@@ -22,6 +22,8 @@ less: >-
 
 title: test thing
 
+listen: c => { if( true ) { return 7.1; } }
+
 body:
   - bar.myform:
       functions:

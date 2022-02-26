@@ -52,10 +52,13 @@ sub find_end_brace {
         elsif( $rest =~ /^('(?:[^'\\]|\\.)*(.*?)')(.*)/s ) {
             return $prefix . $1 . find_end_brace( $3 );
         }
-        return $prefix . find_end_brace( $rest );
+        # a new level
+        my $to_next = find_end_brace( substr($rest,1) );
+        $rest = substr($rest,length($to_next)-1);
+        return $prefix . '{' . $to_next . find_end_brace( $rest );
     }
-    elsif ($txt =~ /^([^\}]*\})(.*)/s) {
-        return $1;
+    elsif ($txt =~ /^([^\}]*)\}(.*)/s) {
+        return $1 . "}";
     }
     die "Unable to find end brace for $txt\n";
 }
@@ -91,11 +94,17 @@ is ( $txt,
 ($funs, my $filespaces,my $defNS) = spiderpup_data( "import_test.yaml" );
 is ($defNS, 't/www/recipes/import_test.yaml', 'correct default namespace' );
 
-is_deeply( $funs, [ '()=>{return 2}',
-                    '()=>{return 1}' ], 'funs' );
+is_deeply( $funs, [ 
+               '()=>{return 1}',
+               'c=>{ if( true ) { return 7.1; } }',
+               '()=>{return 2}',
+           ], 'funs' );
 
-my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>1}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\\ndiv table { color: green; }\\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>0}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
+my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\\ndiv table { color: green; }\\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
 is_deeply( $filespaces, $exp, 'file spaces' );
+
+($funs, $filespaces, $defNS) = spiderpup_data( "import_test.yaml" );
+
 
 
 done_testing;

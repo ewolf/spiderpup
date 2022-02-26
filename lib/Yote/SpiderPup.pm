@@ -192,7 +192,7 @@ sub yaml_to_js {
     my $js = '';
     eval {
         my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader, $alphasort );
-        $js = "let filespaces = ".to_json( $filespaces ) . ";\n" .
+        $js = "let filespaces = ".to_json( $filespaces, $alphasort ) . ";\n" .
             'let defaultFilename = '.to_string($default_filename).';';
     };
     if ($@) {
@@ -230,7 +230,8 @@ sub load_namespace {
         # check for imports
         if (my $imports = $yaml->{import}) {
             if (ref $imports eq 'HASH') {
-                for my $ns (keys %$imports) {
+                my @keys = $alphasort ? sort keys %$imports : keys %$imports;
+                for my $ns (@keys) {
                     if ($ns =~ /\./) {
                         die "namespace may not contain '.' and got '$ns'";
                     }
@@ -240,7 +241,8 @@ sub load_namespace {
             } else {
                 # array
                 for my $imp (@$imports) {
-                    for my $ns (keys %$imp) {
+                my @keys = $alphasort ? sort keys %$imp : keys %$imp;
+                    for my $ns (@keys) {
                         if ($ns =~ /\./) {
                             die "namespace may not contain '.' and got '$ns'";
                         }
@@ -260,7 +262,8 @@ sub load_namespace {
         }
 
         $namespace->{components} = {};
-        for my $recipe_name (keys %{$yaml->{components}}) {
+        my @keys = $alphasort ? sort keys %{$yaml->{components}} : keys %{$yaml->{components}};
+        for my $recipe_name (@keys) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{components}{$recipe_name};
             $namespace->{components}{$recipe_name} = build_recipe( $yaml->{components}{$recipe_name}, $filename, $alphasort );
@@ -290,6 +293,8 @@ sub load_namespace {
             for my $targ (qw( listen onLoad preLoad )) {
                 if ($yaml->{$targ}) {
                     $namespace->{html}{body}{$targ} = $yaml->{$targ};
+                    delete $yaml->{$targ};
+                    delete $namespace->{$targ};
                 }
             }
         } #if a body
