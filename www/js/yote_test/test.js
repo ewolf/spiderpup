@@ -473,12 +473,16 @@ function test(...tests) {
       el( 'h2', 'test results' ),
       el( 'ul',
           messages.map( msg => {
-            const match = msg.match(/^(FAILED.*)\(line (\d+)\)$/);
-            if (match) {
-              msg = match[1];
-              const line = match[2];
-              return el( 'li', [ el( 'span', msg ), 
-                                 el( 'span', { href: '#', textContent: `(line ${line})` } ) ] );
+            if (Array.isArray(msg)) {
+              msg = msg.join(',');
+            } else {
+              const match = msg.match(/^(FAILED.*)\(line (\d+)\)$/);
+              if (match) {
+                msg = match[1];
+                const line = match[2];
+                return el( 'li', [ el( 'span', msg ), 
+                                   el( 'span', { href: '#', textContent: `(line ${line})` } ) ] );
+              }
             }
             return el( 'li', msg );
           } ) )
@@ -2145,6 +2149,6 @@ test(
   testMoreLoop,
   testNamespace,
   testFills,
-  testFillEvents,
+//  testFillEvents,
 );
 

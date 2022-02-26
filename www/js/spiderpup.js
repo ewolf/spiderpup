@@ -357,10 +357,18 @@ const newInstance = (recipe,parent,node) => {
       return needsRefresh;
     },
 
-    event: function(event,result) {
+    handleEvent: function(event,result) {
+      const handled = false;
       const listeners = this.eventListeners[event];
-      console.log( listeners && listeners.length, event, 'booga' );
-      listeners && listeners.forEach( l => l( result ) );
+      listeners && listeners.forEach( l => l( result ) && (handled = true) );
+      if (!handled) {
+        this.parent && this.parent.handleEvent 
+          && this.parent.handleEvent (event, result);
+      }
+    },
+
+    event: function(event,result) {
+      this.parent && this.parent.handleEvent( event,result );
     },
 
     broadcastListener: (node && node.listen) || recipe.listen,
@@ -457,9 +465,6 @@ const newInstance = (recipe,parent,node) => {
   if (node) {
     attachFunctions( instance, node );
     attachData( instance, node );
-    if (node && node.on) {
-      console.log( node.on, node.id, parent && parent.id, "???" );
-    }
   }
   attachFunctions( instance, recipe );
   attachData( instance, recipe );
@@ -483,8 +488,8 @@ const newInstance = (recipe,parent,node) => {
         };
 
         // update component instance event listeners
-        instance.eventListeners[evname] = instance.eventListeners[evname] || [];
-        instance.eventListeners[evname].push( evfun );
+        parent.eventListeners[evname] = parent.eventListeners[evname] || [];
+        parent.eventListeners[evname].push( evfun );
       } );
       
     }
