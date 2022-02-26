@@ -685,10 +685,13 @@ function _refresh_element( node, el ) {
       .filter( attr => ! seen[attr] )
       .forEach( attr => {
         seen[attr] = true;
+        val = calcs[attr](this);
         if (attr.match( /^(textContent|innerHTML)$/)) {
-          el[attr] = calcs[attr](this);
+          el[attr] = val;
+        } else if (attr === 'class' ) {
+          el.classList.add( val );
         } else {
-          el.setAttribute( attr, calcs[attr](this) );
+          el.setAttribute( attr, val );
         }
       } );
 
@@ -697,10 +700,13 @@ function _refresh_element( node, el ) {
       .filter( attr => ! seen[attr] )
       .forEach( attr => {
         seen[attr] = true;
+        const val = attrs[attr];
         if (attr.match( /^(textContent|innerHTML)$/)) {
-          el[attr] = attrs[attr];
+          el[attr] = val;
+        } else if (attr === 'class' ) {
+          el.classList.add( val );
         } else {
-          el.setAttribute( attr, attrs[attr] );
+          el.setAttribute( attr, val );
         }
       } );
   }
@@ -710,10 +716,13 @@ function _refresh_element( node, el ) {
     .filter( attr => ! seen[attr] )
     .forEach( attr => {
       seen[attr] = true;
+      const val = calcs[attr](this);
       if (attr.match( /^(textContent|innerHTML)$/)) {
-        el[attr] = calcs[attr](this);
+        el[attr] = val;
+        } else if (attr === 'class' ) {
+          el.classList.add( val );
       } else {
-        el.setAttribute( attr, calcs[attr](this) );
+        el.setAttribute( attr, val );
       }
     } );
 
@@ -722,10 +731,13 @@ function _refresh_element( node, el ) {
     .filter( attr => ! seen[attr] )
     .forEach( attr => {
       seen[attr] = true;
+      const val = attrs[attr];
       if (attr.match( /^(textContent|innerHTML)$/)) {
-        el[attr] = attrs[attr];
+        el[attr] = val;
+        } else if (attr === 'class' ) {
+          el.classList.add( val );
       } else {
-        el.setAttribute( attr, attrs[attr] );
+        el.setAttribute( attr, val );
       }
     } );
 

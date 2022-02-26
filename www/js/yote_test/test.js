@@ -121,6 +121,13 @@ let ran = 0;
 let passes = 0;
 let fails = 0;
 
+let messages = [];
+
+function log( ...args ) {
+  messages.push( args );
+  console.log( ...args );
+}
+
 function ok( bool, msg ) {
   if (bool) {
     pass( msg );
@@ -140,39 +147,39 @@ function is_deeply( actual, expected, msg ) {
   if (_is_deeply( actual, expected)) {
     return pass( msg );
   }
-  console.log( actual, expected, 'FAIL' );
+  log( actual, expected, 'FAIL' );
   return fail( msg );
 }
 function _is_deeply( actual, expected ) {
   if (Array.isArray(expected)) {
     if (!Array.isArray(actual)) {
-      console.log( 'mismatch array vs non array' );
+      log( 'mismatch array vs non array' );
       return false;
     }
     if (actual.length !== expected.length) {
-      console.log( 'mismatch array length' );
+      log( 'mismatch array length' );
       return false;
     }
     for( let i=0; i<actual.length; i++ ) {
       if (! _is_deeply( actual[i], expected[i] )) {
-        console.log( "B");
+        log( "B");
         return false;
       }
     }
     return true;
   } else if(typeof actual === 'object') {
     if (typeof expected !== 'object') {
-      console.log( 'mismatch object vs non object' );
+      log( 'mismatch object vs non object' );
       return false;
     }
     const keys = Object.keys(actual);
     if (keys.length !== Object.keys(expected).length) {
-      console.log( 'mismatch hash key length' );
+      log( 'mismatch hash key length' );
       return false;
     }
     for ( let i=0; i<keys.length; i++ ) {
       if (! _is_deeply( actual[keys[i]], expected[keys[i]] )) {
-        console.log( "A");
+        log( "A");
         return false;
       }
     }
@@ -192,7 +199,7 @@ function is( actual, expected, msg ) {
 function pass (msg) {
   ran++;
   passes++;
-  console.log( `passed: test '${msg}'` );
+  log( `passed: test '${msg}'` );
   return true;
 }
 function fail (msg) {
@@ -200,15 +207,15 @@ function fail (msg) {
   const lineNum = stack[stack.length-2].replace( /.*:(\d+):\d+\)$/, '$1' );
   ran++;
   fails++;
-  console.log( `FAILED: test '${msg}' (line ${lineNum})` );
+  log( `FAILED: test '${msg}' (line ${lineNum})` );
   debug();
   return false;
 }
 function doneTesting() {
   if (ran === passes) {
-    console.log( `PASSED ALL ${ran} TESTS` );
+    log( `PASSED ALL ${ran} TESTS` );
   } else {
-    console.log( `FAILED ${fails} of ${ran} TESTS, passed ${passes}` );
+    log( `FAILED ${fails} of ${ran} TESTS, passed ${passes}` );
   }
 }
 function confirmEl( testname, tag, arg1, arg2, el, path ) {
@@ -254,12 +261,15 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
       if (! is (aVal, eVal, `expected property '${attr}.${fld}' to be '${eVal}' and got '${aVal}'  ${teststr} in test ${testname} at path ) ${pathstr}`)) {
         debug();
       }
-    }
-    else if (attr === 'textContent') {
+    } else if (attr === 'textContent') {
       const textNode = el.childNodes[0] && el.childNodes[0].textContent;
       if ( ! is (textNode, val, `expected text '${val}' and got '${textNode}' ${teststr}`) ) {
         debug();
       }
+    } else if (attr === 'class') {
+      const classes = val.split( ' ' );
+      is (classes.length, el.classList.length, 'el has ${classes.length} classes' );
+      classes.forEach( cls => ok( el.classList.contains( cls ), `el has classes '${val}'` ) );
     } else {
       if (! is (el.getAttribute( attr ), val, `expected for attribute ${attr} : '${val}' and got '${el.getAttribute(attr)}' ${teststr}` ) ) {
         debug();
@@ -442,7 +452,17 @@ function makeFilespace( bodyContents, args, otherFS ) {
 } //makeFilespace
 
 function test(...tests) {
-  run( tests ).then( () => doneTesting() );
+  run( tests ).then( () => {
+    doneTesting();
+    reset();
+    const result = messages.pop();
+    body( [
+      el( 'h1', result.join( ' ' ) ),
+      el( 'ul',
+          messages.map( msg => el( 'li', msg.join( ' ' ) ) ) )
+    ] );
+    go();
+  } );
 }
 
 function run(tests) {
@@ -1833,6 +1853,101 @@ const testInternals = () => {
   
 }; //testInternals
 
+const testAliasedRecipes = () => {
+  reset();
+  body(
+    [
+      node( 't2.foo',
+            [
+              el( 'span', 'Hello There' ),
+              el( 'span', 'Ima thing' ),
+            ] ),
+      node( 'zoo',
+            { data: { defdata: 'i13' }},
+            [
+              el ('div', 'INSTANCY' ),
+            ] ),
+      node ('boo',
+            [ el( 'button', { textContent: 'refresh', on_click: 0 } ) ] ),
+    ]
+  );
+    
+  def_namespace( {
+    
+    namespaces: {
+      t2: 'T2'
+    },
+
+    data: {
+      defdata: 'i12',
+    },
+    
+    components: {
+      boo: {
+        contents: [ el( 'div', 'boo' ) ],
+      },
+      zoo: {
+        data: {bardata: 'i11'}, 
+        contents: [
+          node( 't2.foo', [ el('span','this is ZOO') ] ),
+        ]
+      },
+    },
+  } );
+
+  other_namespaces( {
+    T2: {
+      components: {
+        foo: {
+          data: { foodata: 'strue' },
+          contents: [ node( 'bar', { internalContent: true }, [
+            el( 'span', { textContent: 1 } ),
+            ] ) ],
+        },
+        bar: {
+          data: { bardata: 'strue' },
+          contents: [ node( 'col', { class: 'additive' },
+                            [ el( 'section', 'BARBAR' ) ] ) ],
+        },
+        col: {
+          data: { coldata: 'strue' },
+          contents: [ el( 'div', { class: 'col', 'data-thing': 'that' },
+                          [ el( 'span', 'COLCOL' ) ] ) ],
+        },
+      }
+    }
+  } );
+  def_funs( [ c => c.refresh(), // 0
+              c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]`, // 1
+              ] );
+
+  go();
+
+  confirmEl( 'test-aliased-recipes',
+             'body',
+             [
+               [ 'div', { class: 'additive col', 'data-thing': 'that' }, [
+                 [ 'span', 'COLCOL' ],
+                 [ 'section', 'BARBAR' ],
+                 [ 'span', 'Hello There' ],
+                 [ 'span', 'Ima thing' ],
+                 [ 'span', '[true/true/true/12]' ],
+               ] ],
+               [ 'div', { class: 'col additive', 'data-thing': 'that' }, [
+                 [ 'span', 'COLCOL' ],
+                 [ 'section', 'BARBAR' ],
+                 [ 'span', '[true/11/true/13]' ],
+                 [ 'div', 'INSTANCY' ],
+                 [ 'span', 'this is ZOO' ],
+               ] ],
+               [ 'div', 'boo', [
+                 'button', { textContent: 'refresh' }, 
+               ] ],
+             ] 
+           );
+
+}; //testAliasedRecipes
+
 test( 
 
   testNamespace,
@@ -1843,6 +1958,6 @@ test(
   testMoreLoop,
   testIfLoop,
   testInternals,
-
+  testAliasedRecipes,
 );
-console.warn( 'tests for class addition, tests for recipe alias w/ data copying. tests for data copying');
+
