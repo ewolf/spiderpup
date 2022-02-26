@@ -2,6 +2,26 @@
 import:
   bar: impy
 
+javascript: alert("HI")
+
+include:
+  javascript:
+    - js_one.js
+    - js_two.js
+  css: css_one.css
+
+css: >-
+  body { background: blue; }
+
+less: >-
+  div {
+    table {
+      color: green;
+    }
+  }
+
+title: test thing
+
 body:
   - bar.myform:
       functions:

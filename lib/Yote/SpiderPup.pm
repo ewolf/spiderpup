@@ -35,9 +35,10 @@ sub serve_file {
         my $text = read_file( $filename );
         if ($type) {
             $c->res->headers->content_type( $type );
+        } elsif( $filename =~ /\.css$/ ) {
+            $c->res->headers->content_type( 'text/css' );
         } else {
             my $info = $magic->info_from_filename( $filename );
-            print STDERR Data::Dumper->Dump([$info,"INFO"]);
             $c->res->headers->content_type( $info->{mime_type} );
         }
         return $c->render( text => $text );
@@ -312,14 +313,21 @@ sub yaml_to_js {
     return $js;
 }
 
+my $default_yaml_loader = sub {
+    my $yaml_file = shift;
+    return -e $yaml_file && YAML::LoadFile( $yaml_file );
+};
+
 sub load_namespace {
-    my ( $filename, $filespaces, $funs, $root_namespace ) = @_;
+    my ( $filename, $filespaces, $funs, $root_namespace, $yaml_loader ) = @_;
     my $yaml_file = "$root_directory/$filename";
 
+    # yes, return the name
     return $yaml_file if $filespaces->{$yaml_file};
 
-    if (-e $yaml_file) {
-        my $yaml = YAML::LoadFile( $yaml_file );
+    my $yaml = ($yaml_loader||$default_yaml_loader)->( $yaml_file );
+
+    if ($yaml) {
         my $namespace = { 
             namespaces => {},
         };
