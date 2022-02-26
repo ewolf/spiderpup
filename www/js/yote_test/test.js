@@ -1,5 +1,9 @@
 const testsToDo = [
+  'test instance.has',
   'node instance test for refresh',
+  'data with functions refresh',
+  'data with functions refresh for foreach',
+  'test parent functions perculating down to instance',
   'test that element handles are set before possibly being used',
   'test that instance handles are set before possibly being used',
   'fails above all tests',

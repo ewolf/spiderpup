@@ -455,6 +455,10 @@ const newInstance = (recipe,parent,node) => {
     attachFunctions( instance, parent );
     attachForFields( instance, parent );
   }
+
+  // make a 'backup' of the data 
+  instance.databackup = {};
+  Object.keys(instance.data).forEach( dk => instance.databackup[dk] = instance.data[dk] );
   
   // attach instance wrapped functions
   Object.keys( instance.functions )
@@ -477,29 +481,12 @@ const attachGetters = node => {
     this.data[k] = v;
     return this;
   };
-  node.getFunction = function(k,defVal) {
-    let fun;
-    if (k in this.data) {
-      fun = this.data[k];
-      if (typeof fun === 'function') {
-        return fun;
-      }
-      if (fun !== undefined) {
-        return () => fun;
-      }
-      return undefined;
-    }
-    fun = this.parent && this.parent.getFunction(k);
-    if (fun === undefined && defVal !== undefined) {
-      fun = this.data[k] = defVal;
-    }
-    if (typeof fun === 'function') {
-      return fun;
-    }
-    if (fun !== undefined) {
-      return () => fun;
-    }
-    return undefined;
+  node.getFunction = function(k) {
+    if (k in this.data) return this.data[k];
+    return this.parent && this.parent.getFunction( k );
+  };
+  node.has = function(k) {
+    return (k in this.data) || this.parent && this.parent.has( k );
   };
   node.get = function(k,defVal) {
     if (k in this.data) return dataVal( this.data[k], this );
@@ -526,7 +513,7 @@ let serial = 1;
 // parent node of this one, be it namespace, recipe or instance
 // node
 const attachFunctions = (node,parent) => {
-  [ 'on', 'functions' ]
+  [ 'on', 'functions', 'fun' ]
     .forEach( funtype => {
       const funhash = parent[funtype];
       funhash && Object.keys(funhash)
@@ -570,7 +557,7 @@ const prepNode = (node,type,parent) => {
   node.id = serial++;
 
   if (type !== 'element') {
-    node.functions = node.functions || {};
+    node.fun = node.functions = node.functions || {};
     node.data = node.data || {};
   }
   return node;
@@ -832,7 +819,6 @@ function _refresh_content(content, el) {
         conEl = conInst._new_el( conInst.recipe.rootElementNode, key, el );
         conEl.instance = conInst;
         conInst.rootEl = conEl;
-        
       } else {
         conEl = this._new_el( con, key, el );
       }
@@ -912,11 +898,11 @@ function _refresh_content(content, el) {
 
             if (con.isComponent) {
               let forInstance = this._key2instance[ forKey ];
-
               if (!forInstance) {
                 const recipe = this.recipe.namespace.findRecipe( con.tag );
                 forInstance = newInstance( recipe, this, con );
-                forEl = i == 0 ? forInstance._new_el( forInstance.recipe.rootElementNode, forKey, el ) : forInstance._new_el( forInstance.recipe.rootElementNode, forKey, undefined, lastEl );
+                // note, i won't be 0 because that instance was created in the start of _refresh_content
+                forEl = forInstance._new_el( forInstance.recipe.rootElementNode, forKey, undefined, lastEl );
                 forInstance.rootEl = forEl;
                 forEl.instance = forInstance;
                 this._key2instance[ forKey ] = forInstance;
@@ -925,13 +911,13 @@ function _refresh_content(content, el) {
 
               forInstances.push( forInstance );
 
+              // update data for foreach instance before refresh
               forInstance.idx[forval] = i;
               forInstance.it[forval] = list[i];
 
-              // update data for foreach instance before refresh
               Object.keys( forInstance.data )
                 .forEach( dname => {
-                  forInstance.data[dname] = dataVal( forInstance.data[dname], forInstance );
+                  forInstance.data[dname] = dataVal( forInstance.databackup[dname], forInstance );
                 } );
 
               forInstance._refresh( con.recipe.rootElementNode, forEl, con );
@@ -959,7 +945,7 @@ function _refresh_content(content, el) {
         const conInst = conEl.instance;
         Object.keys( conInst.data )
           .forEach( dname => {
-              conInst.data[dname] = dataVal( conInst.data[dname], this );
+              conInst.data[dname] = dataVal( conInst.databackup[dname], this );
           } );
 
         conInst._refresh_component( con, conEl, con.recipe );

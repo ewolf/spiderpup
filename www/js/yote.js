@@ -54,7 +54,7 @@ const rpc = (config,app,action,target,args,files) => {
         xhr.onload = () => {
           if( xhr.status === 200 ) {
 
-//	    console.log( xhr.response, 'resp' );
+	    console.log( xhr.response, sess_ids, 'resp ' + app );
             
             const resp = xhr.response.payload;
             const token = xhr.response.token;
@@ -127,18 +127,18 @@ const rpc = (config,app,action,target,args,files) => {
 
       args = marshal( args );
       
-        let payload = {
-            app,target,action,args,token : sess_ids[app],
-        };
-
-//	console.log( payload, 'PAY' );
-        fd.append( 'payload', JSON.stringify(payload) );
-        if( files ) {
-            fd.append( 'files', files.length );
-            for( let i=0; i<files.length; i++ )
-                fd.append( 'file_' + i, files[i] );
-        }
-        xhr.send(fd);
+      let payload = {
+        app,target,action,args,token : sess_ids[app],
+      };
+      
+      console.log( payload, 'PAY' );
+      fd.append( 'payload', JSON.stringify(payload) );
+      if( files ) {
+        fd.append( 'files', files.length );
+        for( let i=0; i<files.length; i++ )
+          fd.append( 'file_' + i, files[i] );
+      }
+      xhr.send(fd);
     } );
 }; //rpcs
 
@@ -223,8 +223,13 @@ const logout = (appName,yoteArgs) => {
   const config = {...yoteConfig};
   yoteArgs && Object.keys( yoteArgs ).
     forEach( k => config[k] = yoteArgs[k] );
-  const prom = rpc(config,appName,'logout');
-  delete sess_ids[appName];
+  const tokens = appName ? [sess_ids[appName]] : Object.values( sess_ids );
+  const prom = rpc(config,appName,'logout',undefined,tokens);
+  if (appName) {
+    delete sess_ids[appName];
+  } else {
+    sess_ids = {};
+  }
   localStorage.setItem( 'sess_ids', JSON.stringify(sess_ids) );    
   return prom;
 }
