@@ -2134,17 +2134,17 @@ const testFillEvents = () => {
 }; //testFillEvents
 
 test( 
-  // testAliasedRecipes,
-  // testBasic,
-  // testHandles,
-  // testIfLoop,
-  // testIfs,
-  // testInstanceRefresh,
-  // testInternals,
-  // testLoop,
-  // testMoreLoop,
-  // testNamespace,
-  // testFills,
+  testAliasedRecipes,
+  testBasic,
+  testHandles,
+  testIfLoop,
+  testIfs,
+  testInstanceRefresh,
+  testInternals,
+  testLoop,
+  testMoreLoop,
+  testNamespace,
+  testFills,
   testFillEvents,
 );
 

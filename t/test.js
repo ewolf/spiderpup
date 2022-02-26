@@ -402,6 +402,7 @@ function node(tag, args, contents) {
   args && Object.keys( args ).forEach( fld => {
     const m = fld.match(/^on_(.*)/);
     if (m) {
+      console.log( "ATTACH ",m[1], ' to ', n);
       n.on[m[1]] = args[fld];
     }
     else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
@@ -2064,26 +2065,40 @@ const testFillEvents = () => {
                   el( 'span', 'right bar' ),
                 ],
               },
-              contents: [
-                node( 'inner', {
-                  on_innerLoad: (c,key,ev) => {
-                    c.fun.log( "INNER LOAD B (holder)" );
-                  },
-                })
-              ],
               on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "HOLDER LOAD B (body)" );
+                  c.fun.log( "HOLDER GOT INNERLOAD" );
+              },
+              on_bubbleCaught: (c,key,ev) => {
+                c.fun.log( "HOLDER GOT GOT BUBBLE UP" );
+                return true;
               },
             },
             [
               el( 'span', 'Hello There' ),
               el( 'span', 'Ima thing' ),
               node( 'inner', {
+                class: 'A',
                 on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "INNR LOAD A (body)" );
+                  c.fun.log( "INNER IN HOLDER FILL CONTENTS GOT INNER LOAD" );
+                },
+                on_bubbleCaught: (c,key,ev) => {
+                  c.fun.log( "INNER IN HOLDER FILL CONTENTS GOT BUBBLE UP" );
+                  return true;
                 },
               } )
             ] ),
+
+      node( 'inner', {
+        class: 'B',
+        on_innerLoad: (c,key,ev) => {
+          c.fun.log( "INNER IN BODY CONTENTS GOT INNER LOAD" );
+        },
+        on_bubbleCaught: (c,key,ev) => {
+          c.fun.log( "INNER IN BODY CONTENTS GOT BUBBLE UP" );
+          return true;
+        },
+      }),
+
     ]
   );
     
@@ -2106,7 +2121,7 @@ const testFillEvents = () => {
     components: {
       inner: {
         contents: [ el( 'span', 'INNY' ) ],
-        onLoad: c => { console.log( "START ONLOAD " + c.id ); c.event( 'innerLoad', 'Loaded' )},
+        onLoad: c => { console.log( "START ONLOAD " + c.id ); c.event( 'innerLoad', 'Loaded' ); c.event( 'bubbleCaught', 'bubbling' ); },
       },
 
       holder: {

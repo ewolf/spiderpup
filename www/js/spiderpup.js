@@ -359,6 +359,7 @@ const newInstance = (recipe,parent,node) => {
 
     event: function(event,result) {
       const listeners = this.eventListeners[event];
+      console.log( listeners && listeners.length, event, 'booga' );
       listeners && listeners.forEach( l => l( result ) );
     },
 
@@ -456,12 +457,38 @@ const newInstance = (recipe,parent,node) => {
   if (node) {
     attachFunctions( instance, node );
     attachData( instance, node );
+    if (node && node.on) {
+      console.log( node.on, node.id, parent && parent.id, "???" );
+    }
   }
   attachFunctions( instance, recipe );
   attachData( instance, recipe );
   if (parent) {
     attachFunctions( instance, parent );
     attachForFields( instance, parent );
+
+    if (node && node.on) {
+      console.log( node.on, node.id, parent.id, "ONN" );
+      Object.keys( node.on )
+      .forEach( evname => {
+        // so a componentInstance uses 'event' to send a message
+        // to its listeners
+        const evfun = function() {
+          const prom = node.on[evname]( parent, ...arguments );
+          // resolve in case it returns undefined or returns a promise
+          Promise.resolve( prom )
+            .then( () => {
+              if ( parent._check() ) parent.refresh();
+            } );
+        };
+
+        // update component instance event listeners
+        instance.eventListeners[evname] = instance.eventListeners[evname] || [];
+        instance.eventListeners[evname].push( evfun );
+      } );
+      
+    }
+
   }
 
   // store data functions in backup hash
@@ -748,46 +775,13 @@ function refresh(node,el,placeholderNode,isAliased) {
 } //refresh
 
 function _resolve_onLoad(el) {
-  // rootNode is the node the instance is defined in
-  // 
-  const rootNode = el.instance && el.instance.rootNode;
-  if ( !rootNode ) debugger;
-  if (rootNode) {
 
-    const instance = this.parent;
-
-    // check root node
-
-    rootNode.on && Object.keys( rootNode.on )
-      .forEach( evname => {
-        // so a componentInstance uses 'event' to send a message
-        // to its listeners
-        const evfun = function() {
-          const prom = rootNode.on[evname]( instance, ...arguments );
-          // resolve in case it returns undefined or returns a promise
-          Promise.resolve( prom )
-            .then( () => {
-              if ( instance._check() ) instance.refresh();
-            } );
-        };
-
-        // update component instance event listeners
-        this.eventListeners[evname] = this.eventListeners[evname] || [];
-        this.eventListeners[evname].push( evfun );
-      } );
-
-    // check fill nodes
-    
-
-    // this.recipe.onLoad && Promise.resolve( this.preLoad )
-    //   .then (() => this.recipe.onLoad( this ));
+  if (el.instance && el.instance.rootNode) {
     
     if (this.recipe.onLoad) {
         Promise.resolve( this.preLoad );
         Promise.resolve( this.recipe.onLoad( this ) );
     }
-
-    console.log( "RESOLVE OLOAQD " + this.id );
   }
 
 } //_resolve_onLoad
