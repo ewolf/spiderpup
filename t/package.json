@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "test": "mocha -r jsdom-global/register"
+    "test": "nyc mocha -r jsdom-global/register"
   }
 }

@@ -345,15 +345,16 @@ const newInstance = (recipe,parent,node) => {
     eventListeners: {}, // event name -> listeners
     on: {}, //handler -> function
 
+    // broadcasts a message. refreshes if there were any listeners
     broadcast: function( act, msg ) {
-      this.top._propagateBroadcast(act,msg);
-      this.top.refresh();
+      this.top._propagateBroadcast(act,msg) && this.top.refresh();
     },
     _propagateBroadcast: function(act, msg) {
-      this.broadcastListener && this.broadcastListener(this,act, msg );
+      let needsRefresh = false;
+      this.broadcastListener && this.broadcastListener(this,act, msg ) && (needsRefresh = true);
       // propagates here and each child with the given message
-      Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) );
-
+      Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) && (needsRefresh=true) );
+      return needsRefresh;
     },
 
     event: function(event,result) {
@@ -489,7 +490,7 @@ const attachGetters = node => {
   node.set = function(k,v) {
     this._changed = this._changed || v !== this.data[k];
     this.data[k] = v;
-    return this;
+    return v;
   };
   node.has = function(k) {
     return (k in this.data) || this.parent && this.parent.has( k );
@@ -747,14 +748,16 @@ function refresh(node,el,placeholderNode,isAliased) {
 } //refresh
 
 function _resolve_onLoad(el) {
+  // rootNode is the node the instance is defined in
   // 
   const rootNode = el.instance && el.instance.rootNode;
+  if ( !rootNode ) debugger;
   if (rootNode) {
-    this.recipe.onLoad && Promise.resolve( this.preLoad )
-      .then (() => this.recipe.onLoad( this ) );
-    // check for listeners
 
     const instance = this.parent;
+
+    // check root node
+
     rootNode.on && Object.keys( rootNode.on )
       .forEach( evname => {
         // so a componentInstance uses 'event' to send a message
@@ -772,9 +775,22 @@ function _resolve_onLoad(el) {
         this.eventListeners[evname] = this.eventListeners[evname] || [];
         this.eventListeners[evname].push( evfun );
       } );
+
+    // check fill nodes
+    
+
+    // this.recipe.onLoad && Promise.resolve( this.preLoad )
+    //   .then (() => this.recipe.onLoad( this ));
+    
+    if (this.recipe.onLoad) {
+        Promise.resolve( this.preLoad );
+        Promise.resolve( this.recipe.onLoad( this ) );
+    }
+
+    console.log( "RESOLVE OLOAQD " + this.id );
   }
 
-} //refresh
+} //_resolve_onLoad
 
 function _refresh_component( compo, el, recipe ) {
   // component

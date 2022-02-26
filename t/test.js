@@ -1885,6 +1885,51 @@ const testAliasedRecipes = () => {
            );
 }; //testAliasedRecipes
 
+
+
+const testInstanceRefresh = () => {
+  reset();
+  body(
+    [
+      node( 'holder', 
+            { 
+              handle: 'refresher',
+            },
+          ),
+    ]
+  );
+    
+  def_namespace( {
+    data: {
+      seen: 0,
+    },
+
+    components: {
+      holder: {
+        contents: [
+          el( 'div', { textContent : c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;} } )
+        ]
+      },
+    },
+  } );
+
+  const inst = go();
+
+  confirmEl( 'test-instance-refresh',
+             'body',
+             [ 'div', 'seen 1' ]
+           );
+
+  inst.comp.refresher.refresh();
+
+  confirmEl( 'test-instance-refresh',
+             'body',
+             [ 'div', 'seen 2' ]
+           );
+
+  
+} //testInstancetRefresh
+
 const testFills = () => {
   reset();
   body(
@@ -2004,27 +2049,74 @@ const testFills = () => {
 
 }; //testFills
 
-const testInstanceRefresh = () => {
+
+const testFillEvents = () => {
   reset();
   body(
     [
       node( 'holder', 
             { 
-              handle: 'refresher',
+              fill_contents: {
+                left: [ 
+                  el( 'span', 'left bar' ),
+                ],
+                right: [
+                  el( 'span', 'right bar' ),
+                ],
+              },
+              contents: [
+                node( 'inner', {
+                  on_innerLoad: (c,key,ev) => {
+                    c.fun.log( "INNER LOAD B (holder)" );
+                  },
+                })
+              ],
+              on_innerLoad: (c,key,ev) => {
+                  c.fun.log( "HOLDER LOAD B (body)" );
+              },
             },
-          ),
+            [
+              el( 'span', 'Hello There' ),
+              el( 'span', 'Ima thing' ),
+              node( 'inner', {
+                on_innerLoad: (c,key,ev) => {
+                  c.fun.log( "INNR LOAD A (body)" );
+                },
+              } )
+            ] ),
     ]
   );
     
   def_namespace( {
     data: {
-      seen: 0,
+      showLeft: true,
+      showRight: true,
+      logs: [],
+    },
+
+    functions: {
+      toggleLeft: c => c.set('showLeft', !c.get('showLeft') ),
+      toggleRight: c => c.set('showRight', !c.get('showRight') ),
+      log: (c,msg) => {
+        c.get('logs').push( msg );
+        console.log( "GOT", c.get('logs'), c.id );
+      },
     },
 
     components: {
+      inner: {
+        contents: [ el( 'span', 'INNY' ) ],
+        onLoad: c => { console.log( "START ONLOAD " + c.id ); c.event( 'innerLoad', 'Loaded' )},
+      },
+
       holder: {
         contents: [
-          el( 'div', { textContent : c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;} } )
+          el( 'main', { style: 'display:flex; flex-direction: row' },
+              [
+                el( 'div', { fill: 'left', if: c => c.get('showLeft') } ),
+                el( 'section', { fill: true } ),
+                el( 'div', { fill: 'right', if: c => c.get('showRight') } ),
+              ] )
         ]
       },
     },
@@ -2032,35 +2124,38 @@ const testInstanceRefresh = () => {
 
   const inst = go();
 
-  confirmEl( 'test-instance-refresh',
+  console.log( inst.id, inst.get( 'logs' ), "LOGS" );
+
+  0&&confirmEl( 'test-fill',
              'body',
-             [ 'div', 'seen 1' ]
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', [ 'span', 'right bar' ] ],
+               ]
+             ],
            );
 
-  inst.comp.refresher.refresh();
 
-  confirmEl( 'test-instance-refresh',
-             'body',
-             [ 'div', 'seen 2' ]
-           );
 
-  
-} //testInstancetRefresh
+}; //testFillEvents
 
 describe('spiderpup', () => {
   it( 'should pass', () => {
     test( 
-      testAliasedRecipes,
-      testBasic,
-      testHandles,
-      testIfLoop,
-      testIfs,
-      testInstanceRefresh,
-      testInternals,
-      testLoop,
-      testMoreLoop,
-      testNamespace,
-      testFills,
-  ) } )
+      // testAliasedRecipes,
+      // testBasic,
+      // testHandles,
+      // testIfLoop,
+      // testIfs,
+      // testInstanceRefresh,
+      // testInternals,
+      // testLoop,
+      // testMoreLoop,
+      // testNamespace,
+      // testFills,
+      testFillEvents,
+    ) } )
 } );
 
