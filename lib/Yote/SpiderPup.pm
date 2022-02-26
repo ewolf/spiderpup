@@ -169,7 +169,7 @@ sub encode_functions_and_attrs {
             if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
                 $node->{calculate}{$field} = encode_fun( $node_data, $field, $funs );
             } else {
-                $node->{attrs}->{$field} = $val;
+                $node->{attrs}{$field} = $val;
             }
         }
     }

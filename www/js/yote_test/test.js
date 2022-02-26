@@ -1,6 +1,4 @@
 const testsToDo = [
-  'multiple named inner places',
-  'test copy attributes from recipe base to first element',
   'red/green text for pass fails on this page',
 ];
 /**
@@ -95,7 +93,7 @@ function reset() {
 }
 
 function debug() {
-//  debugger;
+  debugger;
 }
 
 function elPath(string) {
@@ -401,7 +399,9 @@ function node(tag, args, contents) {
     else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
       n[fld] = args[fld];
     }
-    // else if(fld.match(/^(functions|data)$/)) {
+    else if(fld.match( /^(placeholder_contents)$/)) {
+      n[fld] = args[fld];
+    }
     else if(fld.match( /^(functions|data)$/)) {
       // already covered
     }
@@ -534,6 +534,7 @@ const testBasic = () => {
       title: 'titlez',
       components: {
         foo: {
+          attrs: { class: 'woot boot', style: 'cursor:pointer' },
           functions: {
             bar: 0
           },
@@ -572,9 +573,10 @@ const testBasic = () => {
                            textContent: 'SECOND'
                          }, // 1
                   [
-                    [ 'div', [ 'span', 'BAR' ]],  // 1, 0
-                    [ 'div', [ 'span', 'BAR2' ]], // 1, 1
-                    [ 'div', [                    // 1, 2
+                    [ 'div', { class: 'woot boot', style: { cursor: 'pointer' } },
+                      [ 'span', 'BAR' ]],  // 1, 0
+                    [ 'div', { class: 'woot boot', style: { cursor: 'pointer' } }, [ 'span', 'BAR2' ]], // 1, 1
+                    [ 'div', { class: 'woot boot', style: { cursor: 'pointer' } }, [ // 1, 2
                       [ 'span', 'BAR3' ],           // 1, 2, 0
                       [ 'span', 'a span' ],     // 1, 2, 1
                       [ 'span', 'with stuff' ], // 1, 2, 2
@@ -1981,15 +1983,84 @@ const testAliasedRecipes = () => {
 
 }; //testAliasedRecipes
 
+const testPlaceholders = () => {
+  reset();
+  body(
+    [
+      node( 'holder', 
+            { 
+              placeholder_contents: {
+                left: [ 
+                  el( 'span', 'left bar' ),
+                ],
+                right: [
+                  el( 'span', 'right bar' ),
+                ],
+              }
+            },
+            [
+              el( 'span', 'Hello There' ),
+              el( 'span', 'Ima thing' ),
+            ] ),
+    ]
+  );
+    
+  def_namespace( {
+    data: {
+      showLeft: true,
+      showRight: true,
+    },
+
+    functions: {
+      toggleLeft: 2,
+      toggleRight: 3,
+    },
+
+    components: {
+      holder: {
+        contents: [
+          el( 'main', { style: 'display:flex; flex-direction: row' },
+              [
+                el( 'div', { placeholder: 'left' } ),
+                el( 'section', { placeholder: true } ),
+                el( 'div', { placeholder: 'right' } ),
+              ] )
+        ]
+      },
+    },
+  } );
+
+  def_funs( [ c => c.get('showLeft'), //0
+              c => c.get('showRight'), //1
+              c => c.set('showLeft', !c.get('showLeft') ), //2
+              c => c.set('showRight', !c.get('showRight') ), //3
+              ] );
+
+  go();
+
+  confirmEl( 'test-placeholder',
+             'body',
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', [ 'span', 'right bar' ] ],
+               ]
+             ],
+           );
+
+}; //testPlaceholders
+
 test( 
-  testNamespace,
   testBasic,
   testIfs,
   testLoop,
   testHandles,
   testMoreLoop,
+  testNamespace,
   testIfLoop,
   testInternals,
   testAliasedRecipes,
+  testPlaceholders,
 );
 
