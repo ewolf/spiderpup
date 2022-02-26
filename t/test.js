@@ -1284,6 +1284,7 @@ const testLoop = () => {
              
 }; //testLoop
 
+
 const testHandles = () => {
   const calls = [];
 
@@ -1328,7 +1329,7 @@ const testHandles = () => {
   def_namespace( {
     listen: (c,type,msg) => { 
       if (type !== 'body') {
-        c.fun.bodyDo( `body hears ${msg}` );
+        c.fun.bodyDo( msg );
         c.broadcast( 'body', msg );
       }
     },
@@ -1349,7 +1350,7 @@ const testHandles = () => {
 
     functions: {
       bodyDo: (c,msg) => { 
-        calls.push( msg );
+        calls.push( msg + ` (from ${c.name})` );
       },
       toggle: c => c.set( 'show', ! c.get('show') ),
     },
@@ -1364,7 +1365,7 @@ const testHandles = () => {
         listen: (c,type,msg) => { 
           if (type !== 'stuff' ) {
             // tests that bodydo is inherited 
-            c.fun.bodyDo( `stuff hears ${msg}` );
+            c.fun.bodyDo( msg );
             c.event( 'stuffEvent', "MYEV" );
           }
         },
@@ -1384,15 +1385,16 @@ const testHandles = () => {
   
   // onload happens, which
   //   * pushes ['BUTTON']
-  // and clicks the button which makes a broadcast which is
+  // and clicks the button which calls shout that
+  // makes a broadcast which is
   // heard by the body which registers the message with bodydo
-  //   * pushes ['body hears hi there']
+  //   * pushes ['hi there (from instance of recipe html)']
   // which broadcasts the message which is heard
   // by the stuff which uses inherited bodydo to record
-  //   * pushes ['stuff hears body hears hi there']
+  //   * pushes ['hi there (from instance of recipe stuff in instance of recipe html)']
   // which sends a stuffEvent which is picked up
-  // by the body and is recorded
-  //   * pushes ['instance of body from TEST got event from stuff']
+  // by the its instance, which has the handler to push
+  //   * pushes ['instance of recipe stuff in instance of recipe html got event from stuff']
 
   let bodyInstance = go();
 
@@ -1472,9 +1474,9 @@ const testHandles = () => {
     .then( () => { 
       is_deeply( calls, [ 'PRELOAD',
                           'BUTTON', 
-                          'body hears hi there',
-                          'stuff hears hi there',
-                          'instance of recipe html got event from stuff',
+                          'hi there (from instance of recipe html)',
+                          'hi there (from instance of recipe stuff in instance of recipe html)',
+                          'instance of recipe stuff in instance of recipe html got event from stuff',
                         ], 'correct calls' );
     } );
 
