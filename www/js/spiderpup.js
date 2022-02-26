@@ -92,8 +92,14 @@ const init = (spaces,defFilename) => {
   // html is a recipe too, containing one thing in contents, the body
   const htmlRecipe = {...htmlNode.body};
   htmlRecipe.tag = 'html';
-  
-  htmlRecipe.contents = [{ tag: 'document', contents: htmlNode.body.contents}];
+
+
+  const primeNode = defaultNamespace.findRecipe( htmlNode.body.contents[0].tag );
+  if (htmlNode.body.contents.length === 1 && primeNode && primeNode.rootElementNode.tag === 'body') {
+    htmlRecipe.contents = [{ tag: 'document', contents: htmlNode.body.contents}];
+  } else {
+    htmlRecipe.contents = [{ tag: 'document', contents: [{ tag: 'body', contents: htmlNode.body.contents}]}];
+  }
 
   prepRecipe( htmlRecipe, 'html', defaultNamespace );
   finalizeRecipe( htmlRecipe );
