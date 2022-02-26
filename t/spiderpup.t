@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Exception;
 
 use lib '../lib';
 use lib './lib';
@@ -64,8 +65,8 @@ sub find_end_brace {
 }
 
 sub spiderpup_data {
-    my $file = shift;
-    my $js = Yote::SpiderPup->yaml_to_js( $base, "recipes/$file", 'alphasort' );
+    my ($file, $alphasort ) = @_;
+    my $js = Yote::SpiderPup->yaml_to_js( $base, "recipes/$file", $alphasort );
     my ($filespaces, $defNS) = ( $js =~ /^let filespaces = (.*?);\nlet defaultFilename = "(.*)";/s );
     my $funs = [];
     my $json = convert_json($filespaces,$funs);
@@ -91,7 +92,7 @@ is ( $txt,
      'to_json'
     );
 
-($funs, my $filespaces,my $defNS) = spiderpup_data( "import_test.yaml" );
+($funs, my $filespaces,my $defNS) = spiderpup_data( "import_test.yaml", 'alpha' );
 is ($defNS, 't/www/recipes/import_test.yaml', 'correct default namespace' );
 
 is_deeply( $funs, [ 
@@ -101,10 +102,71 @@ is_deeply( $funs, [
            ], 'funs' );
 
 my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\\ndiv table { color: green; }\\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
-is_deeply( $filespaces, $exp, 'file spaces' );
+is_deeply( $filespaces, $exp, 'file spaces for import_test' );
 
-($funs, $filespaces, $defNS) = spiderpup_data( "import_test.yaml" );
+($funs, $filespaces, $defNS) = spiderpup_data( "simple_test.yaml" );
+is_deeply( $funs, [], 'simple no funs' );
+$exp = {'t/www/recipes/simple_test.yaml'=>
+        {'data'=>{ x => 'y' },'components'=>{},'functions'=>{},'namespaces'=>{},
+             'html'=>{'body'=>{'contents'=>[{'tag'=>'div','attrs'=>{'textContent'=>'hello world'}}]}}}};
+is_deeply( $filespaces, $exp, 'file spaces for simple test' );
 
 
+throws_ok(
+    sub {
+        my $loader = sub {
+            return {
+                components => {
+                    burp => {
+                        
+                    },
+                }
+            };
+        };
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
+    }, 
+    qr/recipe 'burp' must contain contents/,
+    'component without contents' 
+);
+
+throws_ok(
+    sub {
+        my $loader = sub {
+            return {
+                components => {
+                    burp => {
+                        contents => []
+                    },
+                }
+            };
+        };
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
+    }, 
+    qr/recipe 'burp' must contain contents/,
+    'component without contents' 
+);
+
+($funs, $filespaces, $defNS) = spiderpup_data( "error.yaml" );
+is( $defNS, 'ERROR', 'error namespace name' );
+is_deeply ($funs, [], 'no error funs' );
+is_deeply( $filespaces, {"ERROR"=>{"html"=>{"body"=>{"contents"=>[{"tag"=>"h3","attrs"=>{"textContent"=>"Error in file recipes/error.yaml"}},{"tag"=>"div","contents"=>[{"attrs"=>{"textContent"=>"recipe \'burp\' must contain contents at lib/Yote/SpiderPup.pm line 32.\\n"},"tag"=>"p"}]}]}},"functions"=>{},"components"=>{},"namespaces"=>{},"data"=>{}}}, 'error data' );
+
+
+throws_ok(
+    sub {
+        my $loader = sub {
+            return {
+                components => {
+                    'burp.urp' => {
+                        contents => [{ tag => "div" }],
+                    },
+                }
+            };
+        };
+        Yote::SpiderPup::load_namespace( '', '', {}, undef, $loader, 'alpha' );
+    }, 
+    qr/'burp.urp' in '\/' may not have a '.' in the name/,
+    'component without contents' 
+);
 
 done_testing;

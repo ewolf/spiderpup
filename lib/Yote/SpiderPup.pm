@@ -19,16 +19,20 @@ my $default_yaml_loader = sub {
 };
 
 sub build_recipe {
-    my ($recipe_data, $filename, $alphasort) = @_;
+    my ($name, $recipe_data, $filename, $alphasort) = @_;
 
     if (ref $recipe_data eq 'ARRAY') {
         $recipe_data = { contents => $recipe_data };
     }
-
+    
     my $recipe = {};
     my $con = $recipe->{contents} = [];
 
-    for my $node_data (@{$recipe_data->{contents}||[]}) {
+    if (@{$recipe_data->{contents}||[]} == 0) {
+        die "recipe '$name' must contain contents";
+    }
+
+    for my $node_data (@{$recipe_data->{contents}}) {
         push @$con, build_node( $node_data, $filename, $alphasort );
     }
 
@@ -107,7 +111,7 @@ sub build_node {
 sub make_error {
     my $filename = shift;
     my $err = "$@";
-    return q~let defaultFilename = 'ERROR'; let filespaces = ~
+    return q~let filespaces = ~
              . to_json( { ERROR => {
                  components => {},
                  data => {},
@@ -133,7 +137,7 @@ sub make_error {
                              ]
                      },
                  },
-                          } } ) .';';
+                          } } ) .";\nlet defaultFilename = \"ERROR\";";
 }
 
 sub to_string {
@@ -229,27 +233,13 @@ sub load_namespace {
 
         # check for imports
         if (my $imports = $yaml->{import}) {
-            if (ref $imports eq 'HASH') {
-                my @keys = $alphasort ? sort keys %$imports : keys %$imports;
-                for my $ns (@keys) {
-                    if ($ns =~ /\./) {
-                        die "namespace may not contain '.' and got '$ns'";
-                    }
-                    my $imp_filename = $imports->{$ns};
-                    $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader, $alphasort );
+            my @keys = $alphasort ? sort keys %$imports : keys %$imports;
+            for my $ns (@keys) {
+                if ($ns =~ /\./) {
+                    die "namespace may not contain '.' and got '$ns'";
                 }
-            } else {
-                # array
-                for my $imp (@$imports) {
-                my @keys = $alphasort ? sort keys %$imp : keys %$imp;
-                    for my $ns (@keys) {
-                        if ($ns =~ /\./) {
-                            die "namespace may not contain '.' and got '$ns'";
-                        }
-                        my $imp_filename = $imp->{$ns};
-                        $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader, $alphasort );
-                    }
-                }
+                my $imp_filename = $imports->{$ns};
+                $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader, $alphasort );
             }
         }
 
@@ -266,7 +256,7 @@ sub load_namespace {
         for my $recipe_name (@keys) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{components}{$recipe_name};
-            $namespace->{components}{$recipe_name} = build_recipe( $yaml->{components}{$recipe_name}, $filename, $alphasort );
+            $namespace->{components}{$recipe_name} = build_recipe( $recipe_name, $yaml->{components}{$recipe_name}, $filename, $alphasort );
         }
 
         $namespace->{data} = $yaml->{data} || {};
@@ -288,7 +278,7 @@ sub load_namespace {
                 }
             }
 
-            $namespace->{html}{body} = build_recipe( $body, $filename, $fn, $alphasort );
+            $namespace->{html}{body} = build_recipe( 'body', $body, $filename, $fn, $alphasort );
 
             for my $targ (qw( listen onLoad preLoad )) {
                 if ($yaml->{$targ}) {
