@@ -92,8 +92,8 @@ const init = (spaces,defFilename) => {
   // html is a recipe too, containing one thing in contents, the body
   const htmlRecipe = {...htmlNode.body};
   htmlRecipe.tag = 'html';
-
-  htmlRecipe.contents = [{ tag: 'body', contents: htmlNode.body.contents}];
+  
+  htmlRecipe.contents = [{ tag: 'document', contents: htmlNode.body.contents}];
 
   prepRecipe( htmlRecipe, 'html', defaultNamespace );
   finalizeRecipe( htmlRecipe );
@@ -304,7 +304,7 @@ const newBodyInstance = recipe => {
 
   instance.refresh = function() {
     // refresh the contents of the body
-    this._refresh( recipe.contents[0], document.body );
+    this._refresh( recipe.contents[0], document );
   };
 
   instance.loadPromise = Promise.resolve( instance.preLoad )
@@ -320,7 +320,6 @@ const newBodyInstance = recipe => {
 
 
 const newInstance = (recipe,parent,node) => {
-
   const instance = {
     recipe: recipe,
     parent,
@@ -988,8 +987,11 @@ function _refresh_content(content, el) {
 } //_refresh_content
 
 const _new_el = (node,key,attachToEl, attachAfterEl) => {
-  const tag = node.tag;
-  const newEl = document.createElement( tag );
+  if (attachToEl === document) {
+    document.body.key = key;
+    return document.body;
+  }
+  const newEl = document.createElement( node.tag );
   if (node.fill) {
     newEl.fill = newEl.dataset.fill = node.fill;
   }
@@ -1004,7 +1006,11 @@ const _new_el = (node,key,attachToEl, attachAfterEl) => {
 
 const makeKey2el = el => {
   const key2el = {};
-  Array.from( el.children )
+  if (el === document) {
+    key2el[document.body.key] = document.body;
+  } else {
+    Array.from( el.children )
       .forEach( el => el.key && ( key2el[el.key] = el ) );
+  }
   return key2el;
 }; //makeKey2el
