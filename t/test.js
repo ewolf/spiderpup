@@ -137,7 +137,7 @@ let messages = [];
 
 function log( ...args ) {
   messages.push( ...args );
-  console.log( ...args );
+//  console.log( ...args );
 }
 
 function ok( bool, msg ) {
@@ -298,9 +298,6 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
   if (contents.length > 0 && ! Array.isArray( contents[0] ) ) {
     contents = [contents];
   }
-  console.log( el );
-console.log( '---------------' );
-  console.log( contents );
   if( ! is (el.childElementCount, contents.length, `content count ${teststr}` ) ) { debug(); }
 
   contents.forEach( (con,idx) => {
@@ -522,7 +519,6 @@ function run(tests) {
 //   component function override
 //   nodes with internal content and no specified spot
 const testBasic = () => {
-console.log( "BASI" );
   reset();
   body( [ el( 'span', "FIRST" ), //0
           el( 'div', { textContent: "SECOND",   //1
@@ -1862,10 +1858,8 @@ const testAliasedRecipes = () => {
       }
     }
   } );
-console.log( "AALLY A" );
 
   go();
-console.log( "AALLY B" );
 
   confirmEl( 'test-aliased-recipes',
              'body',
@@ -1889,7 +1883,6 @@ console.log( "AALLY B" );
                ] ],
              ] 
            );
-console.log( "AALLY C" );
 }; //testAliasedRecipes
 
 const testFills = () => {

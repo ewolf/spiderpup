@@ -1019,3 +1019,6 @@ const makeKey2el = el => {
   }
   return key2el;
 }; //makeKey2el
+
+
+window.init = init;
