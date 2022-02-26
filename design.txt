@@ -1,0 +1,213 @@
+Spiderpup allows you to build reactive websites using yaml to describe components and modules built from javascript, less/css and html elements. It maps urls to yaml files that it uses to serve pages. 
+
+This example shows a simple reactive spiderpup page that
+contains two independent counters. 
+
+style: >-
+  .counter {
+    border: solid 3px brown;
+    margin: 12px;
+    padding: 5px;
+    span {
+      margin: 0 10px;
+    }
+  }
+
+components:
+  counter:
+    data:
+      clicks: 0
+      title: no title set
+    functions:
+      # the counter component is always the first argument sent to functions
+      inc: c => c.set( 'clicks', 1 + c.get( 'clicks' ) )
+      dec: c => c.set( 'clicks', c.get( 'clicks' ) -1 )
+    contents:
+      - div:
+          class: counter
+          contents:
+            - h2: c => c.get( 'title' )
+            - div:
+                - button:
+                    textContent: '<'
+                    on_click: c => c.fun.dec()
+                # the span below adjusts reactively as the clicks count updates
+                - span: c => `${c.get('clicks')} clicks`
+                - button:
+                    textContent: '>'
+                    on_click: c => c.fun.inc()
+
+# the top level functions are for the body element
+functions:
+  greetings: (body,ev) => alert( `hello there` )
+
+# the body is a special component.
+body:
+  - h1: Hello Spiderpup
+  - counter:
+      # data specified here overrides the default data 
+      # of the component
+      data:
+        title: counter 1
+  - counter:
+      data:
+        clicks: 12
+  - button:
+      type: button
+      on_click: body => body.fun.greetings()
+      textContent: click me
+      style: font-weight: bold;
+
+
+
+Components contain html elements (and other components), defined functions and stateful variables. Think of them like classes which have instances place on the page. Components can talk to each other by listening to and broadcasting messages.
+
+
+
+
+
+
+
+A walkthru of what happens with spider pup 
+
+
+ javascript
+
+  things start happening on window.onload
+
+  look at the defaultNamespace in filespaces with the default (current) filename
+
+  look at html head
+
+    set title if given
+       
+    include explicit css in defaultNamespace.css
+
+    includde css files in defaultNamespace.html.head.css
+
+    includde js files in defaultNamespace.html.head.js
+
+  compile recipies defined in defaultNamespace.components
+
+  compile defaultNamespace.html.body
+
+    it is special and is modified a bit before compiled as a recipe
+    its contents are adjusted so 'body' is its root recipe node
+
+  when compiling a recipe:
+
+     note: a recipe is a data structure that is used as a blueprint for building recipe instances
+      * assigns an id to each recipe node
+      * inserts a namespace to each recipe node
+          this maps assigned import handles to their namespacje
+          <handle>: <filename>   then map the handle to the filespace
+      * prepares functions. a function starts out as functionname -> function index
+        this looks up the function at the index and assigns functionname -> function
+
+      * check to make sure the recipe has exactly one root node in its contents
+
+      * compiles the content nodes of the recipe
+         a node corresponds to an html tag or other recipe to be embedded
+          - check for cirucluar recipe references and throw an error if those are encountered
+          - if the node is for a recipe to be embeeded, rewrite the node
+               - attach functions defined locally for this node
+               - attach this node's recipe (not the recipe that it is embedded in)
+               - attach args, which is a copy of the original node. it may have data or functions
+                 that override the recipe data or function
+          - prepare functions as above. html tags may have event handler functions and conditionals and foreach
+          - assign id to the node
+          - attach the recipe that this node is embeeded in
+          - make sure conditionals are sane. it - ie the first node cannot have 'elseif'
+
+      * assigns rootTag to the recipe
+         
+  create a state for the page (the default namespace)
+
+  when creating a state:
+     * it gets a recipe, an optional parent state, and an instance args object
+     * it builds a data object, from the data field in recipe and instance args.
+         - the instance args override the recipe data values.
+         - the data values are converted into numbers, strings or are the results of running functions
+     * the state object is created with the following fields
+         - parent (can be undefined)
+         - fun (function name -> function) 
+         - calc (html tag attribute name to function
+         - comp (handle assigned to child component --> that component)
+         - el (handle assigned to html element --> that element)
+         - idx (foreach iterator name -> index for that foreach iterator)
+         - it (foreach iterator name -> current foreach iterator value)
+         - lastcount (foreach iterator last rendered number of items in its list)
+         - recipe
+         - data object, which has ~public~ 'get' and 'set' functions and a ~private~ '_check'
+           function that returns true if 'set' was used to change a value since the last time
+           _check was called (or since the state was created)
+         - refresh function that is automatically called and refreshes the component instance
+
+  instantiate the body
+
+  when instantiating a recipe: (recipe instantiation function)
+     * instantiation function takes the recipe, instantiation args and a parent state
+     * builds a new state with those args
+     * creates a new instance
+         - has an id
+         - has those instantiation args
+         - has recipe
+         - has the new state
+
+    * calls preLoad on the instance
+
+    * instantiates the contents of the recipe (recipe component instantiation function)
+       - starts with its root element
+       - each gets a node
+       - for a node that is a component, the node is created with the recipe instantiation function
+       - for a node that is an html element, node object created
+           - id assigned
+           - state assigned as the state of the recipe instance
+           - empty args
+           - contents of this node are instantiated using the recipe component instantiation function
+      
+    * instantiates the contents
+
+    * attachs the recipe instance handle to the parent state of this instance
+
+  hang the new body instance on the html body element
+
+  when hanging an instance:
+    hanging function takes instance and element it is being hung on
+      * element textContent and attributes are set using instance args calculate
+           or instance.recipe calculate or instance calculate
+
+      * loop through any child elements of the target element
+          to make a hash of element key -> element
+
+      * loop through the child nodes of the current node
+          - calculate a key for the element that is the equals instance id
+             = if the node has foreach, a '_0' suffix is attached to the key
+          - check if the key has an element associated with it in the element key hash
+          - if not:
+            - create html element
+            - add to element key hash
+            - element starts out hidden
+            - if instance node has a handle, then to state.el[handle] -> child element
+            - event handlers are attached 
+            - key is attached
+
+      * checks to see if each child node should be visible or not based on conditionals
+
+      * for foreach, there is always an element with a key ending in _0
+          - foreach calculates a list
+          - the suffix number corresponds to the index of the list item assigned to
+             the element
+          - if the list has fewer elements than the last time it was calculated,
+              remove extraneous html elements from document
+          - make sure 
+     
+     
+
+TODO
+  * onLoad -> postLoad
+  * defaultFilename et al --> rename to be currentFilename
+  * component having their own events that can be handled by their enclosing component
+  * finish foreach for recipe component instantces
+  * decide on replacing or intermingling state with a recipe instance
+  * javascript tests    

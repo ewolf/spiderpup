@@ -1,9 +1,8 @@
 ---
 import:
-  - impy: bar
+  bar: impy
 
-html:
-  body:
-    - bar.myform:
-        functions:
-          foo: () => 2
+body:
+  - bar.myform:
+      functions:
+        foo: () => 2

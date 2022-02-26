@@ -1,12 +1,14 @@
 #!/usr/bin/perl
 
+use v5.10;
 use strict;
 use warnings;
 
 use Data::Dumper;
+use Mojolicious::Lite;
 
-use SpiderPup;
+use Yote::SpiderPup;
 
 my $dir = $ARGV[0] || $ENV{SPIDERPUP} || '../www';
-
-SpiderPup->launch( root => $dir );
+my $app = app;
+Yote::SpiderPup->launch( $dir, $app );

@@ -1,10 +1,10 @@
 ---
-import:
-  - examples/impy: foo
 
-html:
-  body:
-    - foo.myform:
-        functions:
-          foo: () => 2
+import:
+  foo: examples/impy
+
+body:
+  - foo.myform:
+      functions:
+        foo: () => alert('include.yaml foo overrides impy')
 

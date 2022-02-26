@@ -1,12 +1,12 @@
 ---
-html:
-  body:
-    - NumberAdjuster:
-        data:
-          name: 'temperature'
-    - NumberAdjuster:
-        data:
-          name: 'pressure'
+
+body:
+  - NumberAdjuster:
+      data:
+        name: 'temperature'
+  - NumberAdjuster:
+      data:
+        name: 'pressure'
 
 components:
   NumberAdjuster:
@@ -14,19 +14,17 @@ components:
       value: 0
       name: ''
     functions:
-      inc: s => s.data.set( 'value', 1 + s.data.get('value') )
-      dec: s => s.data.get( 'value' ) > 0 && s.data.set( 'value', s.data.get('value') - 1 )
+      inc: c => c.set( 'value', 1 + c.get('value') )
+      dec: c => c.get( 'value' ) > 0 && c.set( 'value', c.get('value') - 1 )
     contents:
       - div:
+          - h1: c => c.id
           - button:
               textContent: '-'
-              on:
-                click: s => s.fun.dec()
+              on_click: c => c.fun.dec()
           - span:
               style: margin: 0 5px
-              calculate:
-                textContent: s => s.data.get('name') + ': ' + s.data.get('value')
+              textContent: c => c.get('name') + ': ' + c.get('value')
           - button:
               textContent: '+'
-              on:
-                click: s => s.fun.inc()
+              on_click: c => c.fun.inc()
