@@ -1,4 +1,10 @@
-
+const testsToDo = [
+  'internalContent --> placeholder',
+  'multiple named inner places',
+  'test copy attributes from recipe base to first element',
+  'test adding style',
+  'red/green text for pass fails on this page',
+];
 /**
 
  Tests.
@@ -91,7 +97,7 @@ function reset() {
 }
 
 function debug() {
-  debugger;
+//  debugger;
 }
 
 function elPath(string) {
@@ -370,8 +376,8 @@ function el(tag, attrs, contents) {
       calculate[attr] = attrs[attr];
       delete attrs[attr];
     }
-    else if (attr === 'internalContent' ) {
-      elNode.internalContent = true;
+    else if (attr === 'placeholder' ) {
+      elNode.placeholder = attrs[attr];
       delete attrs[attr];
     }
   } );
@@ -452,17 +458,33 @@ function makeFilespace( bodyContents, args, otherFS ) {
 } //makeFilespace
 
 function test(...tests) {
+
   run( tests ).then( () => {
     doneTesting();
     reset();
     const result = messages.pop();
     body( [
       el( 'h1', result.join( ' ' ) ),
+      el( 'h2', { if: 0, textContent: 'things to implement and/or test' }, [
+          el ('ul', 
+              testsToDo.map( msg => el( 'li', msg ) )
+             ) ] ),
+      el( 'h2', 'test results' ),
       el( 'ul',
           messages.map( msg => el( 'li', msg.join( ' ' ) ) ) )
     ] );
+    def_funs( [ () => testsToDo.length > 0 ] );
     go();
+  } )
+  .catch(err => {
+      reset();
+      body( [
+        el( 'h1', 'unable to finish tests due to error' ),
+        el( 'h2', err.message )
+      ] );
+      go();
   } );
+
 }
 
 function run(tests) {
@@ -811,7 +833,7 @@ const testNamespace = () => {
               contents: [
                 el( 'div', [
                   el( 'header', 'head' ),
-                  el( 'main', { textContent: 'main', internalContent: true } ),
+                  el( 'main', { textContent: 'main', placeholder: true } ),
                   el( 'footer', { textContent: 1 } ),
                 ] ),
               ],
@@ -883,7 +905,7 @@ const testNamespace = () => {
             contents: [
               el( 'div', [
                 el( 'header', 'head' ),
-                el( 'main', { textContent: 'main', internalContent: true } ),
+                el( 'main', { textContent: 'main', placeholder: true } ),
                 el( 'footer', { textContent: 1 } ),
               ] ),
             ],
@@ -1020,7 +1042,7 @@ const testComponentHandles = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { internalContent: true } ),
+            el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
             el ( 'span', 'lower' ),
@@ -1185,7 +1207,7 @@ const testLoop = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { internalContent: true } ),
+            el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
             el ( 'span', 'lower' ),
@@ -1814,7 +1836,7 @@ const testInternals = () => {
         contents: [ el( 'section', { id : 'containy' },
             [
               el( 'h1', { textContent: 0 }  ),
-              el( 'div', { internalContent: true } ),
+              el( 'div', { placeholder: true } ),
             ] ) ],
       },
     },
@@ -1900,13 +1922,13 @@ const testAliasedRecipes = () => {
       components: {
         foo: {
           data: { foodata: 'strue' },
-          contents: [ node( 'bar', { internalContent: true }, [
+          contents: [ node( 'bar', { placeholder: true }, [
             el( 'span', { textContent: 1 } ),
             ] ) ],
         },
         bar: {
           data: { bardata: 'strue' },
-          contents: [ node( 'col', { class: 'additive' },
+          contents: [ node( 'col', { class: 'additive now' },
                             [ el( 'section', 'BARBAR' ) ] ) ],
         },
         col: {
@@ -1926,14 +1948,14 @@ const testAliasedRecipes = () => {
   confirmEl( 'test-aliased-recipes',
              'body',
              [
-               [ 'div', { class: 'additive col', 'data-thing': 'that' }, [
+               [ 'div', { class: 'additive col now', 'data-thing': 'that' }, [
                  [ 'span', 'COLCOL' ],
                  [ 'section', 'BARBAR' ],
                  [ 'span', 'Hello There' ],
                  [ 'span', 'Ima thing' ],
                  [ 'span', '[true/true/true/12]' ],
                ] ],
-               [ 'div', { class: 'col additive', 'data-thing': 'that' }, [
+               [ 'div', { class: 'col additive now', 'data-thing': 'that' }, [
                  [ 'span', 'COLCOL' ],
                  [ 'section', 'BARBAR' ],
                  [ 'span', '[true/11/true/13]' ],

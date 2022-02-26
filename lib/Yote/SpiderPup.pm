@@ -159,6 +159,11 @@ sub encode_functions_and_attrs {
             }
             $node->{$field} = $val;
         }
+        elsif ($field =~ /^for_placeholder_(.*)/) {
+            # this is like contents, but targetted to a placeholder. only makes sense if
+            # this is a component node
+            $node->{placeholder_contents}{$1} = $val;
+        }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
             # assume an attribute for this case, (other calculate was already handled)
             if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
