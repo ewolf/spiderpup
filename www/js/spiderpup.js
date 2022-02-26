@@ -62,8 +62,8 @@ const init = (spaces,defFilename) => {
 
   // see if the module requested has a body to render.
   // if not, then loading this does nothing
-  const html = filespaces[defaultFilename].html;
-  if (!(html && html.body)) {
+  const htmlNode = filespaces[defaultFilename].html;
+  if (!(htmlNode && htmlNode.body)) {
     console.warn( `no body defined in '${defaultFilename}'` );
     return;
   }
@@ -90,21 +90,22 @@ const init = (spaces,defFilename) => {
     } );
 
   // html is a recipe too, containing one thing in contents, the body
-  const htmlRecipe = {...html.body};
+  const htmlRecipe = {...htmlNode.body};
   htmlRecipe.tag = 'html';
-  htmlRecipe.contents = [{ tag: 'body', contents: html.body.contents}];
+
+  htmlRecipe.contents = [{ tag: 'body', contents: htmlNode.body.contents}];
 
   prepRecipe( htmlRecipe, 'html', defaultNamespace );
   finalizeRecipe( htmlRecipe );
 
   // there may be a head that has javascript/css imports
   // and explicit style and a title
-  if (html.head) {
+  if (htmlNode.head) {
     const head = document.head;
-    document.title = html.head.title || '';
+    document.title = htmlNode.head.title || '';
 
     // explicit style
-    let style = html.head.style
+    let style = htmlNode.head.style
     if (style) {
       const stylel = document.createElement( 'style' );
       stylel.setAttribute( 'type', 'text/css' );
@@ -117,7 +118,7 @@ const init = (spaces,defFilename) => {
     }
 
     // explicit javascript
-    let script = html.head.script
+    let script = htmlNode.head.script
     if (script) {
       const scriptel = document.createElement( 'script' );
       scriptel.setAttribute( 'type', 'text/javascript' );
@@ -126,7 +127,7 @@ const init = (spaces,defFilename) => {
     }
 
     // css files
-    const css = html.head.css;
+    const css = htmlNode.head.css;
     const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
     cssFiles.forEach( file => {
       const link = document.createElement( 'link' );
@@ -137,7 +138,7 @@ const init = (spaces,defFilename) => {
     } );
 
     // js files
-    const js = html.head.javascript;
+    const js = htmlNode.head.javascript;
     const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
     jsFiles.forEach( file => {
       const scr = document.createElement( 'script' );
