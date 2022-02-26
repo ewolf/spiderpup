@@ -142,8 +142,8 @@ sub make_error {
 sub to_string {
     my $txt = shift;
 
-    $txt =~ s/\n/\\\\n/gs;
-    $txt =~ s/\r/\\\\r/gs;
+    $txt =~ s/\n/\\n/gs;
+    $txt =~ s/\r/\\r/gs;
     $txt =~ s/"/\\"/gs;
 
     return "\"$txt\"";

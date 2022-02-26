@@ -101,7 +101,7 @@ is_deeply( $funs, [
                '()=>{return 2}',
            ], 'funs' );
 
-my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\\ndiv table { color: green; }\\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
+my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\ndiv table { color: green; }\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
 is_deeply( $filespaces, $exp, 'file spaces for import_test' );
 
 ($funs, $filespaces, $defNS) = spiderpup_data( "simple_test.yaml" );
@@ -149,7 +149,7 @@ throws_ok(
 ($funs, $filespaces, $defNS) = spiderpup_data( "error.yaml" );
 is( $defNS, 'ERROR', 'error namespace name' );
 is_deeply ($funs, [], 'no error funs' );
-is_deeply( $filespaces, {"ERROR"=>{"html"=>{"body"=>{"contents"=>[{"tag"=>"h3","attrs"=>{"textContent"=>"Error in file recipes/error.yaml"}},{"tag"=>"div","contents"=>[{"attrs"=>{"textContent"=>"recipe \'burp\' must contain contents at lib/Yote/SpiderPup.pm line 32.\\n"},"tag"=>"p"}]}]}},"functions"=>{},"components"=>{},"namespaces"=>{},"data"=>{}}}, 'error data' );
+is_deeply( $filespaces, {"ERROR"=>{"html"=>{"body"=>{"contents"=>[{"tag"=>"h3","attrs"=>{"textContent"=>"Error in file recipes/error.yaml"}},{"tag"=>"div","contents"=>[{"attrs"=>{"textContent"=>"recipe \'burp\' must contain contents at lib/Yote/SpiderPup.pm line 32.\n"},"tag"=>"p"}]}]}},"functions"=>{},"components"=>{},"namespaces"=>{},"data"=>{}}}, 'error data' );
 
 
 throws_ok(
