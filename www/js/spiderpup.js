@@ -1,5 +1,5 @@
 const parseInstructions = (defaultNamespace,filespaces,funs) => {
-    
+
     // check if there is an html section defined
     const namespaceRecipe = filespaces[defaultNamespace];
 
@@ -27,7 +27,7 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
             // css files
             const css = html.head.css;
             const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
-            
+
             cssFiles.forEach( file => {
                 const link = document.createElement( 'link' );
                 link.setAttribute( 'rel', 'stylesheet' );
@@ -37,7 +37,7 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
             } );
 
             const js = html.head.javascript;
-            const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];            
+            const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
             jsFiles.forEach( file => {
                 const scr = document.createElement( 'script' );
                 scr.setAttribute( 'src', file );
@@ -45,8 +45,12 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
             } );
         } //head defined
 
-        const state = buildNamespace( namespaceRecipe, filespaces,funs );
-       state && state.refresh(); 
+        Object.keys( filespaces )
+            .filter( fsname => fsname !== defaultNamespace )
+            .forEach( fsname => buildNamespace( filespaces[fsname], filespaces, funs ) );
+
+        const state = buildNamespace( namespaceRecipe, filespaces, funs ); 
+        state && state.refresh();
 
     } //if there was html sectinon
 
@@ -54,6 +58,8 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
 
 const buildNamespace = (namespaceRecipe,filespaces,funs) => {
     const recipeNodes = {};
+
+    namespaceRecipe.recipeNodes = recipeNodes;
 
     // bigAttrs are attributes that work even if they are not
     // under the attribute section
@@ -90,9 +96,9 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 .map( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, ...arguments ) } );
             instanceNode.data && Object.keys( instanceNode.data )
                 .forEach( fld => data[fld] = instanceNode.data[fld] );
-            instanceNode.functions && 
+            instanceNode.functions &&
                 Object.keys( instanceNode.functions )
-                .forEach( funname => 
+                .forEach( funname =>
                     instanceFuns[funname] = function() { instanceNode.functions[funname]( state, ...arguments ) } );
         }
 
@@ -130,6 +136,8 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
               : typeof rawNode === 'object'
               ? rawNode
               : { textContent: rawNode };
+
+        node.namespaceRecipe = namespaceRecipe;
         node.id = serial++;
         node.name = name;
 
@@ -162,7 +170,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 const conname = Object.keys( con )[0];
                 const connode = con[conname] || {};
                 return makeRecipeNode( conname, connode );
-            } 
+            }
             return makeRecipeNode( con, {} );
         } );
 
@@ -171,8 +179,10 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
     }; //makeRecipeNode
 
     const build = (args) => {
-        let buildNode = args.buildNode;
-        let state     = args.state;
+        let buildNode   = args.buildNode;
+        let state       = args.state;
+        let nsr         = args.namespaceRecipe || buildNode.namespaceRecipe || namespaceRecipe;
+        let recipeNodes = nsr.recipeNodes;
 
         const key = args.key || makeKey( state, buildNode, args.forIdx);
 
@@ -181,11 +191,26 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         let el = buildNode.name === 'body' ? document.body : key2el[key];
 
         let instanceNode = buildNode;
-        let recipeNode = recipeNodes[instanceNode.name];
+
+        const nodeNames = instanceNode.name.split( /\./ );
+        let recipeNode;
+        if (nodeNames.length === 2) {
+            const filespace = nsr.namespaces[nodeNames[0]];
+            if (!filespace) {
+                console.error( "namespace '${ns}' nto found" );
+                return;
+            }
+            recipeNode = filespaces[filespace].recipeNodes[nodeNames[1]];
+        } else if (nodeNames.length === 1) {
+            recipeNode = recipeNodes[nodeNames[0]];
+        } else {
+            console.error( 'recipe name has something other than one or two parts' );
+            return;
+        }
         if (!el) {
 
             if (recipeNode) {
-                // the job of the recipe node is to 
+                // the job of the recipe node is to
                 // create a state for an instance and also to handle the onLoad event
 
                 const subCompoState = makeState( state, recipeNode, buildNode );
@@ -193,6 +218,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 const rootArgs = {...args};
                 rootArgs.state = subCompoState;
                 rootArgs.buildNode = rootNode;
+                rootArgs.namespaceRecipe = recipeNode.namespaceRecipe,
                 el = build( rootArgs );
 
                 recipeNode.onLoad && recipeNode.onLoad( state );
@@ -209,9 +235,10 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 delete refreshArgs.key2el;
                 subCompoState.refresh = () => build( { buildNode,
                                                        state,
+                                                       namespaceRecipe : recipeNode.namespaceRecipe,
                                                        ...refreshArgs } );
                 state = subCompoState;
-            } 
+            }
             else {
                 el = document.createElement( instanceNode.name );
 
@@ -241,7 +268,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
 
             // attach event handlers
             Object.keys( instanceNode.on ).forEach( evname => {
-                const evfun = function() { 
+                const evfun = function() {
                     instanceNode.on[evname]( state, ...arguments );
                     if ( state.data._check() ) state.refresh();
                 };
@@ -255,7 +282,6 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
 
 
         // now fill in the contents of the node to the existing or newly created element
-        if (recipeNode && recipeNode.name === 'submain' ) debugger;
         let attachEl = recipeNode ? findInternalContent(el) : el;
 
         const k2e = makeKey2el( attachEl );
@@ -325,9 +351,9 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 } );
             } else {
                 attachAfter = build( { buildNode: connode,
-                                       state, 
-                                       attachTo: attachEl, 
-                                       key2el: k2e, 
+                                       state,
+                                       attachTo: attachEl,
+                                       key2el: k2e,
                                        attachAfter } );
             }
         } );
@@ -392,11 +418,12 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         // it takes a special yaml node so there is always one
         // root for the body recipe
         const bodyNode = makeRecipeNode( 'body', html.body );
+        bodyNode.namespaceRecipe = namespaceRecipe;
 
         const state = makeState();
         state.refresh = () => build( { buildNode: bodyNode, state } );
         return state;
-    } //if there was a body    
+    } //if there was a body
 
 } //buildNamespace
 

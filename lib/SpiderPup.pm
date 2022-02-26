@@ -163,7 +163,7 @@ sub yaml_to_js {
     my $filespaces = {};
 
     my $default_filename = [load_namespace( $root, $filename, $filespaces, $funs )];
-print STDERR Data::Dumper->Dump([$filespaces,"YAYAY"]);
+
     my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultNamespace = ".to_json($default_filename)."[0];\n"; # put the default_filename in an array so it can be json escaped
@@ -208,7 +208,6 @@ sub load_namespace {
         $body && transform_recipe( $body, $funs );
 
         $filespaces->{$yaml_file} = $yaml;
-        print STDERR Data::Dumper->Dump([$filespaces,"FCS"]);
     }
     return $yaml_file;
 }

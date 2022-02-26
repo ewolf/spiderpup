@@ -1,4 +1,7 @@
 ---
+import:
+  - examples/more_impy: bar
+  
 components:
   myform:
     functions:
@@ -7,4 +10,6 @@ components:
       - form: 
           - mydiv
   mydiv:
-    - div: my div
+    - div:
+        - bar.impydiv
+        

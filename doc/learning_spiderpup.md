@@ -91,23 +91,44 @@ components:
         - span: there
 ```
 
-### includes
+### internal content
 
-http://localhost:3000/examples/includes.html
 
-YAML file *.../spiderpup/www/includes/examples/impy.yaml*
+
+http://localhost:3000/examples/internal.html
+
+YAML file *.../spiderpup/www/recipes/examples/internal.yaml*
+
 ```
 ---
+html:
+  head:
+    style: span { margin: 5px }
+  body:
+    - with-specified-internal:
+      - span: MIDDLE
+    - no-specified-internal:
+      - span: AFTER FINISH
+
 components:
-  myform:
-    functions:
-      foo: () => 1
-    contents:
-      - form: 
-          - mydiv
-  mydiv:
-    - div: my div
+  with-specified-internal:
+    - div:
+        - span: first
+        - span: 
+            internalContent: 1
+        - span: last
+  no-specified-internal:
+    - div:
+        - span: start
+        - span: finish
 ```
+
+### includes
+
+spiderpup recipes may include other recipes. Included recipes
+must be in the www/include directory
+
+http://localhost:3000/examples/includes.html
 
 YAML file *.../spiderpup/www/recipes/examples/includes.yaml*
 ```
@@ -121,6 +142,33 @@ html:
         functions:
           foo: () => 2
 ```
+
+YAML file *.../spiderpup/www/include/examples/impy.yaml*
+```
+---
+import:
+  - examples/more_impy: bar
+  
+components:
+  myform:
+    functions:
+      foo: () => 1
+    contents:
+      - form: 
+          - mydiv
+  mydiv:
+    - div:
+        - bar.impydiv
+```
+YAML file *.../spiderpup/www/include/examples/more_impy.yaml*
+
+```
+---
+components:
+  impydiv:
+    - div: my impy div
+```
+
 
 ## spiderpup files
 

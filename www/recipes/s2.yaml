@@ -1,6 +1,7 @@
 html:
   head:
     title: foooooo
+    style: .ilb { display: inline-block }
   body: 
     - foo:
     - foo:
@@ -11,8 +12,9 @@ components:
     contents:
       - div:
           - span: FEE
-          - span: ' FIE' 
-          - span: FOO
+          - span: ' FIE ' 
+          - span: 'FOO '
           - div:
+              class: ilb
               internalContent: 1
-          - span: END
+          - span: ' END'
