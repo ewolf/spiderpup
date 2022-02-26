@@ -476,6 +476,30 @@ const attachGetters = node => {
     this.data[k] = v;
     return this;
   };
+  node.getFunction = function(k,defVal) {
+    let fun;
+    if (k in this.data) {
+      fun = this.data[k];
+      if (typeof fun === 'function') {
+        return fun;
+      }
+      if (fun !== undefined) {
+        return () => fun;
+      }
+      return undefined;
+    }
+    fun = this.parent && this.parent.getFunction(k);
+    if (fun === undefined && defVal !== undefined) {
+      fun = this.data[k] = defVal;
+    }
+    if (typeof fun === 'function') {
+      return fun;
+    }
+    if (fun !== undefined) {
+      return () => fun;
+    }
+    return undefined;
+  };
   node.get = function(k,defVal) {
     if (k in this.data) return dataVal( this.data[k], this );
     let val = this.parent && this.parent.get( k );
@@ -773,6 +797,8 @@ function _refresh_element( node, el ) {
   return needsInit;
 } //_refresh_element
 
+// attached to an instance, refreshes it and any child
+// instances it has
 function refresh(node,el,placeholderNode,isAliased) {
 
   const needsInit = this._refresh_element( node, el );
