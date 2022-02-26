@@ -271,6 +271,19 @@ const finalizeRecipe = (recipe) => {
   attachFunctions( recipe, namespace );
   prepContents( recipe.contents, namespace );
 
+  // if class is specified here
+  if ( recipe.attrs ) {
+    root.attrs = root.attrs || {};
+    Object.keys(recipe.attrs).forEach (attr => {
+      const val = recipe.attrs[attr];
+      if (attr === 'class') {
+        root.attrs[attr] = root.attrs[attr] ? [root.attrs[attr], val].join( ' ' ) : val;
+      } else {
+        root.attrs[attr] = attr in root.attrs ? root.attrs[attr] : val;
+      }
+    } );
+  }
+
   return recipe;
 
 } //finalizeRecipe
@@ -621,10 +634,10 @@ const prepElementNode = (node,namespace) => {
   prepContents( node.contents, namespace );
 }
 
-const findInternalContent = (el,recur) => {
-  if ( el.internalContent ) return el;
+const findPlaceholder = (el,recur) => {
+  if ( el.placeholder ) return el;
   const chilInts = Array.from( el.children )
-        .map( chld => findInternalContent( chld, true ) )
+        .map( chld => findPlaceholder( chld, true ) )
         .filter( chld => chld !== undefined );
 
   if (chilInts.length > 0) {
@@ -689,7 +702,7 @@ function _refresh_element( node, el ) {
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
-          el.classList.add( val );
+          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
         } else {
           el.setAttribute( attr, val );
         }
@@ -704,7 +717,7 @@ function _refresh_element( node, el ) {
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
-          el.classList.add( val );
+          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
         } else {
           el.setAttribute( attr, val );
         }
@@ -720,7 +733,7 @@ function _refresh_element( node, el ) {
       if (attr.match( /^(textContent|innerHTML)$/)) {
         el[attr] = val;
         } else if (attr === 'class' ) {
-          el.classList.add( val );
+          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
       } else {
         el.setAttribute( attr, val );
       }
@@ -735,7 +748,7 @@ function _refresh_element( node, el ) {
       if (attr.match( /^(textContent|innerHTML)$/)) {
         el[attr] = val;
         } else if (attr === 'class' ) {
-          el.classList.add( val );
+          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
       } else {
         el.setAttribute( attr, val );
       }
@@ -744,19 +757,19 @@ function _refresh_element( node, el ) {
   return needsInit;
 } //_refresh_element
 
-function refresh(node,el,internalContent,isAliased) {
+function refresh(node,el,placeholder,isAliased) {
 
   const needsInit = this._refresh_element( node, el );
   
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
   node.contents && this._refresh_content( node.contents, el );
-  if (internalContent) {
-    const innerContainer = findInternalContent( el );
+  if (placeholder) {
+    const innerContainer = findPlaceholder( el );
     if (this.parent && ! isAliased) {
-      this.parent._refresh_content( internalContent, innerContainer );
+      this.parent._refresh_content( placeholder, innerContainer );
     } else {
-      this._refresh_content( internalContent, innerContainer );
+      this._refresh_content( placeholder, innerContainer );
     }
   }
 
@@ -803,10 +816,10 @@ function _refresh_component( compo, el, recipe ) {
       this._refresh_component( root, el, aliased );
     }
     if (root.contents && root.contents.length > 0) {
-      this._refresh( root, el, root.content );
-    } else {
-      this._refresh_element( root, el );
+      this._refresh_content( root.contents, el );
     }
+    this._refresh_element( root, el );
+
     el.instance._refresh( compo, el, recipe.contents[0].contents, true );
     return;
   }
@@ -998,8 +1011,8 @@ function _refresh_content(content, el) {
 const _new_el = (node,key,attachToEl, attachAfterEl) => {
   const tag = node.tag;
   const newEl = document.createElement( tag );
-  if (node.internalContent) {
-    newEl.internalContent = newEl.dataset.internalContent = true;
+  if (node.placeholder) {
+    newEl.placeholder = newEl.dataset.placeholder = node.placeholder;
   }
   newEl.key = newEl.dataset.key = key;
   if (attachAfterEl) {

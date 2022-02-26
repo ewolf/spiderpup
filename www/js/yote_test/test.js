@@ -1,4 +1,8 @@
-
+const testsToDo = [
+  'multiple named inner places',
+  'test copy attributes from recipe base to first element',
+  'red/green text for pass fails on this page',
+];
 /**
 
  Tests.
@@ -91,7 +95,7 @@ function reset() {
 }
 
 function debug() {
-  debugger;
+//  debugger;
 }
 
 function elPath(string) {
@@ -124,7 +128,7 @@ let fails = 0;
 let messages = [];
 
 function log( ...args ) {
-  messages.push( args );
+  messages.push( ...args );
   console.log( ...args );
 }
 
@@ -204,7 +208,8 @@ function pass (msg) {
 }
 function fail (msg) {
   const stack = new Error().stack.split( /[\n\r]+/ );
-  const lineNum = stack[stack.length-2].replace( /.*:(\d+):\d+\)$/, '$1' );
+  const failline = stack.filter( l => l.match(/^\s*at test/) )[0];
+  const lineNum = failline ? failline.replace( /.*:(\d+):\d+\)$/, '$1' ) : '?';
   ran++;
   fails++;
   log( `FAILED: test '${msg}' (line ${lineNum})` );
@@ -370,8 +375,8 @@ function el(tag, attrs, contents) {
       calculate[attr] = attrs[attr];
       delete attrs[attr];
     }
-    else if (attr === 'internalContent' ) {
-      elNode.internalContent = true;
+    else if (attr === 'placeholder' ) {
+      elNode.placeholder = attrs[attr];
       delete attrs[attr];
     }
   } );
@@ -452,17 +457,42 @@ function makeFilespace( bodyContents, args, otherFS ) {
 } //makeFilespace
 
 function test(...tests) {
+
   run( tests ).then( () => {
     doneTesting();
     reset();
     const result = messages.pop();
     body( [
-      el( 'h1', result.join( ' ' ) ),
+      el( 'h1', result ),
+      el( 'h2', { if: 0, textContent: 'things to implement and/or test' }, [
+          el ('ul', 
+              testsToDo.map( msg => el( 'li', msg ) )
+             ) ] ),
+      el( 'h2', 'test results' ),
       el( 'ul',
-          messages.map( msg => el( 'li', msg.join( ' ' ) ) ) )
+          messages.map( msg => {
+            const match = msg.match(/^(FAILED.*)\(line (\d+)\)$/);
+            if (match) {
+              msg = match[1];
+              const line = match[2];
+              return el( 'li', [ el( 'span', msg ), 
+                                 el( 'span', { href: '#', textContent: `(line ${line})` } ) ] );
+            }
+            return el( 'li', msg );
+          } ) )
     ] );
+    def_funs( [ () => testsToDo.length > 0 ] );
     go();
+  } )
+  .catch(err => {
+      reset();
+      body( [
+        el( 'h1', 'unable to finish tests due to error' ),
+        el( 'h2', err.message )
+      ] );
+      go();
   } );
+
 }
 
 function run(tests) {
@@ -486,7 +516,8 @@ function run(tests) {
 const testBasic = () => {
   reset();
   body( [ el( 'span', "FIRST" ), //0
-          el( 'div', "SECOND", //1
+          el( 'div', { textContent: "SECOND",   //1
+                       style: 'background: blue; padding: 3px' },
               [
                 node( 'foo' ), // div span
                 node( 'foo', { functions: { bar: 1 } } ),
@@ -536,8 +567,10 @@ const testBasic = () => {
              'body',
               [
                 [ 'span', 'FIRST' ], // 0
-                [ 'div',             // 1
-                  'SECOND',
+                [ 'div', { style: { background: 'blue',
+                                    padding: '3px' },
+                           textContent: 'SECOND'
+                         }, // 1
                   [
                     [ 'div', [ 'span', 'BAR' ]],  // 1, 0
                     [ 'div', [ 'span', 'BAR2' ]], // 1, 1
@@ -811,7 +844,7 @@ const testNamespace = () => {
               contents: [
                 el( 'div', [
                   el( 'header', 'head' ),
-                  el( 'main', { textContent: 'main', internalContent: true } ),
+                  el( 'main', { textContent: 'main', placeholder: true } ),
                   el( 'footer', { textContent: 1 } ),
                 ] ),
               ],
@@ -883,7 +916,7 @@ const testNamespace = () => {
             contents: [
               el( 'div', [
                 el( 'header', 'head' ),
-                el( 'main', { textContent: 'main', internalContent: true } ),
+                el( 'main', { textContent: 'main', placeholder: true } ),
                 el( 'footer', { textContent: 1 } ),
               ] ),
             ],
@@ -1020,7 +1053,7 @@ const testComponentHandles = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { internalContent: true } ),
+            el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
             el ( 'span', 'lower' ),
@@ -1185,7 +1218,7 @@ const testLoop = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { internalContent: true } ),
+            el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
             el ( 'span', 'lower' ),
@@ -1814,7 +1847,7 @@ const testInternals = () => {
         contents: [ el( 'section', { id : 'containy' },
             [
               el( 'h1', { textContent: 0 }  ),
-              el( 'div', { internalContent: true } ),
+              el( 'div', { placeholder: true } ),
             ] ) ],
       },
     },
@@ -1900,13 +1933,13 @@ const testAliasedRecipes = () => {
       components: {
         foo: {
           data: { foodata: 'strue' },
-          contents: [ node( 'bar', { internalContent: true }, [
+          contents: [ node( 'bar', { placeholder: true }, [
             el( 'span', { textContent: 1 } ),
             ] ) ],
         },
         bar: {
           data: { bardata: 'strue' },
-          contents: [ node( 'col', { class: 'additive' },
+          contents: [ node( 'col', { class: 'additive now' },
                             [ el( 'section', 'BARBAR' ) ] ) ],
         },
         col: {
@@ -1926,14 +1959,14 @@ const testAliasedRecipes = () => {
   confirmEl( 'test-aliased-recipes',
              'body',
              [
-               [ 'div', { class: 'additive col', 'data-thing': 'that' }, [
+               [ 'div', { class: 'additive col now', 'data-thing': 'that' }, [
                  [ 'span', 'COLCOL' ],
                  [ 'section', 'BARBAR' ],
                  [ 'span', 'Hello There' ],
                  [ 'span', 'Ima thing' ],
                  [ 'span', '[true/true/true/12]' ],
                ] ],
-               [ 'div', { class: 'col additive', 'data-thing': 'that' }, [
+               [ 'div', { class: 'col additive now', 'data-thing': 'that' }, [
                  [ 'span', 'COLCOL' ],
                  [ 'section', 'BARBAR' ],
                  [ 'span', '[true/11/true/13]' ],
@@ -1949,7 +1982,6 @@ const testAliasedRecipes = () => {
 }; //testAliasedRecipes
 
 test( 
-
   testNamespace,
   testBasic,
   testIfs,
