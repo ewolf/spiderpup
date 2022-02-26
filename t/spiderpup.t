@@ -18,7 +18,7 @@ my $base = ( getcwd =~ m~/t$~ ? '.' : 't' ) . '/www';
 sub spiderpup_data {
     my $file = shift;
     my $js = Yote::SpiderPup::yaml_to_js( $base, "recipes/$file" );
-    my ($funs, $filespaces, $defNS) = ( $js =~ /^const funs = \[(.*?)\];\nconst filespaces = (.*?);\nconst defaultFilename = \["([^"]+)/s );
+    my ($funs, $filespaces, $defNS) = ( $js =~ /^let funs = \[(.*?)\];\nlet filespaces = (.*?);\nlet defaultFilename = \["([^"]+)/s );
     $funs = [grep {$_} map { $_ =~ s/^\s*//s; $_ =~ s/\s*$//s; $_ } split (/,/s, $funs)];
     return $funs, from_json($filespaces), $defNS;
 }
