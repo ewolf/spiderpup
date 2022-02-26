@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Mojolicious::Lite;
 
 use Yote::SpiderPup;
 
 my $dir = $ARGV[0] || $ENV{SPIDERPUP} || '../www';
-
-Yote::SpiderPup->launch( root => $dir );
+my $app = app;
+Yote::SpiderPup->launch( $dir, $app );

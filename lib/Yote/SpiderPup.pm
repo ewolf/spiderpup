@@ -7,7 +7,6 @@ use Data::Dumper;
 
 use File::Slurp;
 use JSON;
-use Mojolicious::Lite;
 use YAML;
 
 my %config;
@@ -20,12 +19,14 @@ my $root;
 #
 sub serve_file {
     my ($c,$filename,$type) = @_;
+
     if (! $filename) {
         $filename = "$root".$c->req->url->to_abs->path;
     }
 
+    $c->app->log->debug( "**FILE**, $filename" );
+
     if (-e $filename) {
-        app->log->debug( "**FILE**, $filename" );
         my $text = read_file( $filename );
         $type && $c->res->headers->content_type( $type );
         return $c->render( text => $text );
@@ -54,7 +55,7 @@ sub serve_html {
 
     my $css = $filename;
 
-    app->log->debug( "**HTML** $page, $filename" );
+    $c->app->log->debug( "**HTML** $page, $filename" );
 
     if ($page =~ /\.html$/) {
         if (-e $filename) {
@@ -233,41 +234,44 @@ sub serve_recipe {
 } #serve_recipe
 
 sub prepare_handlers {
-    my ($pkg, $root) = @_;
+    my ($pkg, $spider_root, $app) = @_;
 
-    get '/js/*' => sub { serve_file( shift,
+    $root = $spider_root;
+
+    my $routes = $app->routes;
+
+    $routes->get( '/js/*' => sub { serve_file( shift,
                                      undef,
-                                     'text/javascript');
-    };
+                                     'text/javascript') } );
 
-    get '/img/*' => \&serve_file;
-    get '/res/*' => \&serve_file;
-    get '/css/*' => \&serve_file;
-    get '/recipes/*' => sub {
+    $routes->get ('/img/*' => \&serve_file);
+    $routes->get ('/res/*' => \&serve_file);
+    $routes->get ('/css/*' => \&serve_file);
+    $routes->get ('/recipes/*' => sub {
 	my $c = shift;
 	my $filename = "$root".$c->req->url->to_abs->path;
 	serve_file( $c, $filename, 'text/plain' );
-    };
+    } );
 
-    any '/_/*' => \&serve_recipe;
+    $routes->any ('/_/*' => \&serve_recipe);
 
-    get '/' => sub {
+    $routes->get ( '/' => sub {
         my $c = shift;
         #    $c->render(text => "rooo");
         serve_html( $c, '/index.html' );
-    };
+    } );
 
-    get '/*' => \&serve_html;
+    $routes->get ('/*' => \&serve_html);
+
 } #prepare_handlers
 
 #
 # Active the server
 #
 sub launch {
-    my $pkg = shift;
-    %config = @_;
-    $pkg->prepare_handlers( $config{root} );
-    app->start;
+    my ($pkg,$root,$app) = @_;
+    $pkg->prepare_handlers( $root, $app );
+    $app->start;
 } #launch
 
 1;
