@@ -534,6 +534,7 @@ const testBasic = () => {
       title: 'titlez',
       components: {
         foo: {
+          attrs: { class: 'woot boot' },
           functions: {
             bar: 0
           },
@@ -572,9 +573,9 @@ const testBasic = () => {
                            textContent: 'SECOND'
                          }, // 1
                   [
-                    [ 'div', [ 'span', 'BAR' ]],  // 1, 0
-                    [ 'div', [ 'span', 'BAR2' ]], // 1, 1
-                    [ 'div', [                    // 1, 2
+                    [ 'div', { class: 'woot boot' }, [ 'span', 'BAR' ]],  // 1, 0
+                    [ 'div', { class: 'woot boot' }, [ 'span', 'BAR2' ]], // 1, 1
+                    [ 'div', { class: 'woot boot' }, [ // 1, 2
                       [ 'span', 'BAR3' ],           // 1, 2, 0
                       [ 'span', 'a span' ],     // 1, 2, 1
                       [ 'span', 'with stuff' ], // 1, 2, 2
@@ -1982,12 +1983,12 @@ const testAliasedRecipes = () => {
 }; //testAliasedRecipes
 
 test( 
-  testNamespace,
   testBasic,
   testIfs,
   testLoop,
   testHandles,
   testMoreLoop,
+  testNamespace,
   testIfLoop,
   testInternals,
   testAliasedRecipes,
