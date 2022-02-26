@@ -168,7 +168,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultNamespace = ".to_json($default_filename)."[0];\n"; # put the default_filename in an array so it can be json escaped
 
-    print STDERR "$js\n";
+#    print STDERR "$js\n";
 
     return $js;
 }
@@ -232,20 +232,8 @@ sub serve_recipe {
     $c->render(text => "YAML NOTFOUND / $page");
 } #serve_recipe
 
-#
-# Active the server
-#
-sub launch {
-    my $pkg = shift;
-    %config = @_;
-    $root = $config{root};
-
-    # yote call
-    any '/yote' => sub {
-        my $c = shift;
-
-        $c->render(text => "/yote");
-    };
+sub prepare_handlers {
+    my ($pkg, $root) = @_;
 
     get '/js/*' => sub { serve_file( shift,
                                      undef,
@@ -270,7 +258,15 @@ sub launch {
     };
 
     get '/*' => \&serve_html;
+} #prepare_handlers
 
+#
+# Active the server
+#
+sub launch {
+    my $pkg = shift;
+    %config = @_;
+    $pkg->prepare_handlers( $config{root} );
     app->start;
 } #launch
 
