@@ -1,5 +1,160 @@
 Spiderpup allows you to build reactive websites using yaml to describe components and modules built from javascript, less/css and html elements. It maps urls to yaml files that it uses to serve pages. 
 
+# ---- data transition -------
+
+Designer Input. The YAML files.
+
+The YAML files have the following top level keywords:
+
+
+# body for page
+ * body: special component recipe node
+ * preLoad: called when namespace is loaded
+ * onLoad: called when namespace is rendered
+
+# html header stuff (only used if body is given)
+ * include
+   - css : single or list of css files to include
+   - javascript : single or list of css files to include
+   - javascript-module : single or list of css files to include
+ * title : string title
+ * javascript : string javascript to include
+ * css : string css to include
+ * less : string less that will be translated into css to include
+
+# namespace things
+ * import: alias -> YAML filename
+ * components: name -> component recipe node
+ * data: name  -> function or value
+ * functions: name -> function
+ * listen: function called to listen to a general broadcast
+
+# component recipe nodes
+ * contents: list of element or component instance nodes
+             must include exactly one element which will either
+             be a component instance or element node
+ * data: name  -> function or value
+ * functions: name -> function
+ * class: class(es) to add to root element node of the recipe
+ * preLoad: called when namespace is loaded
+
+
+# component instance nodes
+ * contents: list of element or component instance nodes
+             that are in the scope of the instance that
+             creates the component and are placed
+             within the component's root element.
+ * placeholder_contents: <placeholder name> -> 
+             list of element or component instance nodes
+             that are in the scope of the instance that
+             creates the component and are placed
+             within the component in named placeholder spots
+ * data: name -> function or value (for overrides)
+ * functions: name -> function (for overrides)
+ * class: class(es) to add to root element node of the recipe
+ * if/elseif: function expecting a boolean return
+ * else: a true value
+ * forval: a string name for the iterator
+ * foreach: a function that returns a list to iterate over (TODO: should be iterator?)
+ * on_<eventname>: a function that handles events emitted by the instance
+
+# element nodes
+ * contents: list of element or component instance nodes
+             that are in the scope of the instance that
+             creates the component and are placed
+             within the component in placeholder spots
+             or it root element.
+ * class: class(es) to add to this element
+ * if/elseif: function expecting a boolean return
+ * else: a true value
+ * forval: a string name for the iterator
+ * foreach: a function that returns a list to iterate over (TODO: should be iterator?)
+ * on_<eventname>: a function that handles events emitted by the element
+ * textContent/innerHTML: value or function that is used to attach either to element
+ * <any thing else is an attirute name>: value or function that is used to set the attribute named
+
+# -------------------------------------------------------------------------------------------------
+
+Yote::SpiderPup translates the YAML file data into javascript/JSON to embed in the return value
+
+OUTPUT ----
+
+let filespaces = {
+ 'filename':<filename node>,
+};
+let defaultNamespace = 'name of filespace to render on the page';
+
+
+FILENAME NODE ----
+{
+  'namespaces': { 'alias' : 'filename', ... },
+  'html':{
+    'head':{ 'title':'title', 
+             'css':[css urls to include], 
+             'javascript':[javascript urls to include], 
+             'javascript-module':[javascript modules to include] 
+           },
+    'body':{ 'listen': <function>,
+             'preLoad': <function>,
+             'onLoad': <function>,
+             'contents': [ el or component instance nodes ], 
+           },
+         },
+  'functions': { <name>: <function>, .. },
+  'data': { <name>: <value or function>, ... },
+  'components': { <name>: <recipe node>, ... },
+}
+
+BODY NODE ---
+{       
+  'contents': [ el or component instance nodes under the body element ], (* slightly differs from recipe node)
+  'class': [ value or function to adding to the root element class TODO: remove old added classes? ],
+  'listen': <function>,
+  'preLoad': <function called when an instance is starting to be placed>,
+  'onLoad': <function called when an instance has been placed>,
+}
+
+COMPONENT RECIPE NODE ---
+{       
+  'contents': [ (one) root el or component instance node ],
+  'class': [ value or function to adding to the root element class TODO: remove old added classes? ],
+  'listen': <function>,
+  'preLoad': <function called when an instance is starting to be placed>,
+  'onLoad': <function called when an instance has been placed>,
+}
+
+ELEMENT NODE ---
+{       
+  'contents': [ el or component instance nodes ],
+  'class': [ value or function to adding to the element class TODO: remove old added classes? ],
+  'if': <function>,
+  'elsif': <function>,
+  'else': <true value>,
+  'forval': <string name>,
+  'foreach':<function returning list>,
+  'on_<event name>': <function called when element emits the named event>,
+  <anything else considered property name>: <value or function to set the propety to>,
+}
+
+COMPONENT INSTNACE NODE ---
+{       
+  'contents': {[ el or component instance nodes that go inside root element ],
+  'placeholder_contents': { <placeholdername>: [ el or component instance nodes that go inside named place holder in compoment ],  },
+  'class': [ value or function to adding to the element class TODO: remove old added classes? ],
+  'if': <function>,
+  'elsif': <function>,
+  'else': <true value>,
+  'forval': <string name>,
+  'foreach':<function returning list>,
+  'on_<event name>': <function called when element emits the named event>,
+  <anything else considered property name>: <value or function to set the propety to>,
+}
+
+
+
+
+
+
 This example shows a simple reactive spiderpup page that
 contains two independent counters. 
 

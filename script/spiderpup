@@ -7,8 +7,8 @@ use warnings;
 use Data::Dumper;
 use Mojolicious::Lite;
 
-use Yote::SpiderPup;
+use Yote::SpiderPup::Mojo;
 
 my $dir = $ARGV[0] || $ENV{SPIDERPUP} || '../www';
 my $app = app;
-Yote::SpiderPup->launch( $dir, $app );
+Yote::SpiderPup::Mojo->launch( $dir, $app );
