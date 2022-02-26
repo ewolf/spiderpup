@@ -548,7 +548,7 @@ const attachForFields = (node,parent) => {
       forhash && Object.keys(forhash)
         .forEach( forname => node[fd][forname] = forhash[forname]  )
     } );
-}; //attachForData
+}; //attachForFields
 
 /*
   Nodes types:
@@ -921,10 +921,18 @@ function _refresh_content(content, el) {
                 forEl.instance = forInstance;
                 this._key2instance[ forKey ] = forInstance;
               }
+
+
               forInstances.push( forInstance );
 
               forInstance.idx[forval] = i;
               forInstance.it[forval] = list[i];
+
+              // update data for foreach instance before refresh
+              Object.keys( forInstance.data )
+                .forEach( dname => {
+                  forInstance.data[dname] = dataVal( forInstance.data[dname], forInstance );
+                } );
 
               forInstance._refresh( con.recipe.rootElementNode, forEl, con );
             } 
@@ -947,7 +955,14 @@ function _refresh_content(content, el) {
 
       // not in foreach 
       else if (con.isComponent) {
-        conEl.instance._refresh_component( con, conEl, con.recipe );
+        // extract data from functions if any
+        const conInst = conEl.instance;
+        Object.keys( conInst.data )
+          .forEach( dname => {
+              conInst.data[dname] = dataVal( conInst.data[dname], this );
+          } );
+
+        conInst._refresh_component( con, conEl, con.recipe );
       } else {
         // normal element
         this._refresh( con, conEl );
