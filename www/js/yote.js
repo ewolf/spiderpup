@@ -131,13 +131,13 @@ const rpc = (config,app,action,target,args,files) => {
         app,target,action,args,token : sess_ids[app],
       };
       
-      console.log( payload, 'PAY' );
       fd.append( 'payload', JSON.stringify(payload) );
       if( files ) {
         fd.append( 'files', files.length );
         for( let i=0; i<files.length; i++ )
           fd.append( 'file_' + i, files[i] );
       }
+      console.log( payload, 'PAY' );
       xhr.send(fd);
     } );
 }; //rpcs

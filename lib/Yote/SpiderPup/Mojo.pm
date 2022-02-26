@@ -110,7 +110,8 @@ sub prepare_handlers {
     my ($pkg, $spider_root, $mojo_app, $use_yote) = @_;
 
     $root_directory = $spider_root;
-
+    
+    # res -> file upload resource directory
     for my $sdir (qw( log img res css recipes)) {
         my $dir = "$root_directory/$sdir";
         -d $dir or mkdir $dir;

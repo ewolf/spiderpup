@@ -1,0 +1,13 @@
+---
+account_pools:
+  - sitewide
+domains:
+  '*':
+    apps:
+      test:
+        class: Yote::Server::App::Test
+        account_pool: sitewide
+        active: 1
+spiderpup_directory: ../../spiderpup/www//spiderpup/www
+sqlite_accounts_file: ../../spiderpup/www//data/accounts.sqlite
+

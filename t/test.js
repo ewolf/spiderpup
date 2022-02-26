@@ -1971,7 +1971,17 @@ const testFills = () => {
           el( 'main', { style: 'display:flex; flex-direction: row' },
               [
                 el( 'div', { fill: 'left', if: c => c.get('showLeft') } ),
-                el( 'section', { fill: true } ),
+                node( 'inner', { 
+                    class: 'C',
+                    on_innerLoad: (c,ev) => {
+                      c.fun.log( ev );
+                      return false;
+                    },
+                    on_bubbleCaught: (c,ev) => {
+                      c.fun.log( ev );
+                      return true;
+                    },                  
+                }),
                 el( 'div', { fill: 'right', if: c => c.get('showRight') } ),
               ] )
         ]
@@ -2063,44 +2073,59 @@ const testFillEvents = () => {
                   el( 'span', 'left bar' ),
                 ],
                 right: [
-                  el( 'span', 'right bar' ),
+                  // also in holder instance
+                  node( 'inner', {
+                    class: 'C',
+                    on_innerLoad: (c,ev) => {
+                      c.fun.log( ev + '[IN HOLDER RIGHT]' );
+                      return false;
+                    },
+                    on_bubbleCaught: (c,ev) => {
+                      c.fun.log( ev );
+                      return true;
+                    },
+                  } )
                 ],
               },
               on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "INNER LOAD" );
+                  c.fun.log( ev + '[IN HOLDER INST]' );
                   return false;
               },
               on_bubbleCaught: (c,key,ev) => {
-                c.fun.log( "BUBBLE UP" );
+                c.fun.log( ev );
                 return true;
               },
             },
-            [
+            [ // this is in the body instance
               el( 'span', 'Hello There' ),
               el( 'span', 'Ima thing' ),
               node( 'inner', {
                 class: 'A',
-                on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "INNER LOAD" );
+                on_innerLoad: (c,ev) => {
+                  c.fun.log( ev + '[IN HOLDER FILL]' );
                   return false;
                 },
-                on_bubbleCaught: (c,key,ev) => {
-                  c.fun.log( "BUBBLE UP" );
+                on_bubbleCaught: (c,ev) => {
+                  c.fun.log( ev );
                   return true;
                 },
               } )
             ] ),
 
+/*
       node( 'inner', {
         class: 'B',
-        on_innerLoad: (c,key,ev) => {
-          c.fun.log( "INNER LOAD" );
+        on_innerLoad: (c,ev) => {
+          c.fun.log( ev );
+          return false;
         },
-        on_bubbleCaught: (c,key,ev) => {
-          c.fun.log( "BUBBLE UP" );
+        on_bubbleCaught: (c,ev) => {
+          c.fun.log( ev );
           return true;
         },
       }),
+*/
+
 
     ]
   );
@@ -2123,7 +2148,7 @@ const testFillEvents = () => {
     components: {
       inner: {
         contents: [ el( 'span', 'INNY' ) ],
-        onLoad: c => { c.fun.log( "START ONLOAD" ); c.event( 'innerLoad', 'Loaded' ); c.event( 'bubbleCaught', 'bubbling' ); },
+        onLoad: c => { console.log( c.name + " doing ONLOAD" );c.fun.log( "START ONLOAD" ); c.event( 'innerLoad', 'INNER LOAD <'+c.id+'>' ); c.event( 'bubbleCaught', 'BUBBLE UP' ); },
       },
 
       holder: {
@@ -2131,7 +2156,17 @@ const testFillEvents = () => {
           el( 'main', { style: 'display:flex; flex-direction: row' },
               [
                 el( 'div', { fill: 'left', if: c => c.get('showLeft') } ),
-                el( 'section', { fill: true } ),
+                node( 'inner', { 
+                    on_innerLoad: (c,ev) => {
+                      c.fun.log( ev + '[IN HOLD]' );
+                      return false;
+                    },
+                    on_bubbleCaught: (c,ev) => {
+                      c.fun.log( ev );
+                      return true;
+                    },
+                  
+                }),
                 el( 'div', { fill: 'right', if: c => c.get('showRight') } ),
               ] )
         ]
@@ -2139,9 +2174,26 @@ const testFillEvents = () => {
     },
   } );
 
+  // innerLoadEvent
+  //   so 'inner' component is placed a number of times, each calling its
+  //   onLoad event. the innermost inner is loaded first
+  //     which logs START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+  //     then to thee holder
+  // 
+
   const inst = go();
 
   console.log( inst.id, inst.get( 'logs' ), "LOGS" );
+
+  is_deeply( inst.get('logs'), [
+    'START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+    'INNER LOAD  (for instance of recipe inner in instance of recipe html)',
+    'BUBBLE UP  (for instance of recipe inner in instance of recipe html)',
+    'START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+    'INNER LOAD  (for instance of recipe inner in instance of recipe html)',
+    'BUBBLE UP  (for instance of recipe inner in instance of recipe html)'
+  ], 'log order' );
+
 
   0&&confirmEl( 'test-fill',
              'body',

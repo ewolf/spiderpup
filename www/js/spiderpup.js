@@ -1,45 +1,234 @@
-  // a namespace has the following fields:
-  //   components -> { name -> component }
-  //   namespaces -> { localname -> namespace }
-  //   functions  -> { name -> function }
-  //   data       -> { field -> value }
-  //   include css|javascript
-  //   html head script|title|style
-  //        body onLoad|on|contents|listen
-  //
-  //   a component (recipe) node has the following fields:
-  //     functions  -> { name -> function }
-  //     data       -> { field -> value }
-  //     onLoad|on|contents|listen
-  //     contents: content node (singular)
-  //
-  //   an content node can be an element or component node
-  //
-  //   an element node has the following fields:
-  //     contents -> content nodes
-  //     if|elsif|else|foreach|forval - flow control and looping functions
-  //     on -> { element event name -> event function }
-  //
-  //   a component node has the following fields:
-  //     contents -> content nodes to be inserted into the component
-  //     if|elsif|else|foreach|forval - flow control and looping functions
-  //     on -> { component event name -> event function }
-  //
-  // in addition, each node will gain
-  //    id -> serialized field
-  //    key -> uniquely identify this node
-  //    recipe -> a link to the recipe that it is attached to
-  //
-  //
-  // an instance node will gain
-  //    componentRecipe - link to the recipe that created it
-
 /*
-    handles
+ABOUT -----------------------------
 
-    if/elseif/else
+ Convert a json data structure into a 
+ Single Application Page on top of very simple html
+ that includes a head and empty body.
 
-    foreach
+INIT -------------------------------
+
+ The init takes a json data structure and
+ default filename.
+
+ The json data structure is a hash of filenames to
+ namespace objects. The default filename corresponds
+ to the namespace object that is used to attach the
+ body component to the document.
+
+ Init 'preps' each namespace, adding functions and
+ fields as it goes. It connects namespaces together
+ via aliases defined in their 'namespaces' field.
+
+   * parses and adds to the data structure
+   * attaches styles, css links and script tags to the head
+   * instantiates a body instance object
+   * calls refresh on the body instance object
+
+ NAMESPACE DATA STRUCTURE --------------------------
+
+   a namespace has the following fields:
+     components -> { name       -> component }
+     namespaces -> { localname  -> namespace }
+     functions  -> { name       -> function }
+     data       -> { field      -> value or once computed function }
+     include    -> { css        -> [urls],
+                     javascript -> [urls] }
+     html       -> {
+         head -> {
+           script -> text
+           title  -> string
+           style  -> text
+         }
+         body -> {
+           onLoad   -> function
+           on       -> { eventname -> function }
+           contents -> [ element|component instance node...]
+           listen   -> function
+         }
+        }
+  fields computed/added compile time:
+     type        -> 'namespace'
+     isNamespace -> true
+     id          -> serialized field
+     fun         -> copy of functions
+     filename    -> filename this namespace is from
+     name        -> namespace name for debugging
+     set         -> function
+     get         -> function
+     has         -> function
+     _check      -> function
+     findRecipe  -> function
+     key         -> uniquely identify this node
+     dataFunctions -> { filled with data -> function (for functions in data) }
+
+
+ COMPONENT (RECIPE) DATA STRUCTURE -----------------------
+ 
+  a component (recipe) node has the following fields:
+    functions  -> { name -> function }
+    data       -> { field -> value }
+    onLoad     -> function
+    on         -> { event -> function }
+    listen     -> function
+    contents   -> [content node] (may only have one content node)
+    attrs      -> { attributename -> value or function }
+  fields computed/added compile time:
+     type            -> 'recipe'
+     isRecipe        -> true
+     id              -> serialized field
+     fun             -> copy of functions
+     namespace       -> namespace object
+     parent          -> namespace object
+     name            -> name of recipe
+     aliasedRecipe   -> recipe object if the first content node 
+                        is not an element but is a recipe. 
+                        these may chain
+     isFinalized     -> true
+     rootElementNode -> the first (and only) entry in the contents list
+    
+
+ 
+ ELEMENT DATA STRUCTURE -----------------------
+
+ an element node has the following fields:
+   tag              -> element tagname
+   contents         -> [element or component instance, element or component instance, ... ]
+   handle           -> handle name for instance.el hash
+   if|elsif|foreach -> function
+   else             -> true
+   forval           -> looping variable name
+   on               -> { element event name -> event function }
+   fill             -> true|<name> where true is the default fill for a 
+                       component and a name connects to fill_contents
+   attrs            -> { attributename -> value or function }
+  fields computed/added at compile time:
+     type            -> 'element'
+     isElement       -> true
+     id              -> serialized field
+     recipe          -> recipe object this is content of
+  fields computed/added at generate time:
+
+ COMPONENT INSTANCE DATA STRUCTURE -----------------------
+
+ a component instance node has the following fields:
+   tag              -> name of recipe
+   contents         -> [element or component instance, element or component instance, ... ]
+   handle           -> handle name for instance.comp hash
+   if|elsif|foreach -> function
+   else             -> true
+   forval           -> looping variable name
+   on               -> { component event name -> event function }
+   attrs            -> { attributename -> value or function }
+   fill_contents    -> { filltargetname -> [ element or component instances ] }
+  fields computed/added at compile time:
+     type            -> 'component'
+     isComponent     -> true
+     id              -> serialized field
+     recipe          -> a link to the recipe that it is attached to
+ 
+ THE BODY INSTANCE
+
+  the body is a special recipe. if the default namespace has html->body,
+  an instance object will be created for it and attached to the
+  html document.body element, and the _refresh method on the instance
+  will be called.
+
+ REFRESHING AN INSTANCE
+
+   The instance data structure is created on refresh. foreach iterations
+   each have their own instance data structures. instances in foreach iterations
+   beyond the first iteration may be destroyed and recreated as refresh is 
+   called to a parend instance.
+
+
+ INSTANCE DATA STRUCTURE -----------------------------------------
+   recipe   -> recipe object
+   parent   -> parent instance, or if the body instance, the default namespace
+   name     -> string `instance of recipe foo` or `instance of recipe foo in (parent name)`
+   rootNode -> (if not the body instance) component instance object
+   el       -> { handle -> html element }
+   comp     -> { handle -> instance object }
+   _loop_level -> number (temporary foreach var)
+   idx      -> { iterator name -> iterator index }  (temporary foreach var)
+   it       -> { iterator name -> iterator value }  (temporary foreach var)
+   on       -> { event name -> function }
+   broadcast -> function( act, msg )
+   _propagateBroadcast -> function( act, msg )
+   handleEvent -> function( event, result )
+   event -> function(event,result)  ->  initiates the event
+   broadcastListener -> function to handle broadcasts
+   fun  -> { functionname -> function }
+   refresh -> function that refreshes this instance and all 
+              child instances under it
+   _refresh -> refresh function( node, element )
+   _refresh_content -> function( content, elelement ) - refreshes the content instance node
+   _refresh_component -> function( component, element, recipe )
+   _new_el -> function(node,key,attachToEl,attachAfterEl)
+   _refresh_element -> function(node,element)
+   _resolve_onLoad -> function
+   _key2instance -> { key string -> instance object }
+   _key -> function( node, idxOverride ) - returns a key for the node
+                                           the node is inside this instance
+   _attachElHandle -> function( el, handle ) attaches an element to this
+                      instance by given handle
+   _attachCompHandle -> function( component, handle ) attaches a
+                      component to this instance by given handle
+   top -> the body instance this instance is ultimetly contained in
+   type -> 'instance'
+   isInstance -> true
+   id -> serialized id
+   data -> { fieldname -> value } * inherited from parent if the fieldname is not defined in the component instance node
+   set         -> function
+   get         -> function
+   has         -> function
+   _check      -> function
+   rootEl      -> html element that is the top container for this component instance
+
+ HTML ELEMENT FIELDS ADDED -----------------------------------
+   hasInit -> true when this element has undergone init process
+   (event handlers) -> as per recipe element node definitions
+   instance -> (just for rootEl of instance), the instance object
+   style
+     display -> 'none' (removed when element is to be displayed)
+   dataSet
+     key -> result of _key
+     ifCondition -> true|false if the condition test has been met
+     elseIfCondition -> 'n/a' if condition above it has been met
+                        so test was not performed, 
+                        otherwise true|false for result of condition
+     else            -> true when no condition met, false otherwise
+     fill            -> if this is a container that takes fill
+
+ element events
+   these are handled on the element itself with the instance as 
+   the first parameter and event as the second
+
+ broadcasts
+   easy, broadcasts are heard by all listeners
+
+ component events
+   these are a bit tricker. events bubble up from one component
+   instance to its parent. the event should be patterend off of the 
+   element event with a stopPropagation and preventDefault possibly,
+   however the difficulty comes in when one recipe basically inherets
+   from an other by having its root content node be an other recipe
+
+
+ UPDATES
+   when refresh is called on an instance, all instances inside it
+   have their refresh called.
+
+   an instance refresh starts with their rootEl html element refresh.
+   refresh sets up vent listeners handles, updates classes, 
+   textContent|innerHTML|fill, and attributes, calling functions for
+   those values if functions provide them, or using the values provided
+   otherwise.
+
+   once the root element has been refreshed, the content that it contains
+   is also refreshed.
+
+   if this is the first time the instance was refreshed, onLoad is called
+   as the last part of the rfresh
 
  */
 
@@ -59,6 +248,8 @@ let defaultNamespace;
 const init = (spaces,defFilename) => {
   filespaces = spaces;
   defaultFilename = defFilename;
+
+  console.log( spaces, defFilename );
 
   // see if the module requested has a body to render.
   // if not, then loading this does nothing
@@ -185,16 +376,13 @@ const prepNamespace = (namespace,filename) => {
       prepRecipe( recipe, recipeName, namespace );
     } );
 
-  // namespace has 'fun' like an instance does
-  namespace.fun = namespace.functions || {};
-
   // find recipe given a tag. this can cross namespaces if defined
   namespace.findRecipe = function(tag) {
     const tagParts = tag.split('.');
     if (tagParts.length == 2) {
       const space = this.namespaces[tagParts[0]];
       if (!space) {
-        throw new Error( `requested namespace that was not imported` );
+        throw new Error( `requested namespace '${tagParts[0]}' that was not imported` );
       }
       return space.findRecipe( tagParts[1] );
     } else if (tagParts.length == 1) {
@@ -262,7 +450,7 @@ const finalizeRecipe = (recipe) => {
 
   let root = recipe.contents[0];
 
-  let aliasedRecipe = namespace.findRecipe( recipe.contents[0].tag );
+  let aliasedRecipe = namespace.findRecipe( root.tag );
   if (aliasedRecipe) {
     recipe.aliasedRecipe = aliasedRecipe;
     if (! aliasedRecipe.isFinalized) {
@@ -271,8 +459,10 @@ const finalizeRecipe = (recipe) => {
     root = aliasedRecipe.rootElementNode;
     attachFunctions( recipe, aliasedRecipe );
     recipe.parent = aliasedRecipe;
-    recipe.rootElementContents = recipe.contents[0].contents;
     attachData( recipe, aliasedRecipe );
+    
+    attachFunctions( recipe, root );
+    attachData( recipe, root );
   }
 
 
@@ -288,8 +478,10 @@ const finalizeRecipe = (recipe) => {
     Object.keys(recipe.attrs).forEach (attr => {
       const val = recipe.attrs[attr];
       if (attr === 'class') {
+        // class is additive and applies to the root element
         root.attrs[attr] = root.attrs[attr] ? [root.attrs[attr], val].join( ' ' ) : val;
       } else {
+        // other attributes do not override the attribute (should they?)
         root.attrs[attr] = attr in root.attrs ? root.attrs[attr] : val;
       }
     } );
@@ -325,7 +517,25 @@ const newBodyInstance = recipe => {
 
 
 const newInstance = (recipe,parent,node) => {
-  const instance = {
+
+  if (recipe.aliasedRecipe) {
+//    debugger;
+    //  example:
+    //    loginForm is an alias of forminput which has on_submit in
+    //    its recipe instance 
+    // 
+    //
+    // the aliased recipe is going to make the parent instance
+    //parent = newInstance(recipe.aliasedRecipe,parent,node);
+    //    recipe = recipe.aliasedRecipe;
+
+    // 
+
+    //console.warn( "SO, should aliasedRecipes have multiple instances, and which direction should they bubble up and/or down?" );
+  }
+
+
+  let instance = {
     recipe: recipe,
     parent,
     name: parent ? `instance of recipe ${recipe.name} in ${parent.name}` : `instance of recipe ${recipe.name}`,
@@ -342,7 +552,6 @@ const newInstance = (recipe,parent,node) => {
     it     : {}, // iterator name -> iterator value
 
     // listeners
-    eventListeners: {}, // event name -> listeners
     on: {}, //handler -> function
 
     // broadcasts a message. refreshes if there were any listeners
@@ -358,14 +567,22 @@ const newInstance = (recipe,parent,node) => {
     },
 
     handleEvent: function(event,result) {
-      const listener = this.eventListeners[event];
-      const handled = listener && listener( result );
-      handled || ( this.parent && this.parent.handleEvent 
-          && this.parent.handleEvent (event, result) );
+      console.log( this.name );
+
+      const listener = this.on && this.on[event];
+      const handled = listener && listener( this, result );
+      if (handled) {
+        this._check() && this.refresh();
+      }
+      else if (this.parent 
+            && this.parent.handleEvent 
+            && this.parent.handleEvent(event,result) ) {
+        this.parent._check() && this.parent.refresh();
+      }
     },
 
     event: function(event,result) {
-      this.handleEvent( event,result );
+      this.parent && this.parent.handleEvent( event,result );
     },
 
     broadcastListener: (node && node.listen) || recipe.listen,
@@ -411,7 +628,7 @@ const newInstance = (recipe,parent,node) => {
           .join(',');
       }
       return base;
-    }, //key
+    }, //_key
 
     _attachElHandle: function( el, handle ) {
       if (this._loop_level > 0) {
@@ -462,22 +679,12 @@ const newInstance = (recipe,parent,node) => {
   if (node) {
     attachFunctions( instance, node );
     attachData( instance, node );
-    node.on &&
-      Object.keys( node.on )
-      .forEach( evname => {
-        // so a componentInstance uses 'event' to send a message
-        // to its listeners
-        const evfun = function() {
-          const prom = node.on[evname]( instance, ...arguments );
-          // resolve in case it returns undefined or returns a promise
-          Promise.resolve( prom )
-            .then( () => {
-              if ( instance._check() ) instance.refresh();
-            } );
-        };
+  }
 
-        instance.eventListeners[evname] = evfun;
-      } );
+  if (recipe.rootElementNode) {
+    console.log( recipe.rootElementNode.on );
+//    attachFunctions( instance, recipe.rootElementNode );
+//    attachData( instance, recipe.rootElementNode );
   }
 
   attachFunctions( instance, recipe );
@@ -504,6 +711,17 @@ const newInstance = (recipe,parent,node) => {
 
   attachGetters( instance );
 
+  if (recipe.aliasedRecipe) {
+    // the aliased recipe is going to make the parent instance
+//    instance = newInstance(recipe.aliasedRecipe,instance,node);
+
+    // 
+
+    console.warn( "SO, should aliasedRecipes have multiple instances, and which direction should they bubble up and/or down?" );
+  }
+  if (recipe.aliasedRecipe) {
+//    debugger;
+  }
   recipe.preLoad && (instance.preLoad = recipe.preLoad(instance)); 
 
   return instance;
@@ -553,7 +771,7 @@ const attachFunctions = (node,parent) => {
 }; //attachFunctions
 
 const attachData = (node,parent) => {
-  Object.keys( parent.data )
+  parent.data && Object.keys( parent.data )
     .forEach( fld =>
       (node.data[fld] = fld in node.data ? node.data[fld] : parent.data[fld])
     );
@@ -586,6 +804,8 @@ const prepNode = (node,type,parent) => {
   node.type = type;
   node['is'+type.substr(0,1).toUpperCase()+type.substr(1)] = true;
   node.id = serial++;
+
+  node.on = node.on || {};
 
   if (type !== 'element') {
     node.fun = node.functions = node.functions || {};
@@ -685,7 +905,6 @@ function _refresh_element( node, el ) {
   // check on handles
   node.handle && this._attachElHandle( el, node.handle );
 
-
   const seen = {};
 
   const rootNode = el.instance && el.instance.rootNode;
@@ -746,6 +965,7 @@ function refresh(node,el,placeholderNode,isAliased) {
         const phContainer = findFill( el, ph );
         if (phContainer) {
           const contents = placeholderNode.fill_contents[ph];
+          console.warn( "IS ALIASED? LOOK HERE" );
           if (this.parent && ! isAliased) {
             this.parent._refresh_content( contents, phContainer );
           } else {

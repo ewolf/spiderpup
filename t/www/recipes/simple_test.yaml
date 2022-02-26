@@ -1,0 +1,7 @@
+---
+
+data:
+  x: y
+
+body:
+  - div: hello world

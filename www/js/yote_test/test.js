@@ -429,7 +429,7 @@ function def_namespace( args ) {
   Object.keys( args ).forEach( key => {
     if (key.match( /^(title|include)/ ) ) {
       def.TEST.html.head[key] = args[key];
-    } else if (key.match( /^(listen|onLoad|preLoad)/ ) ) {
+    } else if (key.match( /^(listen|onLoad|preLoad|on)/ ) ) {
       def.TEST.html.body[key] = args[key];
     } else {
       def.TEST[key] = args[key];
@@ -765,7 +765,7 @@ const testNamespace = () => {
     fail( 'used namespace that was not imported or declared' );
   } catch( e ) {
     pass( 'errored out when trying to import from a non declared, non imported namespace' );
-    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a non imported non declared namespace' );
+    like ( e.message, /requested namespace '\S+' that was not imported/, 'error message for trying to use a non imported non declared namespace' );
   }
 
   reset();
@@ -795,7 +795,7 @@ const testNamespace = () => {
     fail( 'used namespace that was declared but not imported' );
   } catch( e ) {
     pass( 'errored out when trying to import from a declared but non imported namespace' );
-    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a declared but non imported namespace' );
+    like ( e.message, /requested namespace '\S+' that was not imported/, 'error message for trying to use a declared but non imported namespace' );
   }
 
   reset();
@@ -841,7 +841,7 @@ const testNamespace = () => {
     fail( 'used namespace that was imported but not declared' );
   } catch( e ) {
     pass( 'errored out when trying to import from a imported but not declared namespace' );
-    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a imported but not declared namespace' );
+    like ( e.message, /requested namespace '\S+' that was not imported/, 'error message for trying to use a imported but not declared namespace' );
   }
 
   reset();
@@ -1286,7 +1286,7 @@ const testLoop = () => {
 
 const testHandles = () => {
   const calls = [];
-
+console.warn( 'its probably wrong for node stuff to have an on_stuffEvent handler *AND* its instance send a stuffEvent' );
   reset();
   body( 
     [
@@ -1294,9 +1294,9 @@ const testHandles = () => {
                       on_click: c => c.comp.stuff.fun.shout(),
                       textContent: 'click me' } ),
       node( 'stuff', { handle: 'stuff', 
-                       on_stuffEvent: (c,evt) => { 
-                         calls.push( c.name + " got event from stuff" );
-                       },
+//                       on_stuffEvent: (c,evt) => { 
+//                         calls.push( c.name + " got event from stuff" );
+//                       },
                      } ),
       //handles in loops
       el( 'section', { foreach: c => ["A","B","C"], forval: 'i' },
@@ -1326,6 +1326,13 @@ const testHandles = () => {
   );
 
   def_namespace( {
+
+    on: {
+      stuffEvent: (c,evt) => { 
+        calls.push( c.name + " got event from stuff" );
+      },
+    },
+
     listen: (c,type,msg) => { 
       if (type !== 'body') {
         c.fun.bodyDo( msg );
@@ -1471,11 +1478,12 @@ const testHandles = () => {
 
   return Promise.resolve( bodyInstance.loadPromise )
     .then( () => { 
+      console.log( calls, "CALS" );
       is_deeply( calls, [ 'PRELOAD',
                           'BUTTON', 
                           'hi there (from instance of recipe html)',
                           'hi there (from instance of recipe stuff in instance of recipe html)',
-                          'instance of recipe stuff in instance of recipe html got event from stuff',
+                          'instance of recipe html got event from stuff',
                         ], 'correct calls' );
     } );
 
@@ -1805,7 +1813,12 @@ const testAliasedRecipes = () => {
               el( 'span', 'Ima thing' ),
             ] ), 
       node( 'zoo',
-            { data: { defdata: 13 }},
+            { data: { defdata: 13 },
+              on_fooclick: (c,val) => {
+                // zoo is a foo is a bar is a col
+                
+              },
+            },
             [
               el ('div', 'INSTANCY' ),
             ] ),
@@ -1842,25 +1855,36 @@ const testAliasedRecipes = () => {
       components: {
         foo: {
           data: { foodata: 'true' },
-          contents: [ node( 'bar', { fill: true }, [
+          contents: [ node( 'bar', { fill: true,
+                                     on_barclick: (c,val) => c.ev( 'fooclick', `foo <- ${val}` ),
+                                   }, [
             el( 'span', { textContent: c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]` } ),
             ] ) ],
         },
         bar: {
           data: { bardata: 'true' },
-          contents: [ node( 'col', { class: 'additive now' },
+          contents: [ node( 'col', { class: 'additive now',
+                                     on_colclick: (c,val) => c.ev( 'barclick', `bar <- ${val}` ),
+                                   },
                             [ el( 'section', 'BARBAR' ) ] ) ],
         },
         col: {
           data: { coldata: 'true' },
-          contents: [ el( 'div', { class: 'col', 'data-thing': 'that' },
+          contents: [ el( 'div', { class: 'col', 
+                                   id: 'baseel',
+                                   on_click: c => c.event('colclick','col <- clicked'),
+                                   'data-thing': 'that' },
                           [ el( 'span', 'COLCOL' ) ] ) ],
         },
       }
     }
   } );
 
-  go();
+  const bodyInstance = go();
+  let zooInst = document.getElementById( 'baseel' ).instance;
+  const div = zooInst.rootEl;
+  div.click();
+  
 
   confirmEl( 'test-aliased-recipes',
              'body',
@@ -2150,6 +2174,6 @@ test(
   testMoreLoop,
   testNamespace,
   testFills,
-//  testFillEvents,
+  testFillEvents,
 );
 

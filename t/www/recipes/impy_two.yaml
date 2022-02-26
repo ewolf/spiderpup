@@ -1,0 +1,10 @@
+---
+import:
+  impy: impy
+components:
+  myimpy:
+    class: myclass
+    contents:
+      - impy:
+          contents:
+            - span: its mine
