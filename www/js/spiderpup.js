@@ -358,17 +358,14 @@ const newInstance = (recipe,parent,node) => {
     },
 
     handleEvent: function(event,result) {
-      const handled = false;
-      const listeners = this.eventListeners[event];
-      listeners && listeners.forEach( l => l( result ) && (handled = true) );
-      if (!handled) {
-        this.parent && this.parent.handleEvent 
-          && this.parent.handleEvent (event, result);
-      }
+      const listener = this.eventListeners[event];
+      const handled = listener && listener( result );
+      handled || ( this.parent && this.parent.handleEvent 
+          && this.parent.handleEvent (event, result) );
     },
 
     event: function(event,result) {
-      this.parent && this.parent.handleEvent( event,result );
+      this.handleEvent( event,result );
     },
 
     broadcastListener: (node && node.listen) || recipe.listen,
@@ -465,34 +462,29 @@ const newInstance = (recipe,parent,node) => {
   if (node) {
     attachFunctions( instance, node );
     attachData( instance, node );
-  }
-  attachFunctions( instance, recipe );
-  attachData( instance, recipe );
-  if (parent) {
-    attachFunctions( instance, parent );
-    attachForFields( instance, parent );
-
-    if (node && node.on) {
+    node.on &&
       Object.keys( node.on )
       .forEach( evname => {
         // so a componentInstance uses 'event' to send a message
         // to its listeners
         const evfun = function() {
-          const prom = node.on[evname]( parent, ...arguments );
+          const prom = node.on[evname]( instance, ...arguments );
           // resolve in case it returns undefined or returns a promise
           Promise.resolve( prom )
             .then( () => {
-              if ( parent._check() ) parent.refresh();
+              if ( instance._check() ) instance.refresh();
             } );
         };
 
-        // update component instance event listeners
-        parent.eventListeners[evname] = parent.eventListeners[evname] || [];
-        parent.eventListeners[evname].push( evfun );
+        instance.eventListeners[evname] = evfun;
       } );
-      
-    }
+  }
 
+  attachFunctions( instance, recipe );
+  attachData( instance, recipe );
+  if (parent) {
+    attachFunctions( instance, parent );
+    attachForFields( instance, parent );
   }
 
   // store data functions in backup hash

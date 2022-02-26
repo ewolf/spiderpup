@@ -2065,10 +2065,11 @@ const testFillEvents = () => {
                 ],
               },
               on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "HOLDER GOT INNERLOAD" );
+                  c.fun.log( "INNER LOAD" );
+                  return false;
               },
               on_bubbleCaught: (c,key,ev) => {
-                c.fun.log( "HOLDER GOT GOT BUBBLE UP" );
+                c.fun.log( "BUBBLE UP" );
                 return true;
               },
             },
@@ -2078,10 +2079,11 @@ const testFillEvents = () => {
               node( 'inner', {
                 class: 'A',
                 on_innerLoad: (c,key,ev) => {
-                  c.fun.log( "INNER IN HOLDER FILL CONTENTS GOT INNER LOAD" );
+                  c.fun.log( "INNER LOAD" );
+                  return false;
                 },
                 on_bubbleCaught: (c,key,ev) => {
-                  c.fun.log( "INNER IN HOLDER FILL CONTENTS GOT BUBBLE UP" );
+                  c.fun.log( "BUBBLE UP" );
                   return true;
                 },
               } )
@@ -2090,10 +2092,10 @@ const testFillEvents = () => {
       node( 'inner', {
         class: 'B',
         on_innerLoad: (c,key,ev) => {
-          c.fun.log( "INNER IN BODY CONTENTS GOT INNER LOAD" );
+          c.fun.log( "INNER LOAD" );
         },
         on_bubbleCaught: (c,key,ev) => {
-          c.fun.log( "INNER IN BODY CONTENTS GOT BUBBLE UP" );
+          c.fun.log( "BUBBLE UP" );
           return true;
         },
       }),
@@ -2112,15 +2114,14 @@ const testFillEvents = () => {
       toggleLeft: c => c.set('showLeft', !c.get('showLeft') ),
       toggleRight: c => c.set('showRight', !c.get('showRight') ),
       log: (c,msg) => {
-        c.get('logs').push( msg );
-        console.log( "GOT", c.get('logs'), c.id );
+        c.get('logs').push( msg + `  (for ${c.name})` );
       },
     },
 
     components: {
       inner: {
         contents: [ el( 'span', 'INNY' ) ],
-        onLoad: c => { console.log( "START ONLOAD " + c.id ); c.event( 'innerLoad', 'Loaded' ); c.event( 'bubbleCaught', 'bubbling' ); },
+        onLoad: c => { c.fun.log( "START ONLOAD" ); c.event( 'innerLoad', 'Loaded' ); c.event( 'bubbleCaught', 'bubbling' ); },
       },
 
       holder: {
