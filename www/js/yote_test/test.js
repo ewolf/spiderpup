@@ -1,4 +1,8 @@
 const testsToDo = [
+  'node instance test for refresh',
+  'test that element handles are set before possibly being used',
+  'test that instance handles are set before possibly being used',
+  'fails above all tests',
   'red/green text for pass fails on this page',
 ];
 /**
@@ -2021,9 +2025,9 @@ const testPlaceholders = () => {
         contents: [
           el( 'main', { style: 'display:flex; flex-direction: row' },
               [
-                el( 'div', { placeholder: 'left' } ),
+                el( 'div', { placeholder: 'left', if: 0 } ),
                 el( 'section', { placeholder: true } ),
-                el( 'div', { placeholder: 'right' } ),
+                el( 'div', { placeholder: 'right', if: 1 } ),
               ] )
         ]
       },
@@ -2036,7 +2040,7 @@ const testPlaceholders = () => {
               c => c.set('showRight', !c.get('showRight') ), //3
               ] );
 
-  go();
+  const inst = go();
 
   confirmEl( 'test-placeholder',
              'body',
@@ -2049,18 +2053,122 @@ const testPlaceholders = () => {
              ],
            );
 
+  inst.fun.toggleLeft();
+  inst.refresh();
+  
+  confirmEl( 'test-placeholder',
+             'body',
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', { style: { display: 'none' } }, [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', [ 'span', 'right bar' ] ],
+               ]
+             ],
+           );
+
+  inst.fun.toggleRight();
+  inst.refresh();
+  
+  confirmEl( 'test-placeholder',
+             'body',
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', { style: { display: 'none' } }, [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', { style: { display: 'none' } }, [ 'span', 'right bar' ] ],
+               ]
+             ],
+           );
+
+  inst.fun.toggleRight();
+  inst.refresh();
+  
+  confirmEl( 'test-placeholder',
+             'body',
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', { style: { display: 'none' } }, [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', [ 'span', 'right bar' ] ],
+               ]
+             ],
+           );
+
+  inst.fun.toggleLeft();
+  inst.refresh();
+  
+  confirmEl( 'test-placeholder',
+             'body',
+             [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
+               [
+                 [ 'div', [ 'span', 'left bar' ] ],
+                 [ 'section', [ ['span', 'Hello There' ], ['span','Ima thing'] ]],
+                 [ 'div', [ 'span', 'right bar' ] ],
+               ]
+             ],
+           );
+
+
 }; //testPlaceholders
 
+const testInstanceRefresh = () => {
+  reset();
+  body(
+    [
+      node( 'holder', 
+            { 
+              handle: 'refresher',
+            },
+          ),
+    ]
+  );
+    
+  def_namespace( {
+    data: {
+      seen: 'i0',
+    },
+
+    components: {
+      holder: {
+        contents: [
+          el( 'div', { textContent : 0 } )
+        ]
+      },
+    },
+  } );
+
+  def_funs( [ c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;}, //0
+              ] );
+
+  const inst = go();
+
+  confirmEl( 'test-instance-refresh',
+             'body',
+             [ 'div', 'seen 1' ]
+           );
+
+  inst.comp.refresher.refresh();
+
+  confirmEl( 'test-instance-refresh',
+             'body',
+             [ 'div', 'seen 2' ]
+           );
+
+  
+} //testInstancetRefresh
+
 test( 
+  testAliasedRecipes,
   testBasic,
-  testIfs,
-  testLoop,
   testHandles,
+  testIfLoop,
+  testIfs,
+  testInstanceRefresh,
+  testInternals,
+  testLoop,
   testMoreLoop,
   testNamespace,
-  testIfLoop,
-  testInternals,
-  testAliasedRecipes,
   testPlaceholders,
 );
 

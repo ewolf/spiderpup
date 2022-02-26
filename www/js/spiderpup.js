@@ -363,7 +363,7 @@ const newInstance = (recipe,parent,node) => {
     //    broadcastListener: node.listen || recipe.listen,
 
     refresh: function() {
-      this._refresh( recipe, this.rootEl );
+      this._refresh( this.recipe.contents[0], this.rootEl );
     }, //refresh
 
     _refresh: refresh,
@@ -626,6 +626,11 @@ const prepComponentNode = (node,namespace,recipe) => {
   attachFunctions( node, recipe );
   node.recipe = recipe;
   prepContents( node.contents, namespace );
+  node.placeholder_contents && 
+    Object.keys(node.placeholder_contents)
+    .forEach( targ => {
+      prepContents( node.placeholder_contents[targ], namespace );
+    } );
 };
 
 
@@ -774,6 +779,7 @@ function refresh(node,el,placeholderNode,isAliased) {
   
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
+
   node.contents && this._refresh_content( node.contents, el );
 
   if (placeholderNode) {

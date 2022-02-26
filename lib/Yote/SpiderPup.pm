@@ -5,6 +5,7 @@ use warnings;
 
 use Data::Dumper;
 
+use File::LibMagic;
 use File::Slurp;
 use CSS::LESSp;
 
@@ -14,6 +15,7 @@ use YAML;
 my %config;
 my $root_directory;
 my $yote;
+my $magic = File::LibMagic->new;
 
 #
 # server function that serves up the named file and type.
@@ -31,7 +33,13 @@ sub serve_file {
 
     if (-e $filename) {
         my $text = read_file( $filename );
-        $type && $c->res->headers->content_type( $type );
+        if ($type) {
+            $c->res->headers->content_type( $type );
+        } else {
+            my $info = $magic->info_from_filename( $filename );
+            print STDERR Data::Dumper->Dump([$info,"INFO"]);
+            $c->res->headers->content_type( $info->{mime_type} );
+        }
         return $c->render( text => $text );
     } else {
         # 404
