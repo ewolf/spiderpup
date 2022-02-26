@@ -5,8 +5,8 @@ use warnings;
 
 use Data::Dumper;
 
-use SpiderPup;
+use Yote::SpiderPup;
 
 my $dir = $ARGV[0] || $ENV{SPIDERPUP} || '../www';
 
-SpiderPup->launch( root => $dir );
+Yote::SpiderPup->launch( root => $dir );

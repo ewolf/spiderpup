@@ -1,4 +1,4 @@
-package SpiderPup;
+package Yote::SpiderPup;
 
 use strict;
 use warnings;
