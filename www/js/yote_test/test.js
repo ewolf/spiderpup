@@ -373,8 +373,8 @@ function el(tag, attrs, contents) {
       on[m[1]] = attrs[attr];
       delete attrs[attr];
     }
-    else if (attr === 'placeholder' ) {
-      elNode.placeholder = attrs[attr];
+    else if (attr === 'fill' ) {
+      elNode.fill = attrs[attr];
       delete attrs[attr];
     }
     else if (attr.match(/^(if|elseif|else|foreach|forval|data|handle|debug)$/)) {
@@ -403,7 +403,7 @@ function node(tag, args, contents) {
     else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
       n[fld] = args[fld];
     }
-    else if(fld.match( /^(placeholder_contents)$/)) {
+    else if(fld.match( /^(fill_contents)$/)) {
       n[fld] = args[fld];
     }
     else if(fld.match( /^(functions|data)$/)) {
@@ -821,7 +821,7 @@ const testNamespace = () => {
               contents: [
                 el( 'div', [
                   el( 'header', 'head' ),
-                  el( 'main', { textContent: 'main', placeholder: true } ),
+                  el( 'main', { textContent: 'main', fill: true } ),
                   el( 'footer', { textContent: c => c.fun.foot() } ),
                 ] ),
               ],
@@ -889,7 +889,7 @@ const testNamespace = () => {
             contents: [
               el( 'div', [
                 el( 'header', 'head' ),
-                el( 'main', { textContent: 'main', placeholder: true } ),
+                el( 'main', { textContent: 'main', fill: true } ),
                 el( 'footer', { textContent: c => c.fun.foot() } ),
               ] ),
             ],
@@ -1021,7 +1021,7 @@ const testComponentHandles = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { placeholder: true } ),
+            el ( 'div', { fill: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
@@ -1172,7 +1172,7 @@ const testLoop = () => {
         contents: [ 
           el ('div', [
             el ( 'span', 'upper' ),
-            el ( 'div', { placeholder: true } ),
+            el ( 'div', { fill: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: [ "A", "B", "C" ], 
                               forval: 'I', 
@@ -1736,7 +1736,9 @@ const testInternals = () => {
     [
       node( 'containy',
         [
-          el( 'div', { handle: 'adiv', id: 'guess', textContent: 'wunda' } ),
+          el( 'div', { handle: 'adiv', 
+                       id: 'guess', 
+                       textContent: 'wunda' } ),
         ] ),
     ]
   );
@@ -1752,7 +1754,7 @@ const testInternals = () => {
         contents: [ el( 'section', { id : 'containy' },
             [
               el( 'h1', { textContent: c => "containy", }  ),
-              el( 'div', { placeholder: true } ),
+              el( 'div', { fill: true } ),
             ] ) ],
       },
     },
@@ -1835,7 +1837,7 @@ const testAliasedRecipes = () => {
       components: {
         foo: {
           data: { foodata: 'true' },
-          contents: [ node( 'bar', { placeholder: true }, [
+          contents: [ node( 'bar', { fill: true }, [
             el( 'span', { textContent: c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]` } ),
             ] ) ],
         },
@@ -1880,13 +1882,13 @@ const testAliasedRecipes = () => {
 
 }; //testAliasedRecipes
 
-const testPlaceholders = () => {
+const testFills = () => {
   reset();
   body(
     [
       node( 'holder', 
             { 
-              placeholder_contents: {
+              fill_contents: {
                 left: [ 
                   el( 'span', 'left bar' ),
                 ],
@@ -1918,9 +1920,9 @@ const testPlaceholders = () => {
         contents: [
           el( 'main', { style: 'display:flex; flex-direction: row' },
               [
-                el( 'div', { placeholder: 'left', if: c => c.get('showLeft') } ),
-                el( 'section', { placeholder: true } ),
-                el( 'div', { placeholder: 'right', if: c => c.get('showRight') } ),
+                el( 'div', { fill: 'left', if: c => c.get('showLeft') } ),
+                el( 'section', { fill: true } ),
+                el( 'div', { fill: 'right', if: c => c.get('showRight') } ),
               ] )
         ]
       },
@@ -1929,7 +1931,7 @@ const testPlaceholders = () => {
 
   const inst = go();
 
-  confirmEl( 'test-placeholder',
+  confirmEl( 'test-fill',
              'body',
              [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
                [
@@ -1943,7 +1945,7 @@ const testPlaceholders = () => {
   inst.fun.toggleLeft();
   inst.refresh();
   
-  confirmEl( 'test-placeholder',
+  confirmEl( 'test-fill',
              'body',
              [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
                [
@@ -1957,7 +1959,7 @@ const testPlaceholders = () => {
   inst.fun.toggleRight();
   inst.refresh();
   
-  confirmEl( 'test-placeholder',
+  confirmEl( 'test-fill',
              'body',
              [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
                [
@@ -1971,7 +1973,7 @@ const testPlaceholders = () => {
   inst.fun.toggleRight();
   inst.refresh();
   
-  confirmEl( 'test-placeholder',
+  confirmEl( 'test-fill',
              'body',
              [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
                [
@@ -1985,7 +1987,7 @@ const testPlaceholders = () => {
   inst.fun.toggleLeft();
   inst.refresh();
   
-  confirmEl( 'test-placeholder',
+  confirmEl( 'test-fill',
              'body',
              [ 'main', { style: { display: 'flex', 'flex-direction': 'row' } },
                [
@@ -1997,7 +1999,7 @@ const testPlaceholders = () => {
            );
 
 
-}; //testPlaceholders
+}; //testFills
 
 const testInstanceRefresh = () => {
   reset();
@@ -2053,6 +2055,6 @@ test(
   testLoop,
   testMoreLoop,
   testNamespace,
-  testPlaceholders,
+  testFills,
 );
 

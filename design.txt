@@ -43,11 +43,11 @@ The YAML files have the following top level keywords:
              that are in the scope of the instance that
              creates the component and are placed
              within the component's root element.
- * placeholder_contents: <placeholder name> -> 
+ * fill_contents: <fill name> -> 
              list of element or component instance nodes
              that are in the scope of the instance that
              creates the component and are placed
-             within the component in named placeholder spots
+             within the component in named fill spots
  * data: name -> function or value (for overrides)
  * functions: name -> function (for overrides)
  * class: class(es) to add to root element node of the recipe
@@ -61,8 +61,11 @@ The YAML files have the following top level keywords:
  * contents: list of element or component instance nodes
              that are in the scope of the instance that
              creates the component and are placed
-             within the component in placeholder spots
+             within the component in fill spots
              or it root element.
+ * fill: <true or fill name> -> 
+             this element is a container for filling content (if true) or fill_content (if named)
+             for component instance elements
  * class: class(es) to add to this element
  * if/elseif: function expecting a boolean return
  * else: a true value
@@ -127,6 +130,7 @@ COMPONENT RECIPE NODE ---
 ELEMENT NODE ---
 {       
   'contents': [ el or component instance nodes ],
+  'fill': true,
   'class': [ value or function to adding to the element class TODO: remove old added classes? ],
   'if': <function>,
   'elsif': <function>,
@@ -137,10 +141,10 @@ ELEMENT NODE ---
   <anything else considered property name>: <value or function to set the propety to>,
 }
 
-COMPONENT INSTNACE NODE ---
+COMPONENT INSTANCE NODE ---
 {       
   'contents': {[ el or component instance nodes that go inside root element ],
-  'placeholder_contents': { <placeholdername>: [ el or component instance nodes that go inside named place holder in compoment ],  },
+  'fill_contents': { <fillname>: [ el or component instance nodes that go inside named place holder in compoment ],  },
   'class': [ value or function to adding to the element class TODO: remove old added classes? ],
   'if': <function>,
   'elsif': <function>,

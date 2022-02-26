@@ -489,6 +489,7 @@ const attachGetters = node => {
   node.has = function(k) {
     return (k in this.data) || this.parent && this.parent.has( k );
   };
+
   node.get = function(k,defVal) {
     if (k in this.data) return this.data[k];
     let val = this.parent && this.parent.get( k );
@@ -585,10 +586,10 @@ const prepComponentNode = (node,namespace,recipe) => {
   attachFunctions( node, recipe );
   node.recipe = recipe;
   prepContents( node.contents, namespace );
-  node.placeholder_contents && 
-    Object.keys(node.placeholder_contents)
+  node.fill_contents && 
+    Object.keys(node.fill_contents)
     .forEach( targ => {
-      prepContents( node.placeholder_contents[targ], namespace );
+      prepContents( node.fill_contents[targ], namespace );
     } );
 };
 
@@ -598,20 +599,21 @@ const prepElementNode = (node,namespace) => {
   prepContents( node.contents, namespace );
 }
 
-const findPlaceholder = (el,name,recur) => {
+const findFill = (el,name,recur) => {
   if (name !== undefined) {
-    if ( el.placeholder === name ) return el;
+    debugger;
+    if ( el.fill === name ) return el;
     const chilInts = Array.from( el.children || [] )
-          .map( chld => findPlaceholder( chld, name, true ) )
+          .map( chld => findFill( chld, name, true ) )
           .filter( chld => chld !== undefined );
 
     if (chilInts.length > 0) {
       return chilInts[0];
     }
   } else {
-    if ( el.placeholder === true ) return el;
+    if ( el.fill === true ) return el;
     const chilInts = Array.from( el.children || [] )
-          .map( chld => findPlaceholder( chld, name, true ) )
+          .map( chld => findFill( chld, name, true ) )
           .filter( chld => chld !== undefined );
     
     if (chilInts.length > 0) {
@@ -670,7 +672,7 @@ function _refresh_element( node, el ) {
       .forEach( attr => {
         seen[attr] = true;
         const val = dataVal( attrs[attr], this );
-        if (attr.match( /^(textContent|innerHTML)$/)) {
+        if (attr.match( /^(textContent|innerHTML|fill)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
           val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
@@ -686,7 +688,7 @@ function _refresh_element( node, el ) {
     .forEach( attr => {
       seen[attr] = true;
       const val = dataVal( attrs[attr], this );
-      if (attr.match( /^(textContent|innerHTML)$/)) {
+      if (attr.match( /^(textContent|innerHTML|fill)$/)) {
         el[attr] = val;
         } else if (attr === 'class' ) {
           val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
@@ -710,12 +712,12 @@ function refresh(node,el,placeholderNode,isAliased) {
   node.contents && node.contents.length > 0 && this._refresh_content( node.contents, el );
 
   if (placeholderNode) {
-    placeholderNode.placeholder_contents && 
-      Object.keys( placeholderNode.placeholder_contents )
+    placeholderNode.fill_contents && 
+      Object.keys( placeholderNode.fill_contents )
       .forEach( ph => {
-        const phContainer = findPlaceholder( el, ph );
+        const phContainer = findFill( el, ph );
         if (phContainer) {
-          const contents = placeholderNode.placeholder_contents[ph];
+          const contents = placeholderNode.fill_contents[ph];
           if (this.parent && ! isAliased) {
             this.parent._refresh_content( contents, phContainer );
           } else {
@@ -727,7 +729,7 @@ function refresh(node,el,placeholderNode,isAliased) {
 
     const placeholder = placeholderNode.contents;
     if (placeholder) {
-      const innerContainer = findPlaceholder( el );
+      const innerContainer = findFill( el );
       if (this.parent && ! isAliased) {
         this.parent._refresh_content( placeholder, innerContainer );
       } else {
@@ -988,8 +990,8 @@ function _refresh_content(content, el) {
 const _new_el = (node,key,attachToEl, attachAfterEl) => {
   const tag = node.tag;
   const newEl = document.createElement( tag );
-  if (node.placeholder) {
-    newEl.placeholder = newEl.dataset.placeholder = node.placeholder;
+  if (node.fill) {
+    newEl.fill = newEl.dataset.fill = node.fill;
   }
   newEl.key = newEl.dataset.key = key;
   if (attachAfterEl) {
