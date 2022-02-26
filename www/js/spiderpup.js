@@ -301,7 +301,6 @@ const newBodyInstance = recipe => {
 
   document.body.instance = instance;
   instance.rootEl = document.body;
-
   instance.refresh = function() {
     // refresh the contents of the body
     this._refresh( recipe.contents[0], document );

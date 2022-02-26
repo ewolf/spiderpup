@@ -379,6 +379,52 @@ is_deeply( $namespaces,
            },
            'body with fill content' );
 
+
+
+
+$loader = sub {
+    return {
+        body => {
+            'contents' => [
+                { 'slotty' => {
+                  'fill_contents' => {
+                      one => [
+                          { 'slotty' => {
+                            'on_foo' => '() => alert()' },
+                          } ],
+                  } } },
+                { 'div' => undef },
+            ],
+        },
+        components => {
+            'slotty' => {
+                data => { hasSlot => 'false', hasYarg => 'FALSE' },
+                contents => [
+                    {
+                        'div' => {
+                            contents => [
+                                { 'div' => {
+                                    'fill' => 'one',
+                                  }},
+                                { 'div' => {
+                                    'fill' => 'two',
+                                  }},
+                                { 'div' => {
+                                    'fill' => 'true',
+                                  }},
+                                ]
+                        },
+                    },
+                ],
+            }
+        },
+    };
+};
+$namespaces = {};
+Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
+$js = Yote::SpiderPup::to_json( $namespaces, 1 );
+is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"on":{"foo":()=>{return alert()}},"tag":"slotty"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
+
 $filespaces = {};
 my $yaml_file = Yote::SpiderPup::load_namespace( $base, 'recipes/import_test_again.yaml', $filespaces );
 is ($yaml_file, "$base/recipes/import_test_again.yaml", "load namespace return");
