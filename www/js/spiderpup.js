@@ -164,6 +164,7 @@ const init = (spaces,defFilename) => {
 // setup the namespace, attach methods, prep all the recipes inside, and verify their names
 const prepNamespace = (namespace,filename) => {
   prepNode( namespace, 'namespace' );
+
   namespace.filename = filename;
   namespace.name = `namespace ${filename}`;
   attachGetters( namespace );
@@ -200,10 +201,6 @@ const prepNamespace = (namespace,filename) => {
 }; //prepNamespace
 
 
-
-
-
-
 // make sure this namespace contains no recipe with a cyclic dependency
 const finalizeNamespaces = (namespace,filename) => {
   Object.keys( namespace.components )
@@ -211,10 +208,16 @@ const finalizeNamespaces = (namespace,filename) => {
       const recipe = namespace.components[recipeName];
       finalizeRecipe( recipe );
     } );
+    // store data functions in backup hash
+    namespace.dataFunctions = {};
+    namespace.data && Object.keys(namespace.data)
+      .filter( dk => typeof namespace.data[dk] === 'function' )
+      .forEach( dk => {
+        namespace.dataFunctions[dk] = namespace.data[dk];
+        namespace.data[dk] = namespace.dataFunctions[dk](namespace);
+      } );
+
 }; //finalizeNamespaces
-
-
-
 
 
 // ready this recipe node
@@ -436,12 +439,11 @@ const newInstance = (recipe,parent,node) => {
         val = parent.get(k);
       }
       if (val === undefined && defVal !== undefined) {
-        this.data[k] = defVal;
+        val = this.data[k] = defVal;
       }
-      return dataVal( val, this );
+      return val;
     };
   }
-
 
   prepNode( instance, 'instance', recipe );
 
@@ -456,9 +458,12 @@ const newInstance = (recipe,parent,node) => {
     attachForFields( instance, parent );
   }
 
-  // make a 'backup' of the data 
-  instance.databackup = {};
-  Object.keys(instance.data).forEach( dk => instance.databackup[dk] = instance.data[dk] );
+  // store data functions in backup hash
+  instance.dataFunctions = {};
+  instance.data && Object.keys(instance.data)
+    .filter( dk => typeof instance.data[dk] === 'function' )
+    .forEach( dk => instance.dataFunctions[dk] = instance.data[dk] );
+
   
   // attach instance wrapped functions
   Object.keys( instance.functions )
@@ -481,22 +486,18 @@ const attachGetters = node => {
     this.data[k] = v;
     return this;
   };
-  node.getFunction = function(k) {
-    if (k in this.data) return this.data[k];
-    return this.parent && this.parent.getFunction( k );
-  };
   node.has = function(k) {
     return (k in this.data) || this.parent && this.parent.has( k );
   };
   node.get = function(k,defVal) {
-    if (k in this.data) return dataVal( this.data[k], this );
+    if (k in this.data) return this.data[k];
     let val = this.parent && this.parent.get( k );
     if (val === undefined && defVal !== undefined) {
       val = this.data[k] = defVal;
     }
     // data can be a value or a function. if a function, run it to
     // get the data
-    return dataVal( val, this );
+    return val;
   };
   node._check = function() {
     const changed = this._changed;
@@ -560,6 +561,7 @@ const prepNode = (node,type,parent) => {
     node.fun = node.functions = node.functions || {};
     node.data = node.data || {};
   }
+
   return node;
 } //prepNode
 
@@ -864,7 +866,7 @@ function _refresh_content(content, el) {
       if (con.foreach) {
         // remove extras but never the first index
         const forval = con.forval;
-        const list = con.foreach( this );
+        const list = typeof con.foreach === 'function' ? con.foreach( this ) : con.foreach;
         const upto = conEl.lastcount || 0;
         this._loop_level++;
         
@@ -915,9 +917,9 @@ function _refresh_content(content, el) {
               forInstance.idx[forval] = i;
               forInstance.it[forval] = list[i];
 
-              Object.keys( forInstance.data )
+              Object.keys( forInstance.dataFunctions )
                 .forEach( dname => {
-                  forInstance.data[dname] = dataVal( forInstance.databackup[dname], forInstance );
+                  forInstance.data[dname] = dataVal( forInstance.dataFunctions[dname], forInstance );
                 } );
 
               forInstance._refresh( con.recipe.rootElementNode, forEl, con );
@@ -943,9 +945,9 @@ function _refresh_content(content, el) {
       else if (con.isComponent) {
         // extract data from functions if any
         const conInst = conEl.instance;
-        Object.keys( conInst.data )
+        Object.keys( conInst.dataFunctions )
           .forEach( dname => {
-              conInst.data[dname] = dataVal( conInst.databackup[dname], this );
+              conInst.data[dname] = dataVal( conInst.dataFunctions[dname], this );
           } );
 
         conInst._refresh_component( con, conEl, con.recipe );

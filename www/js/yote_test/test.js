@@ -753,7 +753,7 @@ const testNamespace = () => {
     ] );
     def_namespace( {
       data: {
-        blat: c => c.fun.foot(),
+        blat: c => 'blat',
       },
     } );
     
@@ -783,7 +783,7 @@ const testNamespace = () => {
         ON: 'OTHERNAME',
       },
       data: {
-        blat: c => c.fun.foot(),
+        blat: c => 'blat',
       },
     } );
     
@@ -810,7 +810,7 @@ const testNamespace = () => {
     ] );
     def_namespace( {
       data: {
-        blat: c => c.fun.foot(),
+        blat: c => 'blat',
       },
     } );
     other_namespaces(
@@ -990,7 +990,9 @@ const testComponentHandles = () => {
                   ) ] )] ),
 
     el ('section', [
-      node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I } } ),
+      node( 'looper', { foreach: c => [ "A", "B", "C" ], 
+                        forval: 'I', 
+                        data: { number:  c => c.get('mult') * c.idx.I } } ),
     ] ),
 
     el ('section', [
@@ -1033,7 +1035,7 @@ const testComponentHandles = () => {
   
   go();
 
-  confirmEl( 'test-loop',
+  confirmEl( 'test-component-handles',
              'body',
              [
                [ 'table', 
@@ -1140,7 +1142,8 @@ const testLoop = () => {
                   ) ] )] ),
 
     el ('section', [
-      node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
+      node( 'looper', { foreach: c => [ "A", "B", "C" ], 
+                        forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
     ] ),
 
     el ('section', [
@@ -1171,9 +1174,12 @@ const testLoop = () => {
             el ( 'span', 'upper' ),
             el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
-            node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
+            node( 'looper', { foreach: [ "A", "B", "C" ], 
+                              forval: 'I', 
+                              data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
-            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, foreach: () => [ "D", "E" ], forval: 'I' } ) ] ),
+            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, 
+                                      foreach: [ "D", "E" ], forval: 'I' } ) ] ),
             el ( 'span', 'lowest' ),
           ] ),
         ],
