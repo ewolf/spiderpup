@@ -155,3 +155,5 @@ sub launch {
     $pkg->prepare_handlers( $root_dir, $mojo_app );
     $mojo_app->start;
 } #launch
+
+1;

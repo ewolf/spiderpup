@@ -158,7 +158,7 @@ throws_ok(
             return {
                 components => {
                     'burp.urp' => {
-                        contents => [{ tag => "div" }],
+                        contents => [ "div" ],
                     },
                 }
             };
@@ -168,5 +168,38 @@ throws_ok(
     qr/'burp.urp' in '\/' may not have a '.' in the name/,
     'component without contents' 
 );
+
+my $loader = sub {
+    return {
+        components => {
+            'spano' => { 
+                data => { items => [ "A", "B", undef ] },
+                contents => [ 'span' ]},
+        }
+    };
+};
+my $namespaces = {};
+Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
+
+is_deeply( $namespaces, 
+           {
+               '/' => {
+                   'components' => {
+                       'spano' => {
+                           'contents' => [
+                               {
+                                   'tag' => 'span',
+                               }
+                               ],
+                           'data' => { 'items' => [ "A", "B", undef ] },
+                       }
+                   },
+                       'namespaces' => {},
+                       'functions' => {},
+                       'data' => {}
+               }    
+           }, 
+           'very simple namespace' );
+
 
 done_testing;

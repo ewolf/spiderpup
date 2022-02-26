@@ -120,6 +120,8 @@ COMPONENT RECIPE NODE ---
   'listen': <function>,
   'preLoad': <function called when an instance is starting to be placed>,
   'onLoad': <function called when an instance has been placed>,
+  'functions': { <name> : <function>, ... }
+  'data': { <name> : <value or function>, ... }
 }
 
 ELEMENT NODE ---

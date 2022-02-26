@@ -84,13 +84,12 @@ const testsToDo = [
 */
 
 window.misc = 0;
-let def, funs;
+let def;
 
 function reset() {
   // empty and clear attributes
   document.body.innerHTML = '';
   document.body.hasInit = false;
-  funs = [];
   def = { TEST: { components: {}, 
                   html: { head: {}, body: {contents: [] } } } };
   
@@ -357,28 +356,25 @@ function el(tag, attrs, contents) {
     }
   }
   contents = contents || [];
-  const calculate = {};
+
   const on = {};
-  // check for calculations. if the attr is a number
+
   const attrNames = Object.keys( attrs );
 
-  const elNode = { tag, attrs, contents, calculate, on };
+  const elNode = { tag, attrs, contents, on };
 
   attrNames.forEach( attr => {
-    if (attr.match(/^(if|elseif|else|foreach|forval|data|handle|debug)$/)) {
-      elNode[attr] = attrs[attr];
-      delete attrs[attr];
-    }
     const m = attr.match(/^on_(.*)/);
     if (m) {
       on[m[1]] = attrs[attr];
-    }
-    else if ( Number.isInteger( attrs[attr] ) ) {
-      calculate[attr] = attrs[attr];
       delete attrs[attr];
     }
     else if (attr === 'placeholder' ) {
       elNode.placeholder = attrs[attr];
+      delete attrs[attr];
+    }
+    else if (attr.match(/^(if|elseif|else|foreach|forval|data|handle|debug)$/)) {
+      elNode[attr] = attrs[attr];
       delete attrs[attr];
     }
   } );
@@ -441,12 +437,9 @@ function other_namespaces( args ) {
     def[key] = args[key];
   } );
 }
-function def_funs( funcs ) {
-  funs = funcs;
-}
 
 function go() {
-  return init( def, funs, 'TEST' );
+  return init( def, 'TEST' );
 }
 
 function makeFilespace( bodyContents, args, otherFS ) {
@@ -468,7 +461,8 @@ function test(...tests) {
     const result = messages.pop();
     body( [
       el( 'h1', result ),
-      el( 'h2', { if: 0, textContent: 'things to implement and/or test' }, [
+      el( 'h2', { if: () => testsToDo.length > 0,
+                  textContent: 'things to implement and/or test' }, [
           el ('ul', 
               testsToDo.map( msg => el( 'li', msg ) )
              ) ] ),
@@ -485,7 +479,6 @@ function test(...tests) {
             return el( 'li', msg );
           } ) )
     ] );
-    def_funs( [ () => testsToDo.length > 0 ] );
     go();
   } )
   .catch(err => {
@@ -524,13 +517,13 @@ const testBasic = () => {
                        style: 'background: blue; padding: 3px' },
               [
                 node( 'foo' ), // div span
-                node( 'foo', { functions: { bar: 1 } } ),
-                node( 'foo', { functions: { bar: 3 } },
+                node( 'foo', { functions: { bar: c => "BAR2" } } ),
+                node( 'foo', { functions: { bar: c => "BAR3" } },
                       [ el( 'span', 'a span' ),
                         el( 'span', 'with stuff' ) ] ),
                 node( 'foo', [ el( 'ul',
                                    [el( 'li', 'I am' ),
-                                    el( 'li', { textContent: 5 } ),
+                                    el( 'li', { textContent: c => c.fun.groan() } ),
                                     el( 'li', 'in' ) ] ) ] ),
               ])
         ]),
@@ -538,13 +531,14 @@ const testBasic = () => {
       title: 'titlez',
       components: {
         foo: {
-          attrs: { class: 'woot boot', style: 'cursor:pointer' },
+          attrs: { class: 'woot boot', 
+                   style: 'cursor:pointer' },
           functions: {
-            bar: 0
+            bar: c => "BAR",
           },
           contents: [
             el ( 'div', '', [
-              el ('span', { textContent: 2 } ),
+              el ('span', { textContent: c => c.fun.bar() } ),
             ] ),
           ],
         }, // foo component
@@ -552,18 +546,10 @@ const testBasic = () => {
       }, //components
       
       functions: {
-        groan: 4,
+        groan: c => "groan",
       } //functions
       
     } );
-
-  def_funs( [ c => "BAR",         // 0
-              c => "BAR2",        // 1
-              c => c.fun.bar(),   // 2
-              c => "BAR3",        // 3
-              c => "groan",       // 4
-              c => c.fun.groan(), // 5
-            ] );
   
   go();
 
@@ -609,30 +595,30 @@ const testIfs = () => {
   reset();
   body( 
     [
-      node( 'iffy', { data : { number: 'i4' } }),
-      node( 'iffy', { data : { number: 'i3' } }),
-      node( 'iffy', { data : { number: 'i2' } }),
+      node( 'iffy', { data : { number: 4 } }),
+      node( 'iffy', { data : { number: 3 } }),
+      node( 'iffy', { data : { number: 2 } }),
       node( 'iffy' ),
       el ('section', [ // if/elseif/elseif/elseif/else
-        node( 'stuff', { if: 3 } ),
-        node( 'stuff', { elseif: 4 } ),
-        node( 'stuff', { elseif: 5 } ),
-        node( 'stuff', { elseif: 6 } ),
+        node( 'stuff', { if: c => c.get('number') == 20 } ),
+        node( 'stuff', { elseif: c => c.get('number') == 51 } ),
+        node( 'stuff', { elseif: c => c.get('number') == 50 } ),
+        node( 'stuff', { elseif: c => c.get('number') == 12 } ),
         node( 'stuff', { else: true } ),
       ] ),
     ],
   );
 
   def_namespace( {
-    data: { blat: 'i1', number: 'i50' },
+    data: { blat: 1, number: 50 },
     components: {
       iffy: {
-        data: { number: 'i1' },
+        data: { number: 1 },
         contents: [
           el ('div', [
-            el ('h1', { if: 0, textContent: 'is one' } ),
-            el ('h2', { elseif: 1, textContent: 'is less than 3' } ),
-            el ('h3', { elseif: 2, textContent: 'is four' } ),
+            el ('h1', { if: c => c.get('number') == 1, textContent: 'is one' } ),
+            el ('h2', { elseif: c => c.get('number') < 3, textContent: 'is less than 3' } ),
+            el ('h3', { elseif: c => c.get('number') == 4, textContent: 'is four' } ),
             el ('h4', { else: true, textContent: 'whuddeveh' } ),
           ] )
         ],
@@ -643,16 +629,6 @@ const testIfs = () => {
       },
     }
   } );
-
-  def_funs( [
-    c => c.get('number') == 1, // 0
-    c => c.get('number') < 3,  // 1
-    c => c.get('number') == 4, // 2
-    c => c.get('number') == 20, // 3
-    c => c.get('number') == 51, // 4
-    c => c.get('number') == 50, // 5
-    c => c.get('number') == 12, // 6
-  ] );
 
   go();
   confirmEl( 'test-ifs',
@@ -702,6 +678,7 @@ const testIfs = () => {
              ]
            );
 } //testIfs
+
 const foo = () => {
 
   // now check for fails for wrong if/then/else combos
@@ -712,8 +689,8 @@ const foo = () => {
       [
         el ('section', [ // if/elseif/elseif/elseif/else
           node( 'stuff', { else: true } ),
-          node( 'stuff', { if: 3 } ),
-          node( 'stuff', { elseif: 4 } ),
+          node( 'stuff', { if: () => 'no fun' } ),
+          node( 'stuff', { elseif: () => false } ),
         ] ),
       ],
     );
@@ -733,8 +710,8 @@ const foo = () => {
       [
         el ('section', [ // if/elseif/elseif/elseif/else
           node( 'stuff', { elseif: true } ),
-          node( 'stuff', { if: 3 } ),
-          node( 'stuff', { elseif: 4 } ),
+          node( 'stuff', { if: () => false } ),
+          node( 'stuff', { elseif: () => true } ),
         ] ),
       ],
     );
@@ -762,7 +739,7 @@ const testNamespace = () => {
       node( 'ON.containery', 
             [
               el( 'div', {
-                if: 0,
+                if: c => c.get('blat'),
                 textContent: 'in o middle' } ),
               el( 'div', {
                 else: true,
@@ -772,14 +749,9 @@ const testNamespace = () => {
     ] );
     def_namespace( {
       data: {
-        blat: 'i1',
+        blat: c => c.fun.foot(),
       },
     } );
-    def_funs( [
-      c => c.get('blat'),      // 0
-      c => c.fun.foot(),       // 1
-      c => "foot",             // 2
-    ] );
     
     go();
     fail( 'used namespace that was not imported or declared' );
@@ -794,7 +766,7 @@ const testNamespace = () => {
       node( 'ON.containery', 
             [
               el( 'div', {
-                if: 0,
+                if: c => c.get('blat'),
                 textContent: 'in o middle' } ),
               el( 'div', {
                 else: true,
@@ -807,14 +779,9 @@ const testNamespace = () => {
         ON: 'OTHERNAME',
       },
       data: {
-        blat: 'i1',
+        blat: c => c.fun.foot(),
       },
     } );
-    def_funs( [
-      c => c.get('blat'),      // 0
-      c => c.fun.foot(),       // 1
-      c => "foot",             // 2
-    ] );
     
     go();
     fail( 'used namespace that was declared but not imported' );
@@ -829,7 +796,7 @@ const testNamespace = () => {
       node( 'ON.containery', 
             [
               el( 'div', {
-                if: 0,
+                if: c => c.get('blat'),
                 textContent: 'in o middle' } ),
               el( 'div', {
                 else: true,
@@ -839,7 +806,7 @@ const testNamespace = () => {
     ] );
     def_namespace( {
       data: {
-        blat: 'i1',
+        blat: c => c.fun.foot(),
       },
     } );
     other_namespaces(
@@ -851,21 +818,16 @@ const testNamespace = () => {
                 el( 'div', [
                   el( 'header', 'head' ),
                   el( 'main', { textContent: 'main', placeholder: true } ),
-                  el( 'footer', { textContent: 1 } ),
+                  el( 'footer', { textContent: c => c.fun.foot() } ),
                 ] ),
               ],
             },
           },
           functions: {
-            foot: 2,
+            foot: c => "foot",
           },
         }, //OTHER (namespace)
       } );
-    def_funs( [
-      c => c.get('blat'),      // 0
-      c => c.fun.foot(),       // 1
-      c => "foot",             // 2
-    ] );
 
     go();
     fail( 'used namespace that was imported but not declared' );
@@ -875,6 +837,7 @@ const testNamespace = () => {
   }
 
   reset();
+
   body( [
     node( 'ON.containery' ),   // body| 0 div | header | main (int) | footer
     node( 'ON.containery', [   // 1 div
@@ -883,7 +846,7 @@ const testNamespace = () => {
     node( 'ON.containery', //3 div
           [
             el( 'div', { //4 div
-              if: 0,
+              if: c => c.get('blat') == 1,
               textContent: 'in a middle' } ),
             el( 'div', {
               else: true,
@@ -892,7 +855,7 @@ const testNamespace = () => {
     node( 'ON.containery', //5
           [
             el( 'div', {
-              if: 3,
+              if: c => c.get('blat') != 1,
               textContent: 'in o middle' } ),
             el( 'div', {
               else: true,
@@ -907,10 +870,10 @@ const testNamespace = () => {
       ON: 'OTHERNAME',
     },
     data: {
-      blat: 'i1',
+      blat: c => 1,
     },
     functions: {
-      groan: 4,
+      groan: c => "groan",
     } //functions
   } );
 
@@ -923,23 +886,16 @@ const testNamespace = () => {
               el( 'div', [
                 el( 'header', 'head' ),
                 el( 'main', { textContent: 'main', placeholder: true } ),
-                el( 'footer', { textContent: 1 } ),
+                el( 'footer', { textContent: c => c.fun.foot() } ),
               ] ),
             ],
           },
         },
         functions: {
-          foot: 2,
+          foot: c => "foot",
         },
       }, //OTHER (namespace)
     } );
-
-  def_funs( [
-    c => c.get('blat') == 1, // 0
-    c => c.fun.foot(),       // 1
-    c => "foot",             // 2
-    c => c.get('blat' ) != 1, //3
-  ] );
 
   const inst = go();
 
@@ -1018,40 +974,40 @@ const testComponentHandles = () => {
   reset();
   body( [
     el( 'table', 
-        [ el( 'tr', { foreach: 0, forval: 'row' },
+        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forval: 'row' },
               [ el( 'td', { forval: 'col', 
-                            foreach: 1,
-                            textContent: 2,
+                            foreach: c => [ "D", "E" ],
+                            textContent: c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`,
                           } ) ] ) ] ),
     el( 'main',
-        [ el( 'section', { foreach: 0, forval: 'i', textContent: 4 },
-              [ el( 'div', { foreach: 1, forval: 'j', textContent: 5 },
-                [ el( 'span', { foreach: 3, forval: 'k', textContent: 6 } ) ],
+        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forval: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]` },
+              [ el( 'div', { foreach: c => [ "D", "E" ], forval: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]` },
+                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]` } ) ],
                   ) ] )] ),
 
     el ('section', [
-      node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+      node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I } } ),
     ] ),
 
     el ('section', [
-      node( 'multilooper', { foreach: 10, forval: 'ML' }, 
+      node( 'multilooper', { foreach: c => [ 'Z' ], forval: 'ML' }, 
             [
-              el( 'span', { foreach: 1, forval: 'IS', textContent: 11 } ),
+              el( 'span', { foreach: c => [ "D", "E" ], forval: 'IS', textContent: c => c.it.IS } ),
             ] ),
     ] ),
 
   ] ); //body
 
   def_namespace( {
-    data: { blat: 'i1', number: 'i50' },
+    data: { blat: 1, number: 50 },
 
     components: {
       looper: {
         data: {
-          mult: 'i3',
+          mult: 3,
         },
         contents: [ 
-          el ('div', { textContent: 8 } ),
+          el ('div', { textContent: c => `NUM <${c.get("number")}>` } ),
         ],
       }, //looper component
 
@@ -1061,9 +1017,9 @@ const testComponentHandles = () => {
             el ( 'span', 'upper' ),
             el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
-            node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+            node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
-            el ( 'ul', [ el ( 'li', { textContent: 7, foreach: 1, forval: 'I' } ) ] ),
+            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, foreach: c => [ "D", "E" ], forval: 'I' } ) ] ),
             el ( 'span', 'lowest' ),
           ] ),
         ],
@@ -1071,21 +1027,6 @@ const testComponentHandles = () => {
     }
   } ); //def_namespace
   
-  def_funs( [
-    c => [ "A", "B", "C" ], //0
-    c => [ "D", "E" ],      //1
-    c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`, // 2
-    c => [ 'F', 'G', 'H' ], //3
-    c => `[i ${c.idx.i}/${c.it.i}]`, //4
-    c => `[j ${c.idx.j}/${c.it.j}]`, //5
-    c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, //6
-    c => `(${c.it.I}/${c.idx.I})`, //7
-    c => `NUM <${c.get("number")}>`, //8
-    c => c.get('mult') * c.idx.I, //9
-    c => [ 'Z' ],                 //10
-    c => c.it.IS,                 //11
-  ] );
-
   go();
 
   confirmEl( 'test-loop',
@@ -1183,40 +1124,40 @@ const testLoop = () => {
   reset();
   body( [
     el( 'table', 
-        [ el( 'tr', { foreach: 0, forval: 'row' },
+        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forval: 'row' },
               [ el( 'td', { forval: 'col', 
-                            foreach: 1,
-                            textContent: 2,
+                            foreach: () => [ "D", "E" ],
+                            textContent: c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`,
                           } ) ] ) ] ),
     el( 'main',
-        [ el( 'section', { foreach: 0, forval: 'i', textContent: 4 },
-              [ el( 'div', { foreach: 1, forval: 'j', textContent: 5 },
-                [ el( 'span', { foreach: 3, forval: 'k', textContent: 6 } ) ],
+        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forval: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]`, },
+              [ el( 'div', { foreach: () => [ "D", "E" ], forval: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]`, },
+                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ) ],
                   ) ] )] ),
 
     el ('section', [
-      node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+      node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
     ] ),
 
     el ('section', [
-      node( 'multilooper', { foreach: 10, forval: 'ML' }, 
+      node( 'multilooper', { foreach: c => [ 'Z' ], forval: 'ML' }, 
             [ // loop with component with internal loop
-              el( 'span', { foreach: 1, forval: 'IS', textContent: 11 } ),
+              el( 'span', { foreach: c => [ "D", "E" ], forval: 'IS', textContent: c => c.it.IS } ),
             ] ),
     ] ),
 
   ] ); //body
 
   def_namespace( {
-    data: { blat: 'i1', number: 'i50' },
+    data: { blat: 1, number: 50 },
 
     components: {
       looper: {
         data: {
-          mult: 'i3',
+          mult: 3,
         },
         contents: [ 
-          el ('div', { textContent: 8 } ),
+          el ('div', { textContent: c => `NUM <${c.get("number")}>`, } ),
         ],
       }, //looper component
 
@@ -1226,30 +1167,15 @@ const testLoop = () => {
             el ( 'span', 'upper' ),
             el ( 'div', { placeholder: true } ),
             el ( 'span', 'middle' ),
-            node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+            node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
-            el ( 'ul', [ el ( 'li', { textContent: 7, foreach: 1, forval: 'I' } ) ] ),
+            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, foreach: () => [ "D", "E" ], forval: 'I' } ) ] ),
             el ( 'span', 'lowest' ),
           ] ),
         ],
       }, //multilooper component
     }
   } ); //def_namespace
-  
-  def_funs( [
-    c => [ "A", "B", "C" ], //0
-    c => [ "D", "E" ],      //1
-    c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`, // 2
-    c => [ 'F', 'G', 'H' ], //3
-    c => `[i ${c.idx.i}/${c.it.i}]`, //4
-    c => `[j ${c.idx.j}/${c.it.j}]`, //5
-    c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, //6
-    c => `(${c.it.I}/${c.idx.I})`, //7
-    c => `NUM <${c.get("number")}>`, //8
-    c => c.get('mult') * c.idx.I, //9
-    c => [ 'Z' ],                 //10
-    c => c.it.IS,                 //11
-  ] );
 
   go();
 
@@ -1351,18 +1277,20 @@ const testHandles = () => {
   body( 
     [
       el( 'button', { handle: 'button', 
-                      on_click: 4,
+                      on_click: c => c.comp.stuff.fun.shout(),
                       textContent: 'click me' } ),
       node( 'stuff', { handle: 'stuff', 
-                       on_stuffEvent: 6,
+                       on_stuffEvent: (c,evt) => { 
+                         calls.push( c.name + " got event from stuff" );
+                       },
                      } ),
       //handles in loops
-      el( 'section', { foreach: 8, forval: 'i' },
+      el( 'section', { foreach: c => ["A","B","C"], forval: 'i' },
           [
-            el( 'div', { foreach: 9, forval: 'j' },
+            el( 'div', { foreach: c => ["D","E"], forval: 'j' },
                 [
-                  node( 'fluff', { handle: 'loopyFluff', data: { name: 'c11' } } ),
-                  el( 'span', { handle: 'loopySpan', textContent: 10 } ),
+                  node( 'fluff', { handle: 'loopyFluff', data: { name: c => `FLUFF ${c.it.i} / ${c.it.j}` } } ),
+                  el( 'span', { handle: 'loopySpan', textContent: c => `${c.it.i}${c.it.j}` } ),
                 ] )
           ] ),
 
@@ -1371,27 +1299,45 @@ const testHandles = () => {
         textContent: 'woof',
         handle: 'switchy',
         id: 'switchy',
-        if: 13, //check_toggle 
+        if: c => c.get( 'show' ), //check_toggle 
       } ),
 
       node ( 'fluff', {
         id: 'tempfluff',
         handle: 'fluff',
-        if: 13, //check_toggle
+        if: c => c.get( 'show' ), //check_toggle
       } ),
 
     ],
   );
 
   def_namespace( {
-    listen: 2,
+    listen: (c,type,msg) => { 
+      if (type !== 'body') {
+        c.fun.bodyDo( `body hears ${msg}` );
+        c.broadcast( 'body', msg );
+      }
+    },
     
-    preLoad: 7,
-    onLoad: 3,
+    preLoad: (c,evt) => { 
+      return new Promise( (res,rej) => {
+        setTimeout( () => {
+          calls.push( "PRELOAD" );
+          res(); }, 100 );
+      } );
+    },
+    onLoad: c => {  
+      c.comp.stuff;
+      calls.push( c.el.button.tagName );
+      
+      c.el.button.click();
+    },
 
     functions: {
-      bodyDo: 5,
-      toggle: 12,
+      bodyDo: (c,msg) => { 
+        calls.push( msg );
+      },
+      toggle: c => c.set( 'show', ! c.get('show') ),
     },
 
     data: {
@@ -1401,16 +1347,22 @@ const testHandles = () => {
     components: {
 
       stuff: {
-        listen: 0,
+        listen: (c,type,msg) => { 
+          if (type !== 'stuff' ) {
+            // tests that bodydo is inherited 
+            c.fun.bodyDo( `stuff hears ${msg}` );
+            c.event( 'stuffEvent', "MYEV" );
+          }
+        },
         functions: {
-          shout: 1,
+          shout: c => c.broadcast( 'stuff', 'hi there' ),
         },
         contents: [ el( 'span', 'stuff' ) ],
       },
 
       fluff: {
-        data : { name: 'sfluff' },
-        contents: [ el( 'span', { textContent: 11 } ) ],
+        data : { name: 'fluff' },
+        contents: [ el( 'span', { textContent: c => `FLUFF ${c.it.i} / ${c.it.j}` } ) ],
       },
 
     },
@@ -1427,53 +1379,6 @@ const testHandles = () => {
   // which sends a stuffEvent which is picked up
   // by the body and is recorded
   //   * pushes ['instance of body from TEST got event from stuff']
-
-  def_funs( [
-    (c,type,msg) => { //0 //stuff listen (catches broadcast, pushes)
-      if (type !== 'stuff' ) {
-        // tests that bodydo is inherited 
-        c.fun.bodyDo( `stuff hears ${msg}` );
-        c.event( 'stuffEvent', "MYEV" );
-      }
-    }, 
-
-    c => c.broadcast( 'stuff', 'hi there' ), //1 shout  (sends a broadcast)
-
-    (c,type,msg) => { //2 body listen (catches broadcast, sends braodcast if its not body)
-      if (type !== 'body') {
-        c.fun.bodyDo( `body hears ${msg}` );
-        c.broadcast( 'body', msg );
-      }
-    },
-    c => {  //3 onLoad
-      c.comp.stuff;
-      calls.push( c.el.button.tagName );
-      
-      c.el.button.click();
-    }, 
-    c => {  // 4 click (calls shout on stuff)
-      c.comp.stuff.fun.shout();
-    },
-    (c,msg) => { // 5 bodydo (pushes a message)
-      calls.push( msg );
-    },
-    (c,evt) => { // 6 stuffEvent
-      calls.push( c.name + " got event from stuff" );
-    },
-    (c,evt) => { // 7 preload
-      return new Promise( (res,rej) => {
-        setTimeout( () => {
-          calls.push( "PRELOAD" );
-          res(); }, 100 );
-      } );
-    },
-    c => ["A","B","C"], // 8 foreach
-    c => ["D","E"], // 9 foreach
-    c => `${c.it.i}${c.it.j}`, // 10 textContent
-    c => `FLUFF ${c.it.i} / ${c.it.j}`, // 11 fluf text
-    c => c.set( 'show', ! c.get('show') ), //12 toggl
-    c => c.get( 'show' ), // 13 check_toggle
-  ] );
 
   let bodyInstance = go();
 
@@ -1567,11 +1472,11 @@ const testMoreLoop = () => {
   reset();
   body(
     [
-      el( 'section', { foreach: 0, forval: 'i' }, 
+      el( 'section', { foreach: c => c.get( 'a1' ), forval: 'i' }, 
           [
-            el( 'div', { foreach: 1, forval: 'j' },
+            el( 'div', { foreach: c => c.get( 'a2' ), forval: 'j' },
                 [
-                  el( 'span', { foreach: 2, forval: 'k', textContent: 3 } ),
+                  el( 'span', { foreach: c => c.get( 'a3' ), forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ),
                 ] ) 
           ] )
     ]
@@ -1583,13 +1488,6 @@ const testMoreLoop = () => {
       a3: ["G","H","I"],
     },
   } );
-
-  def_funs( [
-    c => c.get( 'a1' ), //0
-    c => c.get( 'a2' ), //1
-    c => c.get( 'a3' ), //2
-    c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, //3
-  ] );
 
   let bodyInstance = go();
 
@@ -1749,20 +1647,20 @@ const testIfLoop = () => {
   reset();
   body(
     [
-      el( 'span', { foreach: 0, 
+      el( 'span', { foreach: c => ["E","F"], 
                     forval: 'i', 
-                    textContent: 1, 
-                    if: 2 } ), 
-      el( 'div', { foreach: 0, 
+                    textContent: c => `[i ${c.idx.i}/${c.it.i}]`, 
+                    if: c => c.get('doita') } ), 
+      el( 'div', { foreach: c => ["E","F"], 
                    forval: 'i', 
-                   textContent: 1, 
-                   if: 3 } ), 
-      node( 'fluff', { foreach: 0, 
+                   textContent: c => `[i ${c.idx.i}/${c.it.i}]`,
+                   if: c => c.get('doitb') } ), 
+      node( 'fluff', { foreach: c => ["E","F"], 
                       forval: 'j', 
-                      if: 2 } ), 
-      node( 'fluff', { foreach: 0, 
+                      if: c => c.get('doita') } ), 
+      node( 'fluff', { foreach: c => ["E","F"], 
                       forval: 'j', 
-                      if: 3 } ), 
+                      if: c => c.get('doitb') } ), 
     ]
   );
   def_namespace( {
@@ -1773,29 +1671,20 @@ const testIfLoop = () => {
     },
     
     functions: {
-      flip: 4,
+      flip: c => {  
+        c.set('doita',!c.get('doita'));
+        c.set('doitb',!c.get('doitb'));
+      },
     },
 
     components: {
 
       fluff: {
-        contents: [ el( 'section', { textContent: 5 } ) ],
+        contents: [ el( 'section', { textContent: c => `[j ${c.idx.j}/${c.it.j}]` } ) ],
       },
       
     }
   } );
-
-  def_funs( [
-    c => ["E","F"], //0
-    c => `[i ${c.idx.i}/${c.it.i}]`, //1
-    c => c.get('doita'), //2
-    c => c.get('doitb'), //3
-    c => {  //4
-      c.set('doita',!c.get('doita'));
-      c.set('doitb',!c.get('doitb'));
-    }, 
-    c => `[j ${c.idx.j}/${c.it.j}]`, //5
-  ] );
 
   let bodyInstance = go();
 
@@ -1852,15 +1741,12 @@ const testInternals = () => {
       containy: {
         contents: [ el( 'section', { id : 'containy' },
             [
-              el( 'h1', { textContent: 0 }  ),
+              el( 'h1', { textContent: c => "containy", }  ),
               el( 'div', { placeholder: true } ),
             ] ) ],
       },
     },
   } );
-  
-  def_funs( [ c => "containy", // 0
-              ] );
   
   let bodyInstance = go();
 
@@ -1900,14 +1786,14 @@ const testAliasedRecipes = () => {
             [
               el( 'span', 'Hello There' ),
               el( 'span', 'Ima thing' ),
-            ] ),
+            ] ), 
       node( 'zoo',
-            { data: { defdata: 'i13' }},
+            { data: { defdata: 13 }},
             [
               el ('div', 'INSTANCY' ),
             ] ),
       node ('boo',
-            [ el( 'button', { textContent: 'refresh', on_click: 0 } ) ] ),
+            [ el( 'button', { textContent: 'refresh', on_click: c => c.refresh() } ) ] ),
     ]
   );
     
@@ -1918,7 +1804,7 @@ const testAliasedRecipes = () => {
     },
 
     data: {
-      defdata: 'i12',
+      defdata: 12,
     },
     
     components: {
@@ -1926,7 +1812,7 @@ const testAliasedRecipes = () => {
         contents: [ el( 'div', 'boo' ) ],
       },
       zoo: {
-        data: {bardata: 'i11'}, 
+        data: {bardata: 11}, 
         contents: [
           node( 't2.foo', [ el('span','this is ZOO') ] ),
         ]
@@ -1938,27 +1824,24 @@ const testAliasedRecipes = () => {
     T2: {
       components: {
         foo: {
-          data: { foodata: 'strue' },
+          data: { foodata: 'true' },
           contents: [ node( 'bar', { placeholder: true }, [
-            el( 'span', { textContent: 1 } ),
+            el( 'span', { textContent: c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]` } ),
             ] ) ],
         },
         bar: {
-          data: { bardata: 'strue' },
+          data: { bardata: 'true' },
           contents: [ node( 'col', { class: 'additive now' },
                             [ el( 'section', 'BARBAR' ) ] ) ],
         },
         col: {
-          data: { coldata: 'strue' },
+          data: { coldata: 'true' },
           contents: [ el( 'div', { class: 'col', 'data-thing': 'that' },
                           [ el( 'span', 'COLCOL' ) ] ) ],
         },
       }
     }
   } );
-  def_funs( [ c => c.refresh(), // 0
-              c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]`, // 1
-              ] );
 
   go();
 
@@ -2016,8 +1899,8 @@ const testPlaceholders = () => {
     },
 
     functions: {
-      toggleLeft: 2,
-      toggleRight: 3,
+      toggleLeft: c => c.set('showLeft', !c.get('showLeft') ),
+      toggleRight: c => c.set('showRight', !c.get('showRight') ),
     },
 
     components: {
@@ -2025,20 +1908,14 @@ const testPlaceholders = () => {
         contents: [
           el( 'main', { style: 'display:flex; flex-direction: row' },
               [
-                el( 'div', { placeholder: 'left', if: 0 } ),
+                el( 'div', { placeholder: 'left', if: c => c.get('showLeft') } ),
                 el( 'section', { placeholder: true } ),
-                el( 'div', { placeholder: 'right', if: 1 } ),
+                el( 'div', { placeholder: 'right', if: c => c.get('showRight') } ),
               ] )
         ]
       },
     },
   } );
-
-  def_funs( [ c => c.get('showLeft'), //0
-              c => c.get('showRight'), //1
-              c => c.set('showLeft', !c.get('showLeft') ), //2
-              c => c.set('showRight', !c.get('showRight') ), //3
-              ] );
 
   const inst = go();
 
@@ -2126,20 +2003,17 @@ const testInstanceRefresh = () => {
     
   def_namespace( {
     data: {
-      seen: 'i0',
+      seen: 0,
     },
 
     components: {
       holder: {
         contents: [
-          el( 'div', { textContent : 0 } )
+          el( 'div', { textContent : c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;} } )
         ]
       },
     },
   } );
-
-  def_funs( [ c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;}, //0
-              ] );
 
   const inst = go();
 

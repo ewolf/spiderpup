@@ -28,7 +28,7 @@ sub build_recipe {
     my $recipe = {};
     my $con = $recipe->{contents} = [];
 
-    if (@{$recipe_data->{contents}||[]} == 0) {
+    if (@{$recipe_data->{contents}||[]} == 0 && $name ne 'body') {
         die "recipe '$name' must contain contents";
     }
 
@@ -82,15 +82,14 @@ sub build_node {
         ($tag, $data) = ($node_data, {});
     }
     $node->{tag} = $tag;
-
     my $r = ref $data;
     if ($r eq 'ARRAY') {
         $data = { contents => $data };
     } elsif ($r ne 'HASH') {
-        if (defined $data) {
-            $data = { textContent => $data };
-        } else {
+        if (! defined($data) || $data eq '') {
             $data = {};
+        } else {
+            $data = { textContent => $data };
         }
     }
 

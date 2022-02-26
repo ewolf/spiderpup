@@ -49,16 +49,15 @@
 // ----------------------------------------------------------------------------------------------------
 
 window.onload = ev => {
-  init( filespaces, funs, defaultFilename );
+  init( filespaces, defaultFilename );
 }
 
 let defaultNamespace;
 
 // init takes spaces and funz as an argument
 // to allow tests
-const init = (spaces,funz,defFilename) => {
+const init = (spaces,defFilename) => {
   filespaces = spaces;
-  funs = funz;
   defaultFilename = defFilename;
 
   // see if the module requested has a body to render.
@@ -70,7 +69,6 @@ const init = (spaces,funz,defFilename) => {
   }
 
   defaultNamespace = filespaces[defaultFilename];
-
 
   // prep and connect the namespaces
   Object.keys( filespaces )
@@ -178,6 +176,9 @@ const prepNamespace = (namespace,filename) => {
       const recipe = namespace.components[recipeName];
       prepRecipe( recipe, recipeName, namespace );
     } );
+
+  // namespace has 'fun' like an instance does
+  namespace.fun = namespace.functions || {};
 
   // find recipe given a tag. this can cross namespaces if defined
   namespace.findRecipe = function(tag) {
@@ -455,7 +456,7 @@ const newInstance = (recipe,parent,node) => {
     attachForFields( instance, parent );
   }
   
-  // now convert functions
+  // attach instance wrapped functions
   Object.keys( instance.functions )
     .forEach( funname => {
       const fun = instance.functions[funname];
@@ -521,15 +522,11 @@ const attachGetters = node => {
 // serial is an int that serializes all the nodes.
 let serial = 1;
 
-// this does two things, it attaches function references
-// to the funs array. this will not be needed if functions are
-// included as first class objects rather than references.
-//
-// the second thing this does is attach functions from the
+// attach functions from the
 // parent node of this one, be it namespace, recipe or instance
 // node
 const attachFunctions = (node,parent) => {
-  [ 'on', 'calculate', 'functions' ]
+  [ 'on', 'functions' ]
     .forEach( funtype => {
       const funhash = parent[funtype];
       funhash && Object.keys(funhash)
@@ -572,66 +569,15 @@ const prepNode = (node,type,parent) => {
   node['is'+type.substr(0,1).toUpperCase()+type.substr(1)] = true;
   node.id = serial++;
 
-
-  //
-  // attach functions where proxy references exist
-  //
-  [ 'preLoad', 'onLoad', 'if', 'elseif', 'foreach', 'listen' ]
-    .forEach( fun =>
-      node[fun] !== undefined && ( node[fun] = funs[node[fun]] ) );
-
-
-  [ 'calculate', 'on', 'functions' ]
-    .forEach( hashName => {
-      const funHash = node[hashName];
-      if (funHash) {
-        Object.keys( funHash )
-          .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) )
-      }
-    } );
-
   if (type !== 'element') {
     node.functions = node.functions || {};
     node.data = node.data || {};
-    prepData( node.data );
   }
-  if (node.contents) {
-    
-  }
-
   return node;
 } //prepNode
 
 // data may be obtained from a function or a value
 const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
-
-// data is encoded as a string. the first letter of the string
-// describes the data. this sets the value of the data as the translation
-// of the string.
-const prepData = data => {
-  Object.keys( data )
-    .forEach( key => {
-      let val = data[key];
-      let isFun = false;
-      if (typeof val === 'string') {
-        const x = val.substr( 0, 1 );
-        const checkVal = val.substr( 1 );
-        if (x === 'i') { // int
-          val = Number.parseInt( checkVal );
-        } else if (x === 'f') { // float
-          val = Number.parseFloat( checkVal );
-        } else if (x === 'c') { // code/function
-          val = funs[Number.parseInt(checkVal)];
-          isFun = true;
-        } else if (x === 's') { //string
-          val = checkVal;
-        } else {
-        }
-        return data[key] = val;
-      }
-    } );
-  return data;
-};
 
 const prepContents = (contents,namespace) => {
   contents
@@ -729,31 +675,12 @@ function _refresh_element( node, el ) {
     // attach handle if needed. attach this instance to its parent instance
     rootNode.handle && this.parent._attachCompHandle( this, rootNode.handle );
 
-    // this is the root element of the component, so any attributes
-    // attached to the component node should be transfered to its root element
-    // populate the attributes of the element
-    const calcs = rootNode.calculate;
-
-    calcs && Object.keys( calcs )
-      .filter( attr => ! seen[attr] )
-      .forEach( attr => {
-        seen[attr] = true;
-        val = calcs[attr](this);
-        if (attr.match( /^(textContent|innerHTML)$/)) {
-          el[attr] = val;
-        } else if (attr === 'class' ) {
-          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
-        } else {
-          el.setAttribute( attr, val );
-        }
-      } );
-
     const attrs = rootNode.attrs;
     attrs && Object.keys( attrs )
       .filter( attr => ! seen[attr] )
       .forEach( attr => {
         seen[attr] = true;
-        const val = attrs[attr];
+        const val = dataVal( attrs[attr], this );
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
@@ -764,27 +691,12 @@ function _refresh_element( node, el ) {
       } );
   }
   
-  const calcs = node.calculate;
-  calcs && Object.keys( calcs )
-    .filter( attr => ! seen[attr] )
-    .forEach( attr => {
-      seen[attr] = true;
-      const val = calcs[attr](this);
-      if (attr.match( /^(textContent|innerHTML)$/)) {
-        el[attr] = val;
-        } else if (attr === 'class' ) {
-          val.split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
-      } else {
-        el.setAttribute( attr, val );
-      }
-    } );
-
   const attrs = node.attrs;
   attrs && Object.keys( attrs )
     .filter( attr => ! seen[attr] )
     .forEach( attr => {
       seen[attr] = true;
-      const val = attrs[attr];
+      const val = dataVal( attrs[attr], this );
       if (attr.match( /^(textContent|innerHTML)$/)) {
         el[attr] = val;
         } else if (attr === 'class' ) {
@@ -806,10 +718,10 @@ function refresh(node,el,placeholderNode,isAliased) {
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
 
-  node.contents && this._refresh_content( node.contents, el );
+  node.contents && node.contents.length > 0 && this._refresh_content( node.contents, el );
 
   if (placeholderNode) {
-     placeholderNode.placeholder_contents && 
+    placeholderNode.placeholder_contents && 
       Object.keys( placeholderNode.placeholder_contents )
       .forEach( ph => {
         const phContainer = findPlaceholder( el, ph );
