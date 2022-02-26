@@ -402,7 +402,6 @@ function node(tag, args, contents) {
   args && Object.keys( args ).forEach( fld => {
     const m = fld.match(/^on_(.*)/);
     if (m) {
-      console.log( "ATTACH ",m[1], ' to ', n);
       n.on[m[1]] = args[fld];
     }
     else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
@@ -2157,20 +2156,20 @@ const testFillEvents = () => {
 }; //testFillEvents
 
 describe('spiderpup', () => {
-  it( 'should pass', () => {
-    test( 
-      // testAliasedRecipes,
-      // testBasic,
-      // testHandles,
-      // testIfLoop,
-      // testIfs,
-      // testInstanceRefresh,
-      // testInternals,
-      // testLoop,
-      // testMoreLoop,
-      // testNamespace,
-      // testFills,
-      testFillEvents,
-    ) } )
+  [ testAliasedRecipes,
+    testBasic,
+    testHandles,
+    testIfLoop,
+    testIfs,
+    testInstanceRefresh,
+    testInternals,
+    testLoop,
+    testMoreLoop,
+    testNamespace,
+    testFills,
+    testFillEvents ].
+    forEach( tst => {
+      it(tst.name, tst )
+    } )
 } );
 

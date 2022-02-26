@@ -473,7 +473,6 @@ const newInstance = (recipe,parent,node) => {
     attachForFields( instance, parent );
 
     if (node && node.on) {
-      console.log( node.on, node.id, parent.id, "ONN" );
       Object.keys( node.on )
       .forEach( evname => {
         // so a componentInstance uses 'event' to send a message
