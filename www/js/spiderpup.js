@@ -1016,5 +1016,3 @@ const makeKey2el = el => {
       .forEach( el => el.key && ( key2el[el.key] = el ) );
   return key2el;
 }; //makeKey2el
-
-console.warn( 'TODO: should listens be additive? that is, run listen code for recipe and for the node? also make class attribute additive?' );
