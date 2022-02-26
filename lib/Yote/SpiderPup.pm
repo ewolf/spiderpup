@@ -146,6 +146,13 @@ sub to_string {
     $txt =~ s/\r/\\r/gs;
     $txt =~ s/"/\\"/gs;
 
+    if ($txt =~ /^true$/i) {
+        return "true";
+    }
+    elsif( $txt =~ /^false$/) {
+        return "false";
+    }
+
     return "\"$txt\"";
 }
 
