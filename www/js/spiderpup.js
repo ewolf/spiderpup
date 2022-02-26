@@ -249,7 +249,7 @@ const init = (spaces,defFilename) => {
   filespaces = spaces;
   defaultFilename = defFilename;
 
-  console.log( spaces, defFilename );
+//  console.log( spaces, defFilename );
 
   // see if the module requested has a body to render.
   // if not, then loading this does nothing
@@ -422,7 +422,7 @@ const prepRecipe = (recipe,name,namespace) => {
   }
   prepNode( recipe, 'recipe', namespace );
   recipe.namespace = namespace;
-  recipe.parent = namespace;
+  recipe.data_parent = namespace;
   recipe.name = name;
   attachGetters( recipe );
 
@@ -458,11 +458,12 @@ const finalizeRecipe = (recipe) => {
     }
     root = aliasedRecipe.rootElementNode;
     attachFunctions( recipe, aliasedRecipe );
-    recipe.parent = aliasedRecipe;
+    recipe.data_parent = aliasedRecipe;
+    recipe.event_parent = aliasedRecipe;
     attachData( recipe, aliasedRecipe );
     
-    attachFunctions( recipe, root );
-    attachData( recipe, root );
+//    attachFunctions( recipe, root );
+//    attachData( recipe, root );
   }
 
 
@@ -493,7 +494,7 @@ const finalizeRecipe = (recipe) => {
 
 const newBodyInstance = recipe => {
   const instance = newInstance(recipe);
-  instance.parent = recipe.namespace;
+  instance.data_parent = recipe.namespace;
   const bodyKey = instance._key();
   document.body.key = document.body.dataset.key = bodyKey;
 
@@ -515,29 +516,16 @@ const newBodyInstance = recipe => {
 //                               INSTANCE LOGIC
 // ----------------------------------------------------------------------------------------------------
 
+const _aliased = recipe => {
+  return recipe.aliasedRecipe ? ` aliased ${recipe.aliasedRecipe.name}` + _aliased(recipe.aliasedRecipe) : '';
+}
 
 const newInstance = (recipe,parent,node) => {
 
-  if (recipe.aliasedRecipe) {
-//    debugger;
-    //  example:
-    //    loginForm is an alias of forminput which has on_submit in
-    //    its recipe instance 
-    // 
-    //
-    // the aliased recipe is going to make the parent instance
-    //parent = newInstance(recipe.aliasedRecipe,parent,node);
-    //    recipe = recipe.aliasedRecipe;
-
-    // 
-
-    //console.warn( "SO, should aliasedRecipes have multiple instances, and which direction should they bubble up and/or down?" );
-  }
-
-
   let instance = {
     recipe: recipe,
-    parent,
+    data_parent: parent,
+    event_parent: parent,
     name: parent ? `instance of recipe ${recipe.name} in ${parent.name}` : `instance of recipe ${recipe.name}`,
 
     rootNode: node,
@@ -567,22 +555,20 @@ const newInstance = (recipe,parent,node) => {
     },
 
     handleEvent: function(event,result) {
-      console.log( this.name );
-
       const listener = this.on && this.on[event];
       const handled = listener && listener( this, result );
       if (handled) {
         this._check() && this.refresh();
       }
-      else if (this.parent 
-            && this.parent.handleEvent 
-            && this.parent.handleEvent(event,result) ) {
-        this.parent._check() && this.parent.refresh();
+      else if (this.event_parent 
+            && this.event_parent.handleEvent 
+            && this.event_parent.handleEvent(event,result) ) {
+        this.event_parent._check() && this.event_parent.refresh();
       }
     },
 
     event: function(event,result) {
-      this.parent && this.parent.handleEvent( event,result );
+      this.event_parent && this.event_parent.handleEvent( event,result );
     },
 
     broadcastListener: (node && node.listen) || recipe.listen,
@@ -651,7 +637,54 @@ const newInstance = (recipe,parent,node) => {
         this.comp[handle] = comp;
       }
     },
-  };
+  }; // instance
+
+  instance.event_root = instance;
+
+  if (recipe.aliasedRecipe) {
+    let aliasedRecipe = recipe.aliasedRecipe;
+
+    // event parent is in the reverse order
+    // [instance node] zoo [recipe node] [instance] -> foo [bar instance] -> bar [col instance] --> col (rootmost)
+    // gotta attach the rootmost's 
+
+    let event_parent = instance;
+    while( aliasedRecipe ) {
+      [ aliasedRecipe, aliasedRecipe.contents[0] ].forEach( node => {
+        console.log( node, "NOD" );
+        const ons = node.on && Object.keys( node.on );
+        if (node.listen || (ons && ons.length > 0)) {
+          const slice = { instance, 
+                          name: `slice for ${aliasedRecipe.name} of ${node.name} on ${instance.name}`,
+                          event: function(event,result) {
+                            this.event_parent && this.event_parent.handleEvent( event,result );
+                          },
+                          handleEvent: function(event,result) {
+                            const listener = this.on && this.on[event];
+                            const handled = listener && listener( this, result );
+                            if (handled) {
+                              this._check() && this.refresh();
+                            }
+                            else if (this.event_parent 
+                                     && this.event_parent.handleEvent 
+                                     && this.event_parent.handleEvent(event,result) ) {
+                              this.event_parent._check() && this.event_parent.refresh();
+                            }
+                          },
+                          on: node.on || {} };
+          console.log( `MAKING SLICE ) ${slice.name}` );
+          if (node.listen) {
+            slice.listen = node.listen;
+          }
+          slice.event_parent = event_parent;
+          event_parent = slice;
+          instance.event_root = slice;
+        }
+      } );
+      aliasedRecipe = aliasedRecipe.aliasedRecipe;
+    }
+    debugger;
+  }
 
   instance.top = (parent && parent.top) || instance;
 
@@ -682,7 +715,6 @@ const newInstance = (recipe,parent,node) => {
   }
 
   if (recipe.rootElementNode) {
-    console.log( recipe.rootElementNode.on );
 //    attachFunctions( instance, recipe.rootElementNode );
 //    attachData( instance, recipe.rootElementNode );
   }
@@ -734,12 +766,12 @@ const attachGetters = node => {
     return v;
   };
   node.has = function(k) {
-    return (k in this.data) || this.parent && this.parent.has( k );
+    return (k in this.data) || this.data_parent && this.data_parent.has( k );
   };
 
   node.get = function(k,defVal) {
     if (k in this.data) return this.data[k];
-    let val = this.parent && this.parent.get( k );
+    let val = this.data_parent && this.data_parent.get( k );
     if (val === undefined && defVal !== undefined) {
       val = this.data[k] = defVal;
     }
@@ -889,7 +921,7 @@ function _refresh_element( node, el ) {
       const instance = this;
       Object.keys( node.on ).forEach( evname => {
         const evfun = function() {
-          const prom = node.on[evname]( instance, ...arguments );
+          const prom = node.on[evname]( instance.event_root, ...arguments );
           // resolve in case it returns undefined or returns a promise
           Promise.resolve( prom )
             .then( () => {
@@ -911,7 +943,7 @@ function _refresh_element( node, el ) {
   if (rootNode) {
 
     // attach handle if needed. attach this instance to its parent instance
-    rootNode.handle && this.parent._attachCompHandle( this, rootNode.handle );
+    rootNode.handle && this.data_parent._attachCompHandle( this, rootNode.handle );
 
     const attrs = rootNode.attrs;
     attrs && Object.keys( attrs )
@@ -966,8 +998,8 @@ function refresh(node,el,placeholderNode,isAliased) {
         if (phContainer) {
           const contents = placeholderNode.fill_contents[ph];
           console.warn( "IS ALIASED? LOOK HERE" );
-          if (this.parent && ! isAliased) {
-            this.parent._refresh_content( contents, phContainer );
+          if (this.event_parent && ! isAliased) {
+            this.event_parent._refresh_content( contents, phContainer );
           } else {
             this._refresh_content( contents, phContainer );
           }
@@ -978,8 +1010,8 @@ function refresh(node,el,placeholderNode,isAliased) {
     const placeholder = placeholderNode.contents;
     if (placeholder) {
       const innerContainer = findFill( el );
-      if (this.parent && ! isAliased) {
-        this.parent._refresh_content( placeholder, innerContainer );
+      if (this.event_parent && ! isAliased) {
+        this.event_parent._refresh_content( placeholder, innerContainer );
       } else {
         this._refresh_content( placeholder, innerContainer );
       }

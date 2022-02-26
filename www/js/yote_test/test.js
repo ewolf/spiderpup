@@ -1816,7 +1816,7 @@ const testAliasedRecipes = () => {
             { data: { defdata: 13 },
               on_fooclick: (c,val) => {
                 // zoo is a foo is a bar is a col
-                
+                debugger;
               },
             },
             [
@@ -1856,7 +1856,7 @@ const testAliasedRecipes = () => {
         foo: {
           data: { foodata: 'true' },
           contents: [ node( 'bar', { fill: true,
-                                     on_barclick: (c,val) => c.ev( 'fooclick', `foo <- ${val}` ),
+                                     on_barclick: (c,val) => c.event( 'fooclick', `foo <- ${val}` ),
                                    }, [
             el( 'span', { textContent: c => `[${c.get('coldata')}/${c.get('bardata')}/${c.get('foodata')}/${c.get('defdata')}]` } ),
             ] ) ],
@@ -1864,7 +1864,7 @@ const testAliasedRecipes = () => {
         bar: {
           data: { bardata: 'true' },
           contents: [ node( 'col', { class: 'additive now',
-                                     on_colclick: (c,val) => c.ev( 'barclick', `bar <- ${val}` ),
+                                     on_colclick: (c,val) => c.event( 'barclick', `bar <- ${val}` ),
                                    },
                             [ el( 'section', 'BARBAR' ) ] ) ],
         },
@@ -1872,7 +1872,7 @@ const testAliasedRecipes = () => {
           data: { coldata: 'true' },
           contents: [ el( 'div', { class: 'col', 
                                    id: 'baseel',
-                                   on_click: c => c.event('colclick','col <- clicked'),
+                                   on_click: c => { debugger; c.event('colclick','col <- clicked') },
                                    'data-thing': 'that' },
                           [ el( 'span', 'COLCOL' ) ] ) ],
         },
@@ -1883,9 +1883,10 @@ const testAliasedRecipes = () => {
   const bodyInstance = go();
   let zooInst = document.getElementById( 'baseel' ).instance;
   const div = zooInst.rootEl;
+
   div.click();
   
-
+  
   confirmEl( 'test-aliased-recipes',
              'body',
              [
