@@ -1,8 +1,6 @@
 const testsToDo = [
-  'internalContent --> placeholder',
   'multiple named inner places',
   'test copy attributes from recipe base to first element',
-  'test adding style',
   'red/green text for pass fails on this page',
 ];
 /**
@@ -130,7 +128,7 @@ let fails = 0;
 let messages = [];
 
 function log( ...args ) {
-  messages.push( args );
+  messages.push( ...args );
   console.log( ...args );
 }
 
@@ -210,7 +208,8 @@ function pass (msg) {
 }
 function fail (msg) {
   const stack = new Error().stack.split( /[\n\r]+/ );
-  const lineNum = stack[stack.length-2].replace( /.*:(\d+):\d+\)$/, '$1' );
+  const failline = stack.filter( l => l.match(/^\s*at test/) )[0];
+  const lineNum = failline ? failline.replace( /.*:(\d+):\d+\)$/, '$1' ) : '?';
   ran++;
   fails++;
   log( `FAILED: test '${msg}' (line ${lineNum})` );
@@ -464,14 +463,23 @@ function test(...tests) {
     reset();
     const result = messages.pop();
     body( [
-      el( 'h1', result.join( ' ' ) ),
+      el( 'h1', result ),
       el( 'h2', { if: 0, textContent: 'things to implement and/or test' }, [
           el ('ul', 
               testsToDo.map( msg => el( 'li', msg ) )
              ) ] ),
       el( 'h2', 'test results' ),
       el( 'ul',
-          messages.map( msg => el( 'li', msg.join( ' ' ) ) ) )
+          messages.map( msg => {
+            const match = msg.match(/^(FAILED.*)\(line (\d+)\)$/);
+            if (match) {
+              msg = match[1];
+              const line = match[2];
+              return el( 'li', [ el( 'span', msg ), 
+                                 el( 'span', { href: '#', textContent: `(line ${line})` } ) ] );
+            }
+            return el( 'li', msg );
+          } ) )
     ] );
     def_funs( [ () => testsToDo.length > 0 ] );
     go();
@@ -508,7 +516,8 @@ function run(tests) {
 const testBasic = () => {
   reset();
   body( [ el( 'span', "FIRST" ), //0
-          el( 'div', "SECOND", //1
+          el( 'div', { textContent: "SECOND",   //1
+                       style: 'background: blue; padding: 3px' },
               [
                 node( 'foo' ), // div span
                 node( 'foo', { functions: { bar: 1 } } ),
@@ -558,8 +567,10 @@ const testBasic = () => {
              'body',
               [
                 [ 'span', 'FIRST' ], // 0
-                [ 'div',             // 1
-                  'SECOND',
+                [ 'div', { style: { background: 'blue',
+                                    padding: '3px' },
+                           textContent: 'SECOND'
+                         }, // 1
                   [
                     [ 'div', [ 'span', 'BAR' ]],  // 1, 0
                     [ 'div', [ 'span', 'BAR2' ]], // 1, 1
@@ -1971,7 +1982,6 @@ const testAliasedRecipes = () => {
 }; //testAliasedRecipes
 
 test( 
-
   testNamespace,
   testBasic,
   testIfs,
