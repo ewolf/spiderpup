@@ -634,17 +634,28 @@ const prepElementNode = (node,namespace) => {
   prepContents( node.contents, namespace );
 }
 
-const findPlaceholder = (el,recur) => {
-  if ( el.placeholder ) return el;
-  const chilInts = Array.from( el.children )
-        .map( chld => findPlaceholder( chld, true ) )
-        .filter( chld => chld !== undefined );
+const findPlaceholder = (el,name,recur) => {
+  if (name !== undefined) {
+    if ( el.placeholder === name ) return el;
+    const chilInts = Array.from( el.children || [] )
+          .map( chld => findPlaceholder( chld, name, true ) )
+          .filter( chld => chld !== undefined );
 
-  if (chilInts.length > 0) {
-    return chilInts[0];
+    if (chilInts.length > 0) {
+      return chilInts[0];
+    }
+  } else {
+    if ( el.placeholder === true ) return el;
+    const chilInts = Array.from( el.children || [] )
+          .map( chld => findPlaceholder( chld, name, true ) )
+          .filter( chld => chld !== undefined );
+    
+    if (chilInts.length > 0) {
+      return chilInts[0];
+    }
   }
 
-  if (!recur) {
+  if (name === undefined && !recur) {
     return el;
   }
 
@@ -757,19 +768,38 @@ function _refresh_element( node, el ) {
   return needsInit;
 } //_refresh_element
 
-function refresh(node,el,placeholder,isAliased) {
+function refresh(node,el,placeholderNode,isAliased) {
 
   const needsInit = this._refresh_element( node, el );
   
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
   node.contents && this._refresh_content( node.contents, el );
-  if (placeholder) {
-    const innerContainer = findPlaceholder( el );
-    if (this.parent && ! isAliased) {
-      this.parent._refresh_content( placeholder, innerContainer );
-    } else {
-      this._refresh_content( placeholder, innerContainer );
+
+  if (placeholderNode) {
+     placeholderNode.placeholder_contents && 
+      Object.keys( placeholderNode.placeholder_contents )
+      .forEach( ph => {
+        const phContainer = findPlaceholder( el, ph );
+        if (phContainer) {
+          const contents = placeholderNode.placeholder_contents[ph];
+          if (this.parent && ! isAliased) {
+            this.parent._refresh_content( contents, phContainer );
+          } else {
+            this._refresh_content( contents, phContainer );
+          }
+        }
+      } );
+
+
+    const placeholder = placeholderNode.contents;
+    if (placeholder) {
+      const innerContainer = findPlaceholder( el );
+      if (this.parent && ! isAliased) {
+        this.parent._refresh_content( placeholder, innerContainer );
+      } else {
+        this._refresh_content( placeholder, innerContainer );
+      }
     }
   }
 
@@ -820,10 +850,10 @@ function _refresh_component( compo, el, recipe ) {
     }
     this._refresh_element( root, el );
 
-    el.instance._refresh( compo, el, recipe.contents[0].contents, true );
+    el.instance._refresh( compo, el, recipe.contents[0], true );
     return;
   }
-  el.instance._refresh( compo.recipe.rootElementNode, el, compo.contents );
+  el.instance._refresh( compo.recipe.rootElementNode, el, compo );
 
 } //_refresh_component
 
@@ -952,7 +982,7 @@ function _refresh_content(content, el) {
               forInstance.idx[forval] = i;
               forInstance.it[forval] = list[i];
 
-              forInstance._refresh( con.recipe.rootElementNode, forEl, con.contents );
+              forInstance._refresh( con.recipe.rootElementNode, forEl, con );
             } 
             else { //is element
               forEl = forEl || ( i == 0 ? this._new_el( con, forKey, el ) :
