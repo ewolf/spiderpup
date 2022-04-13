@@ -6,6 +6,7 @@ use warnings;
 use Data::Dumper;
 
 use File::Slurp;
+use CSS::LESSp;
 use JSON;
 use YAML;
 
@@ -135,25 +136,50 @@ sub transform_data {
 # the data into numbers when appropriate.
 #
 sub transform_recipe {
-    my ($node, $funs) = @_;
-    if(ref( $node ) eq 'ARRAY') {
-       for my $ingdef (@$node) {
-            my ($ingredient) = ref $ingdef eq 'HASH' ? values %$ingdef : $ingdef;
-            transform_recipe($ingredient, $funs);
+    my ($recipe, $funs, $filename, $class) = @_;
+
+    if(ref( $recipe ) eq 'ARRAY') {
+        for my $node (@$recipe) {
+            transform_node($node, $funs, $filename);
+        }
+        $recipe = { contents => $recipe };
+    }
+    if(ref( $recipe ) eq 'HASH') {
+        transform_node( $recipe, $funs, $filename );
+        if ($class) {
+            $recipe->{class} .= " $class";
         }
     }
-    elsif(ref( $node ) eq 'HASH') {
-        transform_fun_hash( $node->{methods}, $funs );
+    transform_fun( $recipe, 'preLoad', $funs );
+    return $recipe;
+}
+
+sub transform_node {
+    my ($node, $funs, $filename) = @_;
+
+    # node is gonna be { tag => { ...nodedata... } }
+    my $ref = ref $node;
+    if ($ref eq 'ARRAY') {
+        for my $connode (@$node) {
+            my ($nodedata) = values %$connode;
+            transform_node( $nodedata, $funs, $filename );
+        }
+    } elsif ($ref eq 'HASH') {
+        transform_fun_hash( $node->{functions}, $funs );
         transform_fun_hash( $node->{on}, $funs );
         transform_fun_hash( $node->{calculate}, $funs );
         transform_fun( $node, 'if', $funs );
         transform_fun( $node, 'elseif', $funs );
         transform_fun( $node, 'foreach', $funs );
         transform_data( $node->{data} );
-        transform_recipe( $node->{contents}, $funs );
-        transform_fun_hash( $node->{functions}, $funs );
+        if ($node->{contents}) {
+            for my $connode (@{$node->{contents}}) {
+                my ($nodedata) = values %$connode;
+                transform_node( $nodedata, $funs, $filename );
+            }
+        }
         for my $attr (keys %$node) {
-            if ($attr =~ /^on_(.*)/) {
+            if ($attr =~ /^on_/) {
                 transform_fun( $node, $attr, $funs );
             }
         }
@@ -200,7 +226,7 @@ sub load_namespace {
                 }
                 my $imp_filename = $imp->{$namespace};
 
-                $yaml->{namespaces}{$namespace} = load_namespace( $root, "include/$imp_filename.yaml", $filespaces, $funs );
+                $yaml->{namespaces}{$namespace} = load_namespace( $root, "recipes/$imp_filename.yaml", $filespaces, $funs );
             }
         }
 
@@ -210,23 +236,33 @@ sub load_namespace {
         for my $recipe_name (keys %{$yaml->{components}}) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{components}{$recipe_name};
-            transform_recipe( $recipe, $funs );
+            transform_recipe( $recipe, $funs, $filename, $recipe_name );
             transform_fun( $recipe, 'onLoad', $funs );
         }
 
         transform_fun( $yaml->{html}, 'onLoad', $funs );
         transform_fun( $yaml->{html}, 'preLoad', $funs );
 
+        my $fn = $filename;
+        $fn =~ s!/!_!g;
+        $fn =~ s![.]!-!g;
+
+        if ($yaml->{css}) {
+            my $less = ".$fn { $yaml->{css} }";
+            my @css = CSS::LESSp->parse( $less );
+            $yaml->{css} = join( '', @css );
+        }
+
         my $body = $yaml->{html}{body};
 
         if ($body) {
-            transform_recipe( $body, $funs );
+            $body = $yaml->{html}{body} = transform_recipe( $body, $funs, $filename, $fn );
+            $body->{attrs}{class} .= " $fn";
         }
         my $headfun = $yaml->{html}{head}{functions};
         if ($headfun) {
             transform_fun_hash( $headfun, $funs );
         }
-print STDERR Data::Dumper->Dump([$yaml,"YA"]);
     }
     return $yaml_file;
 }
@@ -241,8 +277,6 @@ sub serve_recipe {
     $page =~ s~^/_/~/~;
 
     my $js = yaml_to_js( $root, "recipes$page.yaml" );
-
-print STDERR Data::Dumper->Dump([$js,"JAVAS"]);
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );
