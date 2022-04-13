@@ -17,6 +17,11 @@ introduce spiderpup reusable components.
 
 ### hello world
 
+This shows how spiderpup builds html tags from its description.
+Simple tags witout properties, like body in this example, can 
+have a list of child tags placed inside of it. Simple tags
+without child tags can be given text to place inside of them.
+
 http://localhost:3000/examples/hello_world.html
 
 YAML file *.../spiderpup/www/recipes/examples/hello_world.yaml*.
@@ -30,6 +35,12 @@ html:
 ```
 
 ### hello again
+
+This example shows tags that contain properties and children.
+The div tag placed inside the body is given the 'class' property
+and the 'contents' property to hold child tags placed in it.
+The h2 tag inside of it is given an explicit 'style'
+and 'textContent' properties.
 
 http://localhost:3000/examples/hello_again.html
 
@@ -56,6 +67,11 @@ html:
 ```
 
 ### components
+
+Components are resuable snippets that can contain
+other components inside them. The components act like
+html tags. In this example, the 'main' component
+has the 'greeting' component included twice inside of it.
 
 http://localhost:3000/examples/components.html
 
@@ -93,7 +109,12 @@ components:
 
 ### internal content
 
-
+This shows where a defined component places any contents given to it.
+The 'with-specified-internal' component has a span inside of it
+with the 'internalContent' property. Any contents given to the
+component are placed within that span. The 'no-specified-internal'
+component does not have a child with 'internalContent' so any 
+content given to it is placed at the end.
 
 http://localhost:3000/examples/internal.html
 
@@ -106,6 +127,7 @@ html:
     style: span { margin: 5px }
   body:
     - with-specified-internal:
+      - span: IN THE
       - span: MIDDLE
     - no-specified-internal:
       - span: AFTER FINISH
@@ -126,7 +148,7 @@ components:
 ### includes
 
 spiderpup recipes may include other recipes. Included recipes
-must be in the www/include directory
+must be in the www/include directory.
 
 http://localhost:3000/examples/includes.html
 

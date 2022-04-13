@@ -84,6 +84,7 @@ sub serve_html {
 #
 sub transform_fun {
     my ($node, $name, $funs) = @_;
+
     if (ref($node) eq 'HASH' && $node->{$name}) {
         my $fid = @$funs;
         push @$funs, $node->{$name};
@@ -93,7 +94,7 @@ sub transform_fun {
 
 #
 # in a node, moves the nameds function of a hash (if any)
-# into the $funs array and then replaces thm with
+# into the $funs array and then replaces them with
 # their indexes in the $funs array
 #
 sub transform_fun_hash {
@@ -206,11 +207,12 @@ sub load_namespace {
             transform_fun( $recipe, 'onLoad', $funs );
         }
 
+        transform_fun( $yaml->{html}, 'onLoad', $funs );
+
         my $body = $yaml->{html}{body};
 
         if ($body) {
             transform_recipe( $body, $funs );
-            transform_fun( $body, 'onLoad', $funs );
         }
         my $headfun = $yaml->{html}{head}{functions};
         if ($headfun) {
