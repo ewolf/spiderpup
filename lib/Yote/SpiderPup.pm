@@ -93,6 +93,116 @@ sub transform_fun {
     }
 }
 
+sub encode_fun {
+    my ($node, $name, $funs) = @_;
+    if (ref($node) eq 'HASH' && $node->{$name}) {
+        my $val = $node->{$name};
+        my $fid = @$funs;
+
+        # remove accidental trailing ; for function delcarations
+        if ($val =~ /;\s*$/) {
+            $val =~ s/;\s*$//;
+            warn "removing trailing ; from function delcaration";
+        }
+        push @$funs, $val;
+        return $fid;
+    }
+}
+
+
+sub encode_fun_hash {
+    my ($node, $funs) = @_;
+    my $res = {};
+    if (ref $node eq 'HASH') {
+        for my $name (keys %$node) {
+            my $fid = @$funs;
+            push @$funs, $node->{$name};
+            $res->{$name} = $fid;
+        }
+    }
+    return $res;
+}
+
+sub build_recipe {
+    my ($recipe_data, $funs, $filename) = @_;
+
+    if (ref $recipe_data eq 'ARRAY') {
+        $recipe_data = { contents => $recipe_data };
+    }
+
+    my $recipe = {};
+    my $con = $recipe->{contents} = [];
+
+    for my $node_data (@{$recipe_data->{contents}||[]}) {
+        push @$con, build_node( $node_data, $funs, $filename );
+    }
+
+    encode_functions_and_attrs( $recipe, $recipe_data, $funs, $filename );
+
+    return $recipe;
+}
+
+sub encode_functions_and_attrs {
+    my ($node, $node_data, $funs, $filename) = @_;
+    my $attrs = $node->{attrs} = {};
+    my $calculate = $node->{calculate} = encode_fun_hash( $node_data->{calculate}, $funs );
+    my $on = $node->{on} = encode_fun_hash( $node_data->{on}, $funs );
+    for my $field (keys %$node_data) {
+        my $val = $node_data->{$field};
+        if ($field =~ /^(functions)$/) {
+            $node->{$field} = encode_fun_hash( $val, $funs );
+        }
+        elsif ($field =~ /^(onLoad|preLoad|if|elseif|else|foreach)$/) {
+            $node->{$field} = encode_fun( $node_data, $field, $funs );
+        }
+        elsif ($field =~ /^on_(.*)/) {
+            $on->{$1} = encode_fun( $node_data, $field, $funs );
+        }
+        elsif ($field !~ /^(calculate|contents|forval)$/) {
+            # assume an attribute, and calculate was already handled
+            if ($val =~ /^(\([^)]*\)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
+                $calculate->{$field} = encode_fun( $node_data, $field, $funs );
+            } else {
+                $attrs->{$field} = $val;
+            }
+        }
+    }
+}
+
+sub build_node {
+    my ($node_data, $funs, $filename) = @_;
+
+    my $node = {};
+
+    my ($tag, $data);
+    if (ref $node_data eq 'HASH') {
+        ($tag, $data) = %$node_data;
+    } else {
+        ($tag, $data) = ($node_data, {});
+    }
+
+    $node->{tag} = $tag;
+
+    my $r = ref $data;
+    if ($r eq 'ARRAY') {
+        $data = { contents => $data };
+    } elsif ($r ne 'HASH') {
+        $data = { textContent => $data };
+    }
+
+    my $con = $node->{contents} = [];
+    for my $data (@{$data->{contents}||[]}) {
+        push @$con, build_node( $data, $funs, $filename );
+    }
+
+    encode_functions_and_attrs( $node, $data, $funs, $filename );
+
+    # get on_click, etc
+    # get data, etc
+
+    return $node;
+} #build_node
+
 #
 # in a node, moves the nameds function of a hash (if any)
 # into the $funs array and then replaces them with
@@ -131,62 +241,6 @@ sub transform_data {
 }
 
 #
-# pulls out the functions in a recipe to the funs array and replaces them
-# with that index in the funs array they were pulled to. Also transforms
-# the data into numbers when appropriate.
-#
-sub transform_recipe {
-    my ($recipe, $funs, $filename, $class) = @_;
-
-    if(ref( $recipe ) eq 'ARRAY') {
-        for my $node (@$recipe) {
-            transform_node($node, $funs, $filename);
-        }
-        $recipe = { contents => $recipe };
-    }
-    if(ref( $recipe ) eq 'HASH') {
-        transform_node( $recipe, $funs, $filename );
-        if ($class) {
-            $recipe->{class} .= " $class";
-        }
-    }
-    transform_fun( $recipe, 'preLoad', $funs );
-    return $recipe;
-}
-
-sub transform_node {
-    my ($node, $funs, $filename) = @_;
-
-    # node is gonna be { tag => { ...nodedata... } }
-    my $ref = ref $node;
-    if ($ref eq 'ARRAY') {
-        for my $connode (@$node) {
-            my ($nodedata) = values %$connode;
-            transform_node( $nodedata, $funs, $filename );
-        }
-    } elsif ($ref eq 'HASH') {
-        transform_fun_hash( $node->{functions}, $funs );
-        transform_fun_hash( $node->{on}, $funs );
-        transform_fun_hash( $node->{calculate}, $funs );
-        transform_fun( $node, 'if', $funs );
-        transform_fun( $node, 'elseif', $funs );
-        transform_fun( $node, 'foreach', $funs );
-        transform_data( $node->{data} );
-        if ($node->{contents}) {
-            for my $connode (@{$node->{contents}}) {
-                my ($nodedata) = values %$connode;
-                transform_node( $nodedata, $funs, $filename );
-            }
-        }
-        for my $attr (keys %$node) {
-            if ($attr =~ /^on_/) {
-                transform_fun( $node, $attr, $funs );
-            }
-        }
-    }
-}
-
-#
 # 
 #
 sub yaml_to_js {
@@ -214,35 +268,14 @@ sub load_namespace {
 
     if (-e $yaml_file) {
         my $yaml = YAML::LoadFile( $yaml_file );
-        $yaml->{namespaces} //= {};
-        $filespaces->{$yaml_file} = $yaml;
 
-        # check for imports
-        if (my $imports = $yaml->{import}) {
-            for my $imp (@$imports) {
-                my ($namespace) = keys %$imp;
-                if ($namespace =~ /\./) {
-                    die "namespace may not contain '.'";
-                }
-                my $imp_filename = $imp->{$namespace};
+        my $namespace = { 
+            namespaces => {},
+        };
 
-                $yaml->{namespaces}{$namespace} = load_namespace( $root, "recipes/$imp_filename.yaml", $filespaces, $funs );
-            }
-        }
+        $filespaces->{$yaml_file} = $namespace;
 
-        # functions and onLoad only appear in the root of the recipe
-        transform_fun_hash( $yaml->{functions}, $funs );
-
-        for my $recipe_name (keys %{$yaml->{components}}) {
-            die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
-            my $recipe = $yaml->{components}{$recipe_name};
-            transform_recipe( $recipe, $funs, $filename, $recipe_name );
-            transform_fun( $recipe, 'onLoad', $funs );
-        }
-
-        transform_fun( $yaml->{html}, 'onLoad', $funs );
-        transform_fun( $yaml->{html}, 'preLoad', $funs );
-
+        # css defined
         my $fn = $filename;
         $fn =~ s!/!_!g;
         $fn =~ s![.]!-!g;
@@ -250,18 +283,42 @@ sub load_namespace {
         if ($yaml->{css}) {
             my $less = ".$fn { $yaml->{css} }";
             my @css = CSS::LESSp->parse( $less );
-            $yaml->{css} = join( '', @css );
+            $namespace->{css} = join( '', @css );
+        }
+
+        # check for imports
+        if (my $imports = $yaml->{import}) {
+            for my $imp (@$imports) {
+                my ($ns) = keys %$imp;
+                if ($ns =~ /\./) {
+                    die "namespace may not contain '.' and got '$ns'";
+                }
+                my $imp_filename = $imp->{$ns};
+
+                $namespace->{namespaces}{$ns} = load_namespace( $root, "recipes/$imp_filename.yaml", $filespaces, $funs );
+            }
+        }
+
+        # encode functions, onLoad, preLoad
+        $namespace->{functions} = encode_fun_hash( $yaml->{functions}, $funs );
+        for my $fun (qw( onLoad preLoad )) {
+            if ($namespace->{$fun}) {
+                $namespace->{$fun} = encode_fun( $yaml, $fun, $funs );
+            }
+        }
+
+        $namespace->{components} = {};
+        for my $recipe_name (keys %{$yaml->{components}}) {
+            die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
+            my $recipe = $yaml->{components}{$recipe_name};
+            $namespace->{components}{$recipe_name} = build_recipe( $yaml->{components}{$recipe_name}, $funs, $filename );
         }
 
         my $body = $yaml->{html}{body};
 
         if ($body) {
-            $body = $yaml->{html}{body} = transform_recipe( $body, $funs, $filename, $fn );
+            $body = $namespace->{html}{body} = build_recipe( $body, $funs, $filename, $fn );
             $body->{attrs}{class} .= " $fn";
-        }
-        my $headfun = $yaml->{html}{head}{functions};
-        if ($headfun) {
-            transform_fun_hash( $headfun, $funs );
         }
     }
     return $yaml_file;
