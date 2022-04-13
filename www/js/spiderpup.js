@@ -178,7 +178,7 @@ const hang = (node, el) => {
   //  (id may not be updated here)
   const seen = { id: 1 };
 
-  // set the attributes from most to least specific for this node
+  // set the calculated attributes from most to least specific for this node
   [node.args.calculate, node.isRecipe && node.recipe.calculate, node.calculate]
     .forEach( source => {
       source && Object.keys(source)
@@ -193,6 +193,8 @@ const hang = (node, el) => {
           }
         } )
     } );
+
+  // set the non calculated attributes
   [node.args.attrs,node.attrs, node.isRecipe && node.recipe.attrs]
     .forEach( source => {
       source && Object.keys(source)
@@ -209,34 +211,42 @@ const hang = (node, el) => {
     } );
   node.textContent && (el.textContent = node.textContent);
 
-  // fill in hidden child elements if there are none.
-  if (el.childElementCount === 0 && node.contents.length > 0) {
-    node.contents
-      .forEach( (childnode,idx) => {
+  // find if the child nodes have been created, and hash key --> element
+  const key2el = {};
+  Array.from( el.children )
+    .forEach( el => el.key && ( key2el[el.key] = el ) );
+console.log( key2el, "HI" );
+  node.contents
+    .forEach( (childnode,idx) => {
+console.log(childnode,"CN");
+      const key = childnode.id + (childnode.foreach ? '_0' : '');
+      let childel = key2el[key];
+if(childel) console.log( el, childel, `====> ${key}`, idx );
+
+      if (!childel) {
         // check if it is a recipe. if so, the tag is the tag of the recipe root node
         const tag = childnode.isRecipe ? childnode.recipe.rootTag : childnode.tag;
-
+        
         // now create and attach the element
-        const nodeel = document.createElement( tag );
-        nodeel.hidden = true;
-        nodeel.node = childnode;
+        childel = document.createElement( tag );
+        console.log( el, childel, `----> ${key}`, idx );
+
+        key2el[key] = childel;
+
+        childel.hidden = true;
 
         // collect el and compo
         const handle = childnode['attach-el'];
-        handle && ( state.el[handle] = nodeel );
+        handle && ( state.el[handle] = childel );
 
         if (childnode.isRecipe) {
-          childnode.rootel = nodeel;
+          childnode.rootel = childel;
         }
 
-        let childkey = childnode.id;
-        if (childnode.foreach) {
-          childkey = childkey + '_0'; //always have an element zero for tag arrays
-        }
-        nodeel.id = childkey;
+        childel.key = key;
+        childnode.key = key;
 
-        node.el = nodeel;
-        el.append( nodeel );
+        el.append( childel );
 
         // attach event handlers
         childnode.on && Object.keys( childnode.on ).forEach( evname => {
@@ -247,35 +257,36 @@ const hang = (node, el) => {
                 if ( state.data._check() ) state.refresh();
               } );
           };
-          nodeel.addEventListener( evname, evfun );
+          childel.addEventListener( evname, evfun );
         } );
 
         // also attach on_<foo> stuff
         Object.keys( childnode ).forEach( attr => {
           const l = attr.match( /^on_(.*)/ );
-          const evfun = function() {
-            const prom = childnode[attr]( state, ...arguments );
-            Promise.resolve( prom )
-              .then( () => {
-                if ( state.data._check() ) state.refresh();
-              } );
-          }
           if (l) {
-            nodeel.addEventListener( l[1], evfun );
+            const evfun = function() {
+              const prom = childnode[attr]( state, ...arguments );
+              Promise.resolve( prom )
+                .then( () => {
+                  if ( state.data._check() ) state.refresh();
+                } );
+            }
+            childel.addEventListener( l[1], evfun );
           }
         } );
-      } );
-  }
-  
+      }
+    } );
+
   // now find the children
   let lastWasConditional = false,
       lastConditionalWasTrue = false;
 
   node.contents
-    .forEach( (childNode,idx) => {
+    .forEach( childNode => {
       const tagOrComponentName = childNode.tag;
-
-      let childKey = childNode.id;
+      const key = childNode.key;
+      console.log( childNode, `<---- ${key}` );
+      const childEl = key2el[key];
 
       if (childNode.if) {
         lastConditionalWasTrue = childNode.if( state );
@@ -292,15 +303,47 @@ const hang = (node, el) => {
         lastWasConditional = false;
       }
 
-      if (childNode.forEach) {
-        childKey = childKey + '_0';
-      }
-
-      const childEl = document.getElementById(childKey);
-
       if (lastWasConditional === false || lastConditionalWasTrue) {
-        childEl.hidden = false;
-        hang( childNode, childEl );
+
+        if (childNode.foreach) {
+          const basekey = key.replace( /_0$/, '' );
+          const forval = childNode.forval;
+          const list = childNode.foreach( state );
+          if (state.lastcount[forval] > list.length) {
+            for (let i=list.length === 0 ? 1 : list.length; i<state.lastcount[forval]; i++) {
+              const itEl = key2el[basekey + '_' + i];
+              itEl && itEl.remove();
+            }
+          }
+          state.lastcount[forval] = list.length;
+          if (list.length === 0) {
+            childEl.hidden = true;
+          } else {
+            let lastEl = key2el[basekey + '_0'];
+            debugger;
+            for (let i=0; i<list.length; i++) {
+              const key = basekey + '_' + i;
+              let itEl = key2el[key];
+              if (!itEl) {
+                console.warn ( 'gotta do recipe instances here, too' );
+                itEl = document.createElement( tagOrComponentName );
+                key2el[key] = itEl;
+                itEl.key = key;
+                lastEl.after( itEl );
+              } else {
+                itEl.hidden = false;
+              }
+              state.idx[forval] = i;
+              state.it[forval] = list[i];
+              lastEl = itEl;
+
+              hang( childNode, itEl );
+            }
+          }
+        } else {
+          childEl.hidden = false;
+          hang( childNode, childEl );
+        }
       } else {
         childEl.hidden = true;
       }
@@ -337,6 +380,7 @@ const newState = (recipe,parent) => {
     fun    : recipe.functions || {},
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
+    lastcount: {}, // iterator name -> last list count
     recipe,
     refresh: function() { hang( this.instance, this.instance.rootel ) },
   };
@@ -490,6 +534,9 @@ const compileNodes = (rootnode, recipe, filename, recipeName, namespace, recipes
         }
       } else {
         lastWasConditional = false;
+      }
+      if (node.foreach && ! node.forval) {
+          throw new Error( `error, got foreach without forval` );
       }
       prepFunctions( node, filename, recipeName );
       compileNodes( node, recipe, filename, recipeName, namespace, recipesEncountered );
