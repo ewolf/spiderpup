@@ -456,9 +456,9 @@ html:
     - div:
         - h1: 
             foreach: s => [ "world", "galaxy", "universe" ]
-            forval: where
+            forval: whereami
             calculate:
-              textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
+              textContent: s => 'hello ' + s.it.whereami + ' (' + s.idx.whereami + ')'
 ```
 
 ## handles
@@ -505,7 +505,7 @@ http://localhost:3000/examples/attach_component.html
 
 Subcomponent state can be attached to a state object. In this example,
 the `testapp` component has two `counter` components embedded in it.
-Each instance of a component has its own state. Th state of a subcomponent
+Each instance of a component has its own state. The state of a subcomponent
 can be attached in the `comp` object of the state. A testapp state (s)
 here has references to its child components thru s.comp.A and s.comp.B.
 

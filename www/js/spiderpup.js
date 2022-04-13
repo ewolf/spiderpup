@@ -1,8 +1,17 @@
+/*
+  Including this attaches an 'onload' event to 'window' that activates it
+  upon load.
+
+  For a description of how this works, see the end of this file.
+ */
 let loadEvent;
 const parseInstructions = (defaultNamespace,filespaces,funs) => {
 
     // check if there is an html section defined
     const namespaceRecipe = filespaces[defaultNamespace];
+
+    namespaceRecipe.functions && Object.keys(namespaceRecipe.functions).forEach( fun =>
+            namespaceRecipe.functions[fun] = funs[namespaceRecipe.functions[fun]] );
 
     const html = namespaceRecipe.html;
     if (html) {
@@ -58,7 +67,7 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
 } //parseInstructions
 
 const buildNamespace = (namespaceRecipe,filespaces,funs) => {
-    const recipeNodes = {};
+    const recipeNodes = {}; // name to recipe definiton node
 
     namespaceRecipe.recipeNodes = recipeNodes;
 
@@ -78,29 +87,68 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
     }
 
     const makeState = (parentState, recipeNode, instanceNode) => {
-        let data, instanceFuns;
+        let data, instanceFuns = {};
+
 
         const state = {
             instanceID  : serial++,
-            parent      : parentState,
+
+            data        : undefined, // state object 
+            comp        : {}, // handle -> component state
+            create      : undefined, // function ( args )
+            el          : {}, // handle -> element
             fun         : instanceFuns,
-            comp        : {}, // handle -> component
+            glob        : parentState && parentState.glob,
             idx         : {}, // iterator name -> iterator index
             it          : {}, // iterator name -> iterator value
-            el          : {}, // handle -> element
+            parent      : parentState,
+            refresh     : undefined, // function to refresh this node
+            vars        : {}, // name -> value
         };
 
+        if (instanceNode) {
+            state.create = (recipeName,nodeArgs) => { // { recipeName, attach(To|Before|After) : attachElement }
+                const newnode = makeRecipeNode( recipeName, nodeArgs );
+                
+                // insert the node into the matching content
+                if (nodeArgs.attachTo) {
+                    const oldnode = state.el[nodeArgs.attachTo].instanceNode;
+                    oldnode.contents.push( newnode );
+                }
+                else if(nodeArgs.attachBefore) {
+                    const beforeAfter = nodeArgs.attachBefore || nodeArgs.attachAfter;
+                    if (beforeAfter) {
+                        const con = nodeArgs.attachBefore ? nodeArgs.attachBefore.parent.contents : nodeArgs.attachAfter.parent.contents;
+                    }
+                }
+                state.data._changed = true;
+            };
+        }
+
+        
+        // if it wasn't assigned a glob, it is the glob
+        // states is going to have a gotcha
+        state.glob || ( state.glob = state );
+
         if (recipeNode) {
+            if (parentState) {
+                Object.keys( parentState.fun )
+                    .forEach( fn => instanceFuns[fn] = parentState.fun[fn] );
+            }
+
             data = {...recipeNode.data};
-            instanceFuns = {};
-            Object.keys( recipeNode.functions )
-                .map( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, ...arguments ) } );
-            instanceNode.data && Object.keys( instanceNode.data )
-                .forEach( fld => data[fld] = instanceNode.data[fld] );
-            instanceNode.functions &&
-                Object.keys( instanceNode.functions )
-                .forEach( funname =>
-                    instanceFuns[funname] = function() { instanceNode.functions[funname]( state, ...arguments ) } );
+
+            recipeNode.functions && Object.keys( recipeNode.functions )
+                .forEach( fn => instanceFuns[fn] = function() { recipeNode.functions[fn]( state, ...arguments ) } );
+
+            if (instanceNode && instanceNode !== recipeNode) {
+                instanceNode.data && Object.keys( instanceNode.data )
+                    .forEach( fld => data[fld] = instanceNode.data[fld] );
+                instanceNode.functions &&
+                    Object.keys( instanceNode.functions )
+                    .forEach( funname =>
+                        instanceFuns[funname] = function() { instanceNode.functions[funname]( state, ...arguments ) } );
+            }
         }
 
         state.fun = instanceFuns;
@@ -132,11 +180,14 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
     };
 
     const makeRecipeNode = (name,rawNode,isRecipeRoot) => {
-        const node = Array.isArray(rawNode)
-              ? { contents: rawNode }
-              : typeof rawNode === 'object'
-              ? rawNode
-              : { textContent: rawNode };
+        if (!rawNode) {
+            throw new Error( "unable to make recipe, no content for '" + name + "' defined" );
+        }
+        const node = Array.isArray(rawNode) ?
+              { contents: rawNode } :
+              typeof rawNode === 'object' ?
+              rawNode : 
+              { textContent: rawNode };
 
         node.namespaceRecipe = namespaceRecipe;
         node.id = serial++;
@@ -167,12 +218,16 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         [ 'if', 'elseif', 'foreach' ].forEach( fun => node[fun] && (node[fun] = funs[node[fun]]) );
 
         node.contents = node.contents.map( con => {
+            let newnode;
             if ( typeof con === 'object' ) {
                 const conname = Object.keys( con )[0];
                 const connode = con[conname] || {};
-                return makeRecipeNode( conname, connode );
+                newnode = makeRecipeNode( conname, connode );
+            } else {
+                newnode = makeRecipeNode( con, {} );
             }
-            return makeRecipeNode( con, {} );
+            newnode.parent = node;
+            return newnode;
         } );
 
         return node;
@@ -198,7 +253,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         if (nodeNames.length === 2) {
             const filespace = nsr.namespaces[nodeNames[0]];
             if (!filespace) {
-                console.error( "namespace '${ns}' nto found" );
+                console.error( "namespace '${ns}' not found" );
                 return;
             }
             recipeNode = filespaces[filespace].recipeNodes[nodeNames[1]];
@@ -209,12 +264,12 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
             return;
         }
         if (!el) {
-
             if (recipeNode) {
                 // the job of the recipe node is to
                 // create a state for an instance and also to handle the onLoad event
-
                 const subCompoState = makeState( state, recipeNode, buildNode );
+
+                // the rootNode is the definition of the top level container
                 const rootNode = recipeNode.contents[0];
                 const rootArgs = {...args};
                 rootArgs.state = subCompoState;
@@ -252,6 +307,8 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
                 el.state = state;
                 if (args.attachAfter) {
                     args.attachAfter.after( el );
+                } else if (args.attachBefore) {
+                    args.attachBefore.after( el );
                 } else {
                     args.attachTo.append( el );
                 }
@@ -399,11 +456,11 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         return key2children;
     };
 
-    const contentInfo = con => {
-        const conname = Object.keys( con )[0];
-        const connode = con[conname] || {};
-        return [conname, connode];
-    }
+    // const contentInfo = con => {
+    //     const conname = Object.keys( con )[0];
+    //     const connode = con[conname] || {};
+    //     return [conname, connode];
+    // }
 
 
     // build recipes outlined in the 'components' section of the yaml
@@ -422,27 +479,18 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         const bodyNode = makeRecipeNode( 'body', html.body );
         bodyNode.namespaceRecipe = namespaceRecipe;
 
-        const state = makeState();
+        const state = makeState(undefined, namespaceRecipe, bodyNode);
         state.refresh = () => build( { buildNode: bodyNode, state } );
+        const headfun = html.head && html.head.functions;
+        headfun && Object.keys(headfun)
+            .forEach( fun => {
+                headfun[fun] = funs[headfun[fun]];
+                state.fun[fun] = headfun[fun];
+            } );
 
-        // check onload even for html
-        if (html.onLoad !== undefined ) {
-            loadEvent = ev => {
-                import( '/js/yote.js' )
-                    .then( impt => {
-                        state.yote=impt.yote;
-                        funs[html.onLoad](state,ev);
-                    } )
-                    .catch( err => {
-                        funs[html.onLoad](state,ev);
-                    } );
-            }
-        } else {
-            loadEvent = ev => {
-                import( '/js/yote.js' )
-                    .then( impt => (state.yote=impt.yote) );
-            }
-        }
+
+        // check onload event for html
+        html.onLoad && (loadEvent = ev => funs[html.onLoad](state,ev));
         
         return state;
     } //if there was a body
@@ -453,3 +501,51 @@ window.onload = ev => {
     parseInstructions( defaultNamespace, filespaces, funs );
     loadEvent && loadEvent(ev);
 }
+
+/*
+  This is complicated. How does it do what it does?
+
+*onload*
+
+  It installs an 'onload' event to the 'window', and runs
+  parseInstructions on it, using 3 global variabled defined
+  by Yote::SpiderPup when it generates the page specific javascript
+
+    defaultNamespace, filespaces and funs
+
+  These are created by the Yote::SpiderPup server process and defined
+  in the page's YAML file.
+    funs - an array of javascript functions
+    filespaces - a hash of filename --> yaml data structure from that file
+    defaultNameSpace - the filename corresponding to the default namespace
+  
+  funs is used as a workaround because functions can't be crammed into JSON.
+  where data structures should have functions, they have an index to a function
+  in the funs array. the parser replaces those indexes with the actual functions.
+
+  filespaces is filled by the original yaml file and any files it imports and
+  any files those import (and deeper, etc)
+
+*parseInstructions*
+
+  parseInstructions is called with those 3 arguments. It only does something if
+  an html body is defined in the defaultNameSpace file.
+
+  buildNamespace is called on all the filespaces. the last time it is called is
+  on the default namespace. it returns a state object and the page is finally built
+  by calling the 'refresh' method on that state.
+
+*buildNamespace*
+
+  a namespace in this case is the data structure defined by yaml in a single file.
+  it returns a state object if an html body is defined in the yaml.
+
+  it treats the 'components' of the namespace each as a recipe node. each recipe node
+  gets a serialized id. when a component is instantiated (placed in either the body 
+  or in an instance of an other component), a state object an instance node object 
+  is created for that.
+
+  each state object gets a serialized id. each instance node gets an id that is composed
+  of its recipe node's id and its state's id.
+
+ */

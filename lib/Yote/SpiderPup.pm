@@ -98,7 +98,7 @@ sub transform_fun {
 #
 sub transform_fun_hash {
     my ($node, $funs) = @_;
-    if ($node) {
+    if (ref $node eq 'HASH') {
         for my $name (keys %$node) {
             my $fid = @$funs;
             push @$funs, $node->{$name};
@@ -184,6 +184,7 @@ sub load_namespace {
     if (-e $yaml_file) {
         my $yaml = YAML::LoadFile( $yaml_file );
         $yaml->{namespaces} //= {};
+        $filespaces->{$yaml_file} = $yaml;
 
         # check for imports
         if (my $imports = $yaml->{import}) {
@@ -199,17 +200,22 @@ sub load_namespace {
         transform_fun_hash( $yaml->{functions}, $funs );
 
         for my $recipe_name (keys %{$yaml->{components}}) {
-            die "recipe '$recipe_name' in '$yaml_file' may not have a . in the name" if $recipe_name =~ /\./;
+            die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{components}{$recipe_name};
             transform_recipe( $recipe, $funs );
             transform_fun( $recipe, 'onLoad', $funs );
         }
 
         my $body = $yaml->{html}{body};
-        transform_recipe( $body, $funs );
-        transform_fun( $yaml->{html}, 'onLoad', $funs );
+        if ($body) {
+            transform_recipe( $body, $funs );
+            transform_fun( $body, 'onLoad', $funs );
+        }
+        my $headfun = $yaml->{html}{head}{functions};
+        if ($headfun) {
+            transform_fun_hash( $headfun, $funs );
+        }
 
-        $filespaces->{$yaml_file} = $yaml;
     }
     return $yaml_file;
 }
