@@ -429,8 +429,8 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         if (html.onLoad !== undefined ) {
             loadEvent = ev => {
                 import( '/js/yote.js' )
-                    .then( yote => {
-                        state.yote=yote;
+                    .then( impt => {
+                        state.yote=impt.yote;
                         funs[html.onLoad](state,ev);
                     } )
                     .catch( err => {
@@ -440,7 +440,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         } else {
             loadEvent = ev => {
                 import( '/js/yote.js' )
-                    .then( yote => (state.yote=yote) );
+                    .then( impt => (state.yote=impt.yote) );
             }
         }
         
