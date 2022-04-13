@@ -152,6 +152,11 @@ sub transform_recipe {
         transform_data( $node->{data} );
         transform_recipe( $node->{contents}, $funs );
         transform_fun_hash( $node->{functions}, $funs );
+        for my $attr (keys %$node) {
+            if ($attr =~ /^on_(.*)/) {
+                transform_fun( $node, $attr, $funs );
+            }
+        }
     }
 }
 
@@ -168,9 +173,8 @@ sub yaml_to_js {
 
     my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
-        "const defaultNamespace = ".to_json($default_filename)."[0];\n"; # put the default_filename in an array so it can be json escaped
-
-#    print STDERR "$js\n";
+        "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
+    # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
 
     return $js;
 }
@@ -222,7 +226,7 @@ sub load_namespace {
         if ($headfun) {
             transform_fun_hash( $headfun, $funs );
         }
-
+print STDERR Data::Dumper->Dump([$yaml,"YA"]);
     }
     return $yaml_file;
 }
@@ -237,6 +241,8 @@ sub serve_recipe {
     $page =~ s~^/_/~/~;
 
     my $js = yaml_to_js( $root, "recipes$page.yaml" );
+
+print STDERR Data::Dumper->Dump([$js,"JAVAS"]);
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );
