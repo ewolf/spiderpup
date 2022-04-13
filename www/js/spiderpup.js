@@ -1,3 +1,4 @@
+let loadEvent;
 const parseInstructions = (defaultNamespace,filespaces,funs) => {
 
     // check if there is an html section defined
@@ -412,6 +413,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
     ) );
 
     const html = namespaceRecipe.html;
+
     if (html.body) {
         // creates the function that generates the body
         // and stores it in builders['body'] = fun
@@ -423,14 +425,17 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
         const state = makeState();
         state.refresh = () => build( { buildNode: bodyNode, state } );
 
-        // check onload for body 
-        bodyNode.onLoad !== undefined && funs[bodyNode.onLoad]( state );
-
+        // check onload even for html
+        if (html.onLoad !== undefined ) {
+            loadEvent = ev => funs[html.onLoad](state,ev);
+        }
+    
         return state;
     } //if there was a body
 
 } //buildNamespace
 
-window.onload = () => {
+window.onload = ev => {
     parseInstructions( defaultNamespace, filespaces, funs );
+    loadEvent && loadEvent(ev);
 }

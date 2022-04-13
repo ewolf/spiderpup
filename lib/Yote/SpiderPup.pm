@@ -207,7 +207,7 @@ sub load_namespace {
 
         my $body = $yaml->{html}{body};
         transform_recipe( $body, $funs );
-        transform_fun( $body, 'onLoad', $funs );
+        transform_fun( $yaml->{html}, 'onLoad', $funs );
 
         $filespaces->{$yaml_file} = $yaml;
     }
