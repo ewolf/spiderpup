@@ -422,6 +422,10 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
 
         const state = makeState();
         state.refresh = () => build( { buildNode: bodyNode, state } );
+
+        // check onload for body 
+        bodyNode.onLoad !== undefined && funs[bodyNode.onLoad]( state );
+
         return state;
     } //if there was a body
 
