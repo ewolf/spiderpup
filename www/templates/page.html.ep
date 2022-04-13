@@ -1,0 +1,12 @@
+<html>
+  <head>
+    <title></title>
+    % if ( $js ) {
+      <script src="<%= $js %>"></script>
+    % }
+    <script src="/js/spiderpup.js"></script>
+    <script src="<%= $yaml %>"></script>
+    <link rel="stylesheet" href="<%= $css %>" media="screen">
+  </head>
+  <body></body>
+</html>
