@@ -190,8 +190,11 @@ sub load_namespace {
         # check for imports
         if (my $imports = $yaml->{import}) {
             for my $imp (@$imports) {
-                my ($imp_filename) = keys %$imp;
-                my $namespace = $imp->{$imp_filename};
+                my ($namespace) = keys %$imp;
+                if ($namespace =~ /\./) {
+                    die "namespace may not contain '.'";
+                }
+                my $imp_filename = $imp->{$namespace};
 
                 $yaml->{namespaces}{$namespace} = load_namespace( $root, "include/$imp_filename.yaml", $filespaces, $funs );
             }
@@ -208,6 +211,7 @@ sub load_namespace {
         }
 
         transform_fun( $yaml->{html}, 'onLoad', $funs );
+        transform_fun( $yaml->{html}, 'preLoad', $funs );
 
         my $body = $yaml->{html}{body};
 

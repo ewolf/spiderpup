@@ -1,5 +1,10 @@
 Current things to do:
 
+* more explanations in gotchas
+  - weed out semicolons at the end of '() => something;'
+  - better error messages
+  - bind functions to components
+
 * dynamically add a component
   - start with an example of this and add to it
   - shape it into the syntax desired

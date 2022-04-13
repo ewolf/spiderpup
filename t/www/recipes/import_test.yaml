@@ -1,6 +1,6 @@
 ---
 import:
-  - impy: bar
+  - bar: impy
 
 html:
   body:

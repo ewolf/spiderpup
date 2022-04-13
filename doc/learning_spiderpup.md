@@ -169,7 +169,7 @@ YAML file *.../spiderpup/www/include/examples/impy.yaml*
 ```
 ---
 import:
-  - examples/more_impy: bar
+  - bar: examples/more_impy
   
 components:
   myform:
