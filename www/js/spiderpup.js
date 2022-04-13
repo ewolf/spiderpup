@@ -361,7 +361,7 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
 
         // new element attribute calculations (AFTER children are placed)
         // since they may depend on states adding el or con
-        recipeAttachNode = el.recipeAttachNode;
+        const recipeAttachNode = el.recipeAttachNode;
         instanceNode = el.instanceNode;
 
         recipeAttachNode && Object.keys( recipeAttachNode.calculate ).forEach( attr => {
@@ -427,9 +427,23 @@ const buildNamespace = (namespaceRecipe,filespaces,funs) => {
 
         // check onload even for html
         if (html.onLoad !== undefined ) {
-            loadEvent = ev => funs[html.onLoad](state,ev);
+            loadEvent = ev => {
+                import( '/js/yote.js' )
+                    .then( yote => {
+                        state.yote=yote;
+                        funs[html.onLoad](state,ev);
+                    } )
+                    .catch( err => {
+                        funs[html.onLoad](state,ev);
+                    } );
+            }
+        } else {
+            loadEvent = ev => {
+                import( '/js/yote.js' )
+                    .then( yote => (state.yote=yote) );
+            }
         }
-    
+        
         return state;
     } //if there was a body
 
