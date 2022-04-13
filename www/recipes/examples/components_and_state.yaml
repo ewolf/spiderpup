@@ -12,5 +12,4 @@ components:
       greeting: Hello there
     contents:
       - div:
-          calculate:
-            textContent: s => 'greet ' + s.data.get( 'greeting' )
+          textContent: s => 'greet ' + s.data.get( 'greeting' )

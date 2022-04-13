@@ -435,8 +435,8 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
 const instantiateRecipe = (recipe,args,state) => {
 
   state = newState( recipe, state, args );
-  recipe.data && Object.keys( recipe.data )
-    .forEach( fld => state.data._data[fld] = recipe.data[fld] );
+//  recipe.data && Object.keys( recipe.data )
+//    .forEach( fld => state.data._data[fld] = recipe.data[fld] );
   
   const id = serial++;
   const instance = {
