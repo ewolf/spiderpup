@@ -148,7 +148,7 @@ sub encode_functions_and_attrs {
         }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
             # assume an attribute, and calculate was already handled
-            if ($val =~ /^(\([^)]*\)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
+            if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
                 $calculate->{$field} = encode_fun( $node_data, $field, $funs );
             } else {
                 $attrs->{$field} = $val;

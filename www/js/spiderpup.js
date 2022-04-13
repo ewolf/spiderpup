@@ -385,8 +385,13 @@ const newState = (recipe,parent,args) => {
       _check: function() { const changed = this._changed; 
                            this._changed = false; return changed; },
       _changed: false,
-      get: function(k) { if (k in this._data) return this._data[k]; 
-                         return this.parent && this.parent.data.get( k ); },
+      get: function(k,defVal) { if (k in this._data) return this._data[k];
+                                let val = this.parent && this.parent.data.get( k );
+                                if (val===undefined && defVal !== undefined) {
+                                  val = this._data[k] = defVal;
+                                }
+                                return val;
+                              },
       set: function(k,v) { this._changed = v !== this._data[k];
                            this._data[k] = v; },
     }, 
@@ -430,6 +435,8 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
 const instantiateRecipe = (recipe,args,state) => {
 
   state = newState( recipe, state, args );
+  recipe.data && Object.keys( recipe.data )
+    .forEach( fld => state.data._data[fld] = recipe.data[fld] );
   
   const id = serial++;
   const instance = {
