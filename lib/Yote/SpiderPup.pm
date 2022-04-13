@@ -207,6 +207,7 @@ sub load_namespace {
         }
 
         my $body = $yaml->{html}{body};
+
         if ($body) {
             transform_recipe( $body, $funs );
             transform_fun( $body, 'onLoad', $funs );

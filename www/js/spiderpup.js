@@ -50,6 +50,7 @@ const parseInstructions = (defaultNamespace,filespaces,funs) => {
             const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
             jsFiles.forEach( file => {
                 const scr = document.createElement( 'script' );
+                scr.setAttribute( 'type', 'module' );
                 scr.setAttribute( 'src', file );
                 head.appendChild( scr );
             } );
