@@ -241,13 +241,13 @@ sub serve_recipe {
 } #serve_recipe
 
 sub prepare_handlers {
-    my ($pkg, $spider_root, $app) = @_;
+    my ($pkg, $spider_root, $mojo_app) = @_;
 
     $root = $spider_root;
 
-    push @{$app->renderer->paths}, "$root/templates";
+    push @{$mojo_app->renderer->paths}, "$root/templates";
 
-    my $routes = $app->routes;
+    my $routes = $mojo_app->routes;
 
     $routes->get( '/js/*' => sub { serve_file( shift,
                                      undef,
@@ -278,9 +278,9 @@ sub prepare_handlers {
 # Active the server
 #
 sub launch {
-    my ($pkg,$root,$app) = @_;
-    $pkg->prepare_handlers( $root, $app );
-    $app->start;
+    my ($pkg,$root,$mojo_app) = @_;
+    $pkg->prepare_handlers( $root, $mojo_app );
+    $mojo_app->start;
 } #launch
 
 1;
