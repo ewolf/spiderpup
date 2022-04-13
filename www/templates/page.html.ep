@@ -2,7 +2,7 @@
   <head>
     <title></title>
     % if ( $js ) {
-      <script src="<%= $js %>"></script>
+      <script type="module" src="<%= $js %>"></script>
     % }
     <script src="/js/spiderpup.js"></script>
     <script src="<%= $yaml %>"></script>
