@@ -4,7 +4,6 @@ html:
     style: span { margin: 5px }
   body:
     - with-specified-internal:
-      - span: IN THE
       - span: MIDDLE
     - no-specified-internal:
       - span: AFTER FINISH

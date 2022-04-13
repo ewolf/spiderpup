@@ -78,21 +78,6 @@ sub serve_html {
     $c->render(text => "HTML NOTFOUND / '$page' / $filename");
 } #serve_html
 
-#
-# in a node, moves the named function (if any) into
-# the $funs array and then replaces it with its index
-# in the $funs array
-#
-sub transform_fun {
-    my ($node, $name, $funs) = @_;
-
-    if (ref($node) eq 'HASH' && $node->{$name}) {
-        my $fid = @$funs;
-        push @$funs, $node->{$name};
-        $node->{$name} = $fid;
-    }
-}
-
 sub encode_fun {
     my ($node, $name, $funs) = @_;
     if (ref($node) eq 'HASH' && $node->{$name}) {
@@ -158,6 +143,9 @@ sub encode_functions_and_attrs {
         elsif ($field =~ /^on_(.*)/) {
             $on->{$1} = encode_fun( $node_data, $field, $funs );
         }
+        elsif ($field =~ /^(forval|handle|internalContent)$/) {
+            $node->{$field} = $val;
+        }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
             # assume an attribute, and calculate was already handled
             if ($val =~ /^(\([^)]*\)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
@@ -187,7 +175,11 @@ sub build_node {
     if ($r eq 'ARRAY') {
         $data = { contents => $data };
     } elsif ($r ne 'HASH') {
-        $data = { textContent => $data };
+        if (defined $data) {
+            $data = { textContent => $data };
+        } else {
+            $data = {};
+        }
     }
 
     my $con = $node->{contents} = [];
@@ -202,22 +194,6 @@ sub build_node {
 
     return $node;
 } #build_node
-
-#
-# in a node, moves the nameds function of a hash (if any)
-# into the $funs array and then replaces them with
-# their indexes in the $funs array
-#
-sub transform_fun_hash {
-    my ($node, $funs) = @_;
-    if (ref $node eq 'HASH') {
-        for my $name (keys %$node) {
-            my $fid = @$funs;
-            push @$funs, $node->{$name};
-            $node->{$name} = $fid;
-        }
-    }
-}
 
 # UGH, perl YAML turns all the data to strings
 # turn obvious number into numbers and booleans into
@@ -255,7 +231,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-
+print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
     return $js;
 }
 
@@ -312,6 +288,12 @@ sub load_namespace {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{components}{$recipe_name};
             $namespace->{components}{$recipe_name} = build_recipe( $yaml->{components}{$recipe_name}, $funs, $filename );
+        }
+
+        $namespace->{data} = $yaml->{data};
+
+        if (my $head = $yaml->{html}{head}) {
+            $namespace->{html}{head} = $head;
         }
 
         my $body = $yaml->{html}{body};

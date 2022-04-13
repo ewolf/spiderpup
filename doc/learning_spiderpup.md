@@ -490,7 +490,7 @@ html:
 http://localhost:3000/examples/attach_element.html
 
 This introduces two things : element handles and state refresh.
-When an element is given a handle with attach-el, 
+When an element is given a handle with 'handle',
 a reference to that element is put in the state variable's `el`
 object, keyed with the handle given.
 
@@ -507,7 +507,7 @@ html:
     - div:
         - input:
             type: text
-            attach-el: textfield
+            handle: textfield
             on:
               change: s => s.refresh()
         - button:
@@ -548,9 +548,9 @@ components:
       - div: 
           - h1: Test App
           - counter:
-              attach-comp: A
+              handle: A
           - counter: 
-              attach-comp: B
+              handle: B
               data:
                 count: 1
           - div:

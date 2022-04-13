@@ -1,10 +1,10 @@
 ---
 import:
-  - examples/impy: foo
+  - foo: examples/impy
 
 html:
   body:
     - foo.myform:
         functions:
-          foo: () => 2
+          foo: () => alert('include.yaml foo')
 
