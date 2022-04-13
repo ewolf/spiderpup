@@ -143,7 +143,7 @@ sub encode_functions_and_attrs {
         elsif ($field =~ /^on_(.*)/) {
             $on->{$1} = encode_fun( $node_data, $field, $funs );
         }
-        elsif ($field =~ /^(forval|handle|internalContent)$/) {
+        elsif ($field =~ /^(data|forval|handle|internalContent)$/) {
             $node->{$field} = $val;
         }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
@@ -290,7 +290,7 @@ sub load_namespace {
             $namespace->{components}{$recipe_name} = build_recipe( $yaml->{components}{$recipe_name}, $funs, $filename );
         }
 
-        $namespace->{data} = $yaml->{data};
+        $namespace->{data} = $yaml->{data} || {};
 
         if (my $head = $yaml->{html}{head}) {
             $namespace->{html}{head} = $head;
