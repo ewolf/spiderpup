@@ -367,11 +367,11 @@ let serial = 1;
 const newState = (recipe,parent,args) => {
 
   const data = {};
-  [parent,recipe,args]
+  [recipe,args]
     .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => data[arg] = level.data[arg] ) );
 
-  const funs = {};
-  [parent,recipe,args]
+  const funs = parent ? {...parent.fun} : {};
+  [recipe,args]
     .forEach( level => level && level.functions && Object.keys(level.functions).forEach( fun => funs[fun] = level.functions[fun] ) );
 
   return {
@@ -409,7 +409,7 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
 
       const childrecipe = lookupRecipe( child.tag, recipe.namespace );
       if (childrecipe) {
-        return instantiateRecipe(childrecipe,child,recipeInstance.state);
+        return instantiateRecipe(childrecipe,child.args,recipeInstance.state);
       }
 
       const childInstance = {...child};
@@ -428,9 +428,8 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
 };
 
 const instantiateRecipe = (recipe,args,state) => {
+
   state = newState( recipe, state, args );
-  recipe.data && Object.keys( recipe.data )
-    .forEach( fld => state.data._data[fld] = recipe.data[fld] );
   
   const id = serial++;
   const instance = {
