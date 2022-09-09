@@ -394,11 +394,6 @@ const newState = (recipe,parent,args) => {
       data[arg] = val;
     } ) );
 
-  // get defined functions
-  const stateFuns = parent ? {...parent.fun} : {};
-  [recipe,args]
-    .forEach( level => level && level.functions && Object.keys(level.functions).forEach( fun => stateFuns[fun] = level.functions[fun] ) );
-
   const state = {
     id     : serial++,
     desc : 'state',
@@ -425,13 +420,28 @@ const newState = (recipe,parent,args) => {
     calc   : {}, // attribute name -> calculation
     comp   : {}, // handle -> component state?
     el     : {}, // handle -> element
-    fun    : stateFuns,
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
     recipe,
     refresh: function() { hang( this.instance, this.instance.rootel ) },
   };
+
+  // get defined functions
+  const stateFuns = parent ? {...parent.fun} : {};
+  [recipe,args]
+    .forEach( level => level && 
+              level.functions && 
+              Object.keys(level.functions).forEach( fun => 
+                stateFuns[fun] = function() { return level.functions[fun]( state, ...arguments ) }
+              ) );
+
+  state.fun = stateFuns,
+
+
+  console.warn( 'maybe we dont need a state object seperate from the instance' );
+  // attach the state funs to the item itself. also maybe we don't need a 
+  
 
   // now that there is a state, use it to calculate function'd data
   // should be parent state, because that is what is sending the data to
@@ -469,8 +479,7 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
 const instantiateRecipe = (recipe,args,state) => {
 
   state = newState( recipe, state, args );
-//  recipe.data && Object.keys( recipe.data )
-//    .forEach( fld => state.data._data[fld] = recipe.data[fld] );
+
   const id = serial++;
   const instance = {
     args: args || {},
