@@ -503,7 +503,9 @@ const instantiateRecipe = (recipe,args,state) => {
 };
 
 const compileBody = (body, filename) => {
-  return compileRecipe( { contents: [{ tag:'body', ...body}] }, filename, 'body' );
+  const preLoad = body.preLoad;
+  delete body.preLoad;
+  return compileRecipe( { preLoad, contents: [{ tag:'body', ...body}] }, filename, 'body' );
 };
 
 const compileRecipe = (recipe, filename, recipeName) => {
