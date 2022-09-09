@@ -169,6 +169,8 @@ window.onload = ev => {
 // refresh the element with the instance 
 const hang = (instance, el) => {
 
+  const state = instance.state;
+
   // attach the attributes/properties and calculations
   //  (id may not be updated here)
   const seen = { id: 1 };
@@ -368,7 +370,7 @@ const hang = (instance, el) => {
             for (let i=1; i<lastCount; i++) {
               const basekey = key.replace( /_0$/, '' );
               const itEl = key2el[basekey + '_' + i];
-              itEl && itEl.hidden = true;
+              itEl && (itEl.hidden = true);
             }
           }
         }
@@ -496,7 +498,6 @@ const instantiateRecipe = (recipe,args,state) => {
 
   state = newState( recipe, state, args );
 
-//  const id = serial++;
   const instance = {
     args: args || {},
     desc: 'recipe instance',
