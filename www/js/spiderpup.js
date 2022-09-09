@@ -380,14 +380,16 @@ const newState = (recipe,parent,args) => {
       let val = level.data[arg];
       if (typeof val === 'string') {
         const x = val.substr( 0, 1 );
-        val = val.substr( 1 );
+        const checkVal = val.substr( 1 );
         if (x === 'i') { // int          
-          val = Number.parseInt( val );
+          val = Number.parseInt( checkVal );
         } else if (x === 'f') { // float
-          val = Number.parseFloat( val );
+          val = Number.parseFloat( checkVal );
         } else if (x === 'c') { // code/function
-          dataFunConvert[arg] = Number.parseInt(val);
-        } // otherwise is a string so leave be
+          dataFunConvert[arg] = Number.parseInt(checkVal);
+        } else if (x === 's') {
+          val = checkVal;
+        }
       }
       data[arg] = val;
     } ) );
@@ -432,8 +434,9 @@ const newState = (recipe,parent,args) => {
   };
 
   // now that there is a state, use it to calculate function'd data
+  // should be parent state, because that is what is sending the data to
   Object.keys( dataFunConvert )
-    .forEach( fld => data[fld] = funs[dataFunConvert[fld]](state) );
+    .forEach( fld => data[fld] = funs[dataFunConvert[fld]](parent) );
   
   return state;
 };
