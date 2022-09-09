@@ -366,10 +366,12 @@ const hang = (instance, el) => {
 let serial = 1;
 const newState = (recipe,parent,args) => {
 
+  // get data fields
   const data = {};
   [recipe,args]
     .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => data[arg] = level.data[arg] ) );
 
+  // get defined functions
   const funs = parent ? {...parent.fun} : {};
   [recipe,args]
     .forEach( level => level && level.functions && Object.keys(level.functions).forEach( fun => funs[fun] = level.functions[fun] ) );
@@ -569,6 +571,8 @@ const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recip
     } );
 };
 
+// for a recipe node, place the functions in spots where they are
+// references by function index
 const prepFunctions = (node, filename, recipeName) => {
   const attrs = node.attrs = node.attrs || {};
   const on = node.on = node.on || {};
