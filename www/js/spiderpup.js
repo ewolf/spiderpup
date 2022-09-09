@@ -258,11 +258,13 @@ const newState = (recipe,recipeNode,parent) => {
       node = node || recipe.rootNode;
       key = key || state.id; // for foreach case
 
-      const needsInit = el.key ? false : true;
+      const needsInit = el.hasInit ? false : true;
       const isRecipeNode = node.nodeRecipe ? true : false;
 
       if (needsInit) {
         // element has not been given a key, so not initied
+        el.hasInit = true;
+
         el.key = key;
         el.dataset.key = key;
 
@@ -331,7 +333,6 @@ const newState = (recipe,recipeNode,parent) => {
         contents
           .forEach( con => {
             console.log ( 'tag : ' + con.tag );
-if (con.tag==='footer') { debugger }
             let conKey, conEl, conState;
             const conRecipe = con.nodeRecipe;
             if (conRecipe) {
@@ -356,6 +357,8 @@ if (con.tag==='footer') { debugger }
             conEl = key2el[ conKey ];
             if (!conEl) {
               conEl = document.createElement( conRecipe ? conRecipe.rootNode.tag : con.tag );
+              conEl.key = conKey;
+              conEl.dataset.key = conKey;
               if (con.handle) {
                 if (isRecipeNode) {
                   if (conRecipe.rootNode.handle) {
@@ -366,11 +369,16 @@ if (con.tag==='footer') { debugger }
                 }
               }
               key2el[conKey] = conEl;
-              conEl.hidden = true;
+              // ok to change style display, if it will be displayed, the properties will be reset
+              // on refresh
+              conEl.style.display = 'none';
               el.append( conEl );
             }
 
             if (con.if) {
+              console.log( con.attrs.textContent );
+              console.log( con.if );
+              console.log( state.data._data );
               conditionalDone = lastConditionalWasTrue = con.if( state );
               lastWasConditional = true;
             } else if (con.elseif) {
@@ -406,9 +414,8 @@ if (con.tag==='footer') { debugger }
                 }
                 state.lastcount[forval] = list.length;
                 if (list.length === 0) {
-                  conEl.hidden = true;
+                  conEl.style.display = 'none';
                 } else {
-
                   // make sure each foreach list item is populated
                   // for those that are for components, they each get their
                   // own state
@@ -417,9 +424,11 @@ if (con.tag==='footer') { debugger }
                     conKey = conKey.replace( /_\d+$/, '_' + i );
                     let forEl = key2el[conKey];
                     if (forEl) {
-                      forEl.hidden = false;
+                      conEl.style.display = null;
                     } else {
                       forEl = document.createElement( conRecipe ? conRecipe.rootNode.tag : con.tag );
+                      forEl.key = conKey;
+                      forEl.dataset.key = conKey;
                       lastEl.after( forEl );
                     }
                     state.idx[forval] = i;
@@ -445,13 +454,14 @@ if (con.tag==='footer') { debugger }
                         }
                       }
                     } else {
-                      state.refresh( forEl, con );
+                      state.refresh( forEl, con, conKey );
                     }
                   }
                 }
-              } else if (conRecipe) {
+              } // end of foreach
+              else if (conRecipe) {
                 // recipe component node that may have extra contents
-                conEl.hidden = false;
+                conEl.style.display = null;
                 conState.refresh( conEl, con, conKey );
                 if (con.contents) {
                   // more contents to hang inside a child of the internal component
@@ -463,12 +473,12 @@ if (con.tag==='footer') { debugger }
                 }
               } else {
                 // html element node
-                conEl.hidden = false;
+                conEl.style.display = null;
                 state.refresh( conEl, con, conKey );
               }
             } else {
               // hide this
-              conEl.hidden = true;
+              conEl.style.display = 'none';
               // if a list, remove all but the first
               if (con.foreach) {
                 const upto = state.lastcount[state.forval];
