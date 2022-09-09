@@ -1,0 +1,19 @@
+---
+import:
+  - bar: examples/more_impy
+  
+components:
+  myform:
+    functions:
+      foo: () => alert( 'impy.yaml foo' )
+    contents:
+      - form:
+          - mydiv
+          - button:
+              type: button
+              textContent: click for foo
+              on_click: s => s.fun.foo()
+  mydiv:
+    - div:
+        - bar.impydiv
+        
