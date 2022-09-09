@@ -116,7 +116,7 @@ components:
         - [ 15, hella, thinker, pander, aroba ]
 
     # called after app is placed on the page. the state s is passed
-    onLoad: s => { s.data.get( 'toggled' ) && s.fun.flip(s) }
+    onLoad: s => { s.data.get( 'toggled' ) && s.fun.flip() }
 
     # functions are available thru s.fun
     #   s.fun.flip for exaple
@@ -151,30 +151,24 @@ components:
                       class: row
                       # a handle allows this div element to be referred in the state
                       # variable as s.el.buttonBox
-                      attach-el: buttonBox
+                      handle: buttonBox
                       contents:
 
                         - span:
-                            attach-el: red
+                            handle: red
                             class: red
-                            calculate:
-                              textContent: s => s.data.get( 'red' ) + ' red clicks'
-                            on:
-                              # all functions, even even handlers are passed the s state var 
-                              # as their first argument. NOTE : the event is passed in
-                              # as the *second* argument
-                              click: (s,ev) => s.data.set( 'red', 1 + parseInt(s.data.get('red')))
+                            textContent: s => s.data.get( 'red' ) + ' red clicks'
+                            on_click: (s,ev) => s.data.set( 'red', 1 + parseInt(s.data.get('red')))
 
                         - span:
-                            attach-el: green
+                            handle: green
                             class: green
                             textContent: green
-                            on:
-                              click: () => alert( 'Green' )
+                            on_click: () => alert( 'Green' )
 
                   - div:
                       - button:
-                          attach-el: switchButton
+                          handle: switchButton
                           textContent: click me to switch places of red and green
                           on:
                             # this click calls the toggle function defined in the functions of myapp
@@ -182,7 +176,7 @@ components:
                             # it then toggles the toggle which causes things to refresh
                             click: >
                               (s,ev) => {
-                                s.fun.flip(s)
+                                s.fun.flip()
                                 s.data.set('toggled', ! s.data.get('toggled') )
                               }
 
@@ -209,8 +203,7 @@ components:
 
                 contents:
                   - table:
-                      attributes:
-                        border: 1
+                      border: 1
   
                       if: s => s.data.get( 'table' ).length > 0
 

@@ -137,8 +137,11 @@ sub encode_functions_and_attrs {
         if ($field =~ /^(functions)$/) {
             $node->{$field} = encode_fun_hash( $val, $funs );
         }
-        elsif ($field =~ /^(onLoad|preLoad|if|elseif|else|foreach)$/) {
+        elsif ($field =~ /^(onLoad|preLoad|if|elseif|foreach)$/) {
             $node->{$field} = encode_fun( $node_data, $field, $funs );
+        }
+        elsif ($field eq 'else') {
+            $node->{$field} = 1;
         }
         elsif ($field =~ /^on_(.*)/) {
             $on->{$1} = encode_fun( $node_data, $field, $funs );
@@ -245,7 +248,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-#print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
+print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
     return $js;
 }
 

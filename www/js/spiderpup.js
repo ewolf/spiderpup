@@ -281,6 +281,7 @@ const hang = (instance, el) => {
 
   // now find the children
   let lastWasConditional = false,
+      conditionalDone = false,
       lastConditionalWasTrue = false;
 
   instance.contents
@@ -290,14 +291,18 @@ const hang = (instance, el) => {
       const childEl = key2el[key];
 
       if (childInstance.if) {
-        lastConditionalWasTrue = childInstance.if( state );
+        conditionalDone = lastConditionalWasTrue = childInstance.if( state );
         lastWasConditional = true;
       } else if (childInstance.elseif) {
-        if (!lastConditionalWasTrue) {
-          lastConditionalWasTrue = childInstance.elseif( state );
+        if (conditionalDone) {
+          lastConditionalWasTrue = false;
+        } else {
+          conditionalDone = lastConditionalWasTrue = childInstance.elseif( state );
         }
       } else if (childInstance.else) {
-        if (!lastConditionalWasTrue) {
+        if (conditionalDone) {
+          lastConditionalWasTrue = false;
+        } else {
           lastConditionalWasTrue = true;
         }
       } else {
@@ -625,7 +630,7 @@ const prepFunctions = (node, filename, recipeName) => {
     const m = key.match( /^on_(.*)/ );
     if (m) {
       on[ m[1] ] = funs[ val ];
-    } else if (key.match( /^((pre|on)Load|if|elseif|else|foreach)$/ ) ) {
+    } else if (key.match( /^((pre|on)Load|if|elseif|foreach)$/ ) ) {
       node[key] = funs[ val ];
     } else if (key.match( /^(calculate|on|functions)$/ ) ) {
       Object.keys( val ).forEach( fld => val[fld] = funs[val[fld]]);
@@ -689,7 +694,7 @@ const rpc = (config,app,action,target,args,files) => {
         xhr.onload = () => {
           if( xhr.status === 200 ) {
 
-	    console.log( xhr.response, 'resp' );
+//	    console.log( xhr.response, 'resp' );
             
             const resp = xhr.response.payload;
             const token = xhr.response.token;
@@ -762,7 +767,7 @@ const rpc = (config,app,action,target,args,files) => {
             app,target,action,args,sess_id : sess_ids[app],
         };
 
-	console.log( payload, 'PAY' );
+//	console.log( payload, 'PAY' );
         fd.append( 'payload', JSON.stringify(payload) );
         if( files ) {
             fd.append( 'files', files.length );
