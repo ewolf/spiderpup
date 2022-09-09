@@ -123,6 +123,7 @@ sub build_recipe {
     }
 
     encode_functions_and_attrs( $recipe, $recipe_data, $funs, $filename );
+    transform_data( $recipe_data->{data} );
 
     return $recipe;
 }
@@ -291,6 +292,7 @@ sub load_namespace {
         }
 
         $namespace->{data} = $yaml->{data} || {};
+        transform_data( $namespace->{data} );
 
         if (my $head = $yaml->{html}{head}) {
             $namespace->{html}{head} = $head;
