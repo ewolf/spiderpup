@@ -252,11 +252,10 @@ const newState = (recipe,recipeNode,parent) => {
     recipe,
 
     refresh: function( el, node, key ) {
-
       const state = this;
       const recipe = state.recipe;
       el = el || state.rootEl;
-      node = node || recipe.contents[0];
+      node = node || recipe.rootNode;
       key = key || state.id; // for foreach case
 
       const needsInit = el.key ? false : true;
@@ -265,6 +264,7 @@ const newState = (recipe,recipeNode,parent) => {
       if (needsInit) {
         // element has not been given a key, so not initied
         el.key = key;
+        el.dataset.key = key;
 
         state.rootEl || (state.rootEl = el);
 
@@ -299,7 +299,7 @@ const newState = (recipe,recipeNode,parent) => {
             }));
       
       // update element attrs and textContent assigned with constants
-      [ node.attrs, recipe.attrs ]
+      [ node.attrs, recipe.rootNode.attrs ]
         .forEach( attrs =>
           attrs && Object.keys(attrs)
             .forEach( attr => {
@@ -321,7 +321,7 @@ const newState = (recipe,recipeNode,parent) => {
 
       // now fill in the contents. first make sure that the contents have
       // corresponding elements
-      const contents = isRecipeNode ? recipe.contents : node.contents;
+      const contents = isRecipeNode ? recipe.rootNode.contents : node.contents;
 
       if (contents) {
         let lastWasConditional = false,
@@ -331,11 +331,12 @@ const newState = (recipe,recipeNode,parent) => {
         contents
           .forEach( con => {
             console.log ( 'tag : ' + con.tag );
+if (con.tag==='footer') { debugger }
             let conKey, conEl, conState;
             const conRecipe = con.nodeRecipe;
             if (conRecipe) {
               // translate conRecipe id and con id to a state lookup
-              const lookup = `${state.id}_${conRecipe.id}`;
+              const lookup = `${state.id}_${con.id}`;
               conState = state._key2substate[ lookup ];
               if ( ! conState ) {
                 conState = newState(conRecipe,con,state);
@@ -451,7 +452,6 @@ const newState = (recipe,recipeNode,parent) => {
               } else if (conRecipe) {
                 // recipe component node that may have extra contents
                 conEl.hidden = false;
-
                 conState.refresh( conEl, con, conKey );
                 if (con.contents) {
                   // more contents to hang inside a child of the internal component
@@ -573,6 +573,7 @@ const compileRecipe = (recipe, filename, recipeName) => {
     compileRecipeNodes( recipe, recipe, filename, recipeName, recipe.namespace, [] );
 
     recipe.rootNode = recipe.contents[0];
+    recipe.rootNode.isRootNode = true;
   }
   catch( err ) {
     throw new Error( `Error compiling recipe '${recipeName}' in file '${filename}' : ${err}` );

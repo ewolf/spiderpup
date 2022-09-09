@@ -1,5 +1,8 @@
 Current things to do:
 
+BUGS:
+  * refresh not removing old stuff?
+
 * more explanations in gotchas
   - weed out semicolons at the end of '() => something;'
   - better error messages
