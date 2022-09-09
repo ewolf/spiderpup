@@ -371,18 +371,33 @@ const hang = (instance, el) => {
 
 let serial = 1;
 const newState = (recipe,parent,args) => {
-
   // get data fields
   const data = {};
+  const dataFunConvert = {};
+
   [recipe,args]
-    .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => data[arg] = level.data[arg] ) );
+    .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => {
+      let val = level.data[arg];
+      if (typeof val === 'string') {
+        const x = val.substr( 0, 1 );
+        val = val.substr( 1 );
+        if (x === 'i') { // int          
+          val = Number.parseInt( val );
+        } else if (x === 'f') { // float
+          val = Number.parseFloat( val );
+        } else if (x === 'c') { // code/function
+          dataFunConvert[arg] = Number.parseInt(val);
+        } // otherwise is a string so leave be
+      }
+      data[arg] = val;
+    } ) );
 
   // get defined functions
-  const funs = parent ? {...parent.fun} : {};
+  const stateFuns = parent ? {...parent.fun} : {};
   [recipe,args]
-    .forEach( level => level && level.functions && Object.keys(level.functions).forEach( fun => funs[fun] = level.functions[fun] ) );
+    .forEach( level => level && level.functions && Object.keys(level.functions).forEach( fun => stateFuns[fun] = level.functions[fun] ) );
 
-  return {
+  const state = {
     id     : serial++,
     desc : 'state',
     parent,
@@ -408,13 +423,19 @@ const newState = (recipe,parent,args) => {
     calc   : {}, // attribute name -> calculation
     comp   : {}, // handle -> component state?
     el     : {}, // handle -> element
-    fun    : funs,
+    fun    : stateFuns,
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
     recipe,
     refresh: function() { hang( this.instance, this.instance.rootel ) },
   };
+
+  // now that there is a state, use it to calculate function'd data
+  Object.keys( dataFunConvert )
+    .forEach( fld => data[fld] = funs[dataFunConvert[fld]](state) );
+  
+  return state;
 };
 
 const instantiateRecipeComponents = (contents,recipeInstance) => {

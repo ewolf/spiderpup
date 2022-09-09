@@ -123,7 +123,6 @@ sub build_recipe {
     }
 
     encode_functions_and_attrs( $recipe, $recipe_data, $funs, $filename );
-    transform_data( $recipe_data->{data} );
 
     return $recipe;
 }
@@ -145,6 +144,9 @@ sub encode_functions_and_attrs {
             $on->{$1} = encode_fun( $node_data, $field, $funs );
         }
         elsif ($field =~ /^(data|forval|handle|internalContent)$/) {
+            if ($field eq 'data') {
+                transform_data( $node_data->{data}, $funs );
+            }
             $node->{$field} = $val;
         }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
@@ -201,17 +203,28 @@ sub build_node {
 # boolans. for json, \1 and \0 translat to true and
 # false, respectively.
 sub transform_data {
-    my $data = shift;
+    my ($data, $funs) = @_;
+
     if ($data) {
         for my $fld (keys %$data) {
             my $val = $data->{$fld};
-            no warnings 'numeric';
-            if ( (0 + $val) eq $val) {
-                $data->{$fld} = int( $val );
-            } elsif( $val =~ /^(true|yes|y|on)$/i ) {
-                $data->{$fld} = \1;
-            } elsif( $val =~ /^(false|no|n|off)$/i ) {
-                $data->{$fld} = \0;
+            if (! ref( $val ) ) {
+                no warnings 'numeric';
+                if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/) {
+                    $data->{$fld} = 'c' . encode_fun( $data, $fld, $funs );
+                } elsif ( (0 + $val) eq $val) {
+                    if ($val =~ /[.]/) {
+                        $data->{$fld} = "f$val";
+                    } else {
+                        $data->{$fld} = 'i'.int( $val );
+                    }
+                } elsif( $val =~ /^(true|yes|y|on)$/i ) {
+                    $data->{$fld} = \1;
+                } elsif( $val =~ /^(false|no|n|off)$/i ) {
+                    $data->{$fld} = \0;
+                } else {
+                    $data->{$fld} = "s$val";
+                }
             }
         }
     }
@@ -232,7 +245,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
+#print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
     return $js;
 }
 
@@ -292,7 +305,7 @@ sub load_namespace {
         }
 
         $namespace->{data} = $yaml->{data} || {};
-        transform_data( $namespace->{data} );
+        transform_data( $namespace->{data}, $funs );
 
         if (my $head = $yaml->{html}{head}) {
             $namespace->{html}{head} = $head;
