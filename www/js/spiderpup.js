@@ -1,4 +1,4 @@
-//console.warn( "how about defining component events that can be listened to" );
+console.warn( "how about defining component events that can be listened to" );
 /*
 
   body has a definition that corresponds to a body entry without any arguments
@@ -332,7 +332,6 @@ const newState = (recipe,recipeNode,parent) => {
         
         contents
           .forEach( con => {
-            console.log ( 'tag : ' + con.tag );
             let conKey, conEl, conState;
             const conRecipe = con.nodeRecipe;
             if (conRecipe) {
@@ -376,9 +375,6 @@ const newState = (recipe,recipeNode,parent) => {
             }
 
             if (con.if) {
-              console.log( con.attrs.textContent );
-              console.log( con.if );
-              console.log( state.data._data );
               conditionalDone = lastConditionalWasTrue = con.if( state );
               lastWasConditional = true;
             } else if (con.elseif) {
@@ -441,7 +437,8 @@ const newState = (recipe,recipeNode,parent) => {
                         forState = newState( conRecipe, con, state );
                         state._key2substate[ conKey ] = forState;
                         if (conRecipe && con.handle) {
-                          state.comp[con.handle] = forState;
+                          state.comp[con.handle] = state.comp[con.handle] || [];
+                          state.comp[con.handle][i] = forState;
                         }
                       }
                       forState.refresh( forEl, con );

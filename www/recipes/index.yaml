@@ -83,6 +83,7 @@ html:
 
         data:
           red: 100
+          number:  [ 4, 12, 82, 5, 0 ]
           toggled: false
           title: check this out, i'm newest
 
@@ -109,9 +110,8 @@ components:
       red: 0
       toggled: false
       title: Hello there
-      #number:  [ 3, 50, 1, 213, 40 ]
+      number:  [ 3, 50, 1, 213, 40 ]
       table: 
-        - [ 3, 50, 1, 213, 40 ]
         - [ 6, lump, niffer, sven, carbon ]
         - [ 15, hella, thinker, pander, aroba ]
 
@@ -205,6 +205,12 @@ components:
 
                       contents:
                         - tr:
+                            - th:
+                                foreach: s => s.data.get('number')
+                                forval: col
+                                textContent: s => s.it.col
+                            
+                        - tr:
                             # function must return a list or iterable
                             foreach: s => s.data.get('table')
 
@@ -215,20 +221,20 @@ components:
                             
                             contents:
                               - th:
-                                  if: s => s.idx.row === 0
-                                  foreach: s => s.it.row
-                                  forval: col
-                                  textContent: s => s.it.col
-
-                              - th:
-                                  if: s => s.idx.row > 0
                                   textContent: s => s.it.row[0]
 
                               - td:
-                                  if: s => s.idx.row > 0
                                   foreach: s => s.it.row.slice(1)
+                                  #foreach: s => s.it.row.slice(1)
                                   forval: col
-                                  textContent: s => s.it.col + ' : ' + s.it.row[0] + ' x ' + s.data.get('table')[0][s.idx.col + 1] + ' = ' +  (parseInt(s.it.row[0]) * parseInt(s.data.get('table')[0][s.idx.col + 1]))
+                                  textContent: >-
+                                    s => {
+                                       const rowVal = parseInt(s.it.row[0]);
+                                       const rowName = s.it.col;
+                                       const colVal = parseInt(s.data.get('number')[s.idx.col + 1]);
+                                       return `${rowName} : ${rowVal} x ${colVal} = ${colVal*rowVal}`;
+#                                       s.it.col + ' : ' + s.it.row[0] + ' x ' + s.data.get('table')[0][s.idx.col + 1] + ' = ' +  (parseInt(s.it.row[0]) * parseInt(s.data.get('table')[0][s.idx.col + 1]))
+                                    }
                                   
 
             - div: THE END
