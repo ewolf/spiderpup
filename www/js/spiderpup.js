@@ -138,6 +138,7 @@ window.onload = ev => {
             namespace.namespaces[name] = filespaces[filename];
           } )
       } );
+
     // compile each recipe, translating the data structure into something easier to
     // deal with
     Object.values( recipeNames )
@@ -160,11 +161,6 @@ window.onload = ev => {
 
     instance.rootel = document.body;
 
-    // onLoad called after everything attached
-    if (instance.recipe.onLoad) {
-      Promise.resolve( instance.recipe.onLoad( instance.state ) );
-      instance.state.refresh();
-    }
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
@@ -172,14 +168,13 @@ window.onload = ev => {
 
 // refresh the element with the instance 
 const hang = (instance, el) => {
-  const state = instance.state;
 
   // attach the attributes/properties and calculations
   //  (id may not be updated here)
   const seen = { id: 1 };
 
   // set the calculated attributes from most to least specific for this instance
-  [instance.args && instance.args.calculate, instance.isRecipe && instance.recipe.calculate, instance.calculate]
+  [instance.args && instance.args.calculate, instance.calculate, instance.isRecipe && instance.recipe.calculate]
     .forEach( source => {
       source && Object.keys(source)
         .forEach( attr => {
@@ -216,6 +211,8 @@ const hang = (instance, el) => {
   Array.from( el.children )
     .forEach( el => el.key && ( key2el[el.key] = el ) );
 
+  // make sure each child element defined in the instance node is in the document.
+  // if a handle is defined for that instance node, add it to state.el[handle] -> element
   instance.contents
     .forEach( (childinstance,idx) => {
       const key = childinstance.id + (childinstance.foreach ? '_0' : '');
@@ -262,6 +259,8 @@ const hang = (instance, el) => {
           childel.addEventListener( evname, evfun );
         } );
 
+        // TODO - this bit is not needed since on_<foo> is converted to on: foo
+        //        by perl. disable and test
         // also attach on_<foo> stuff
         Object.keys( childinstance ).forEach( attr => {
           const l = attr.match( /^on_(.*)/ );
@@ -360,7 +359,19 @@ const hang = (instance, el) => {
 
         }
       } else {
+        // hide old nodes if they are not going to be shown
+        // for the case of foreach nodes, hide them all
         childEl.hidden = true;
+        if (childInstance.foreach) {
+          const lastCount = state.lastcount[childInstance.forval];
+          if (lastCount > 1) {
+            for (let i=1; i<lastCount; i++) {
+              const basekey = key.replace( /_0$/, '' );
+              const itEl = key2el[basekey + '_' + i];
+              itEl && itEl.hidden = true;
+            }
+          }
+        }
       }
     } );
 
@@ -456,7 +467,7 @@ const newState = (recipe,parent,args) => {
   return state;
 };
 
-const instantiateRecipeComponents = (contents,recipeInstance) => {
+const instantiateRecipeContents = (contents,recipeInstance) => {
   if (contents) {
     const recipe = recipeInstance.recipe;
     return contents.map( child => {
@@ -473,7 +484,7 @@ const instantiateRecipeComponents = (contents,recipeInstance) => {
       childInstance.state = recipeInstance.state;
       childInstance.recipe = recipe;
       childInstance.args = {};
-      childInstance.contents = instantiateRecipeComponents( childInstance.contents, recipeInstance );
+      childInstance.contents = instantiateRecipeContents( childInstance.contents, recipeInstance );
 
       return childInstance;
     } );
@@ -485,24 +496,25 @@ const instantiateRecipe = (recipe,args,state) => {
 
   state = newState( recipe, state, args );
 
-  const id = serial++;
+//  const id = serial++;
   const instance = {
     args: args || {},
     desc: 'recipe instance',
-    id,
+    id: serial++,
     recipe,
     state,
     isRecipe: true,
   };
-  instance.contents = instantiateRecipeComponents(recipe.contents, instance);
+
+  // run the preLoad if any
+  instance.preLoad = recipe.preLoad && recipe.preLoad( state, args );
+
+  instance.contents = instantiateRecipeContents(recipe.contents, instance);
   state.instance = instance;
 
   // collect compo
   const handle = args && args.handle;
   handle && ( state.parent.comp[handle] = instance );
-
-  // run the preLoad if any
-  Promise.resolve( recipe.preLoad && recipe.preLoad( state, args ) );
 
   return instance;
 };
