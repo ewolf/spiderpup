@@ -585,7 +585,7 @@ components:
 
       setLessons: >-
         s => {
-          const lstate = s.comp.lessons.state;
+          const lstate = s.comp.lessons;
           lstate.fun.setLessons( s.fun.curr().lessons );
         }
 
@@ -606,7 +606,6 @@ components:
               - button:
                   handle: nextButton
                   textContent: next chapter
-                  on:
                   on_click: s => s.fun.incOrDec(true)
           - section:
               contents:

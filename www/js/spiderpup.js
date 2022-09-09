@@ -1,3 +1,4 @@
+//console.warn( "how about defining component events that can be listened to" );
 /*
 
   body has a definition that corresponds to a body entry without any arguments
@@ -70,6 +71,13 @@ window.onload = ev => {
 
   const defaultNamespace = filespaces[defaultFilename];
   const html = defaultNamespace.html;
+
+  // make state for default namespace (also add that state to the namespace
+  // it has data and functions
+  const nsState = newState( { data: defaultNamespace.data,
+                              functions: defaultNamespace.functions,
+                            }, {} );
+
 
   if (html && html.body) {
     if (html.head) {
@@ -150,9 +158,9 @@ window.onload = ev => {
 
     const bodyRecipe = compileBody( html.body, defaultFilename );
 
-    // make state
-    const state = newState( defaultNamespace );
-
+    // make state for body
+    const state = newState( bodyRecipe, html.body, nsState );
+    html.body.key = state.id;
     state.refresh( document.body );
 
   } else {
@@ -160,229 +168,10 @@ window.onload = ev => {
   }
 };
 
-// refresh the element with the instance
-const hang = (instance, el) => {
-
-  const state = instance.state;
-
-  // attach the attributes/properties and calculations
-  //  (id may not be updated here)
-  const seen = { id: 1 };
-
-  // set the calculated attributes from most to least specific for this instance
-  [instance.args && instance.args.calculate, instance.calculate, instance.isRecipe && instance.recipe.calculate]
-    .forEach( source => {
-      source && Object.keys(source)
-        .forEach( attr => {
-          seen[attr] = seen[attr] || 0;
-          if (0 === seen[attr]++) {
-            if (attr === 'textContent') {
-              el.textContent = source[attr]( state );
-            } else {
-              el.setAttribute( attr, source[attr]( state ) );
-            }
-          }
-        } )
-    } );
-
-  // set the non calculated attributes
-  [instance.args && instance.args.attrs,instance.attrs, instance.isRecipe && instance.recipe.attrs]
-    .forEach( source => {
-      source && Object.keys(source)
-        .forEach( attr => {
-          seen[attr] = seen[attr] || 0;
-          if (0 === seen[attr]++) {
-            if (attr === 'textContent') {
-              el.textContent = source[attr];
-            } else {
-              el.setAttribute( attr, source[attr] );
-            }
-          }
-        } )
-    } );
-  instance.textContent && (el.textContent = instance.textContent);
-
-  // find if the child instances have been created, and hash key --> element
-  const key2el = {};
-  Array.from( el.children )
-    .forEach( el => el.key && ( key2el[el.key] = el ) );
-
-  // make sure each child element defined in the instance node is in the document.
-  // if a handle is defined for that instance node, add it to state.el[handle] -> element
-  instance.contents
-    .forEach( (childinstance,idx) => {
-      const key = childinstance.id + (childinstance.foreach ? '_0' : '');
-      let childel = key2el[key];
-
-      if (!childel) {
-        // check if it is a recipe. if so, the tag is the tag of the recipe root instance
-
-        const tag = childinstance.isRecipe ? childinstance.recipe.rootTag : childinstance.tag;
-
-        // now create and attach the element
-        childel = document.createElement( tag );
-
-        if (childinstance.internalContent) {
-          childel.internalContent = true;
-        }
-
-        key2el[key] = childel;
-
-        childel.hidden = true;
-
-        // collect el and compo
-        const handle = childinstance.handle;
-        handle && ( state.el[handle] = childel );
-
-        if (childinstance.isRecipe) {
-          childinstance.rootel = childel;
-        }
-
-        childel.key = key;
-        childinstance.key = key;
-
-        el.append( childel );
-
-        // attach event handlers
-        childinstance.on && Object.keys( childinstance.on ).forEach( evname => {
-          const evfun = function() {
-            const prom = childinstance.on[evname]( state, ...arguments );
-            Promise.resolve( prom )
-              .then( () => {
-                if ( state.data._check() ) state.refresh();
-              } );
-          };
-          childel.addEventListener( evname, evfun );
-        } );
-
-        // TODO - this bit is not needed since on_<foo> is converted to on: foo
-        //        by perl. disable and test
-        // also attach on_<foo> stuff
-        Object.keys( childinstance ).forEach( attr => {
-          const l = attr.match( /^on_(.*)/ );
-          if (l) {
-            const evfun = function() {
-              const prom = childinstance[attr]( state, ...arguments );
-              Promise.resolve( prom )
-                .then( () => {
-                  if ( state.data._check() ) state.refresh();
-                } );
-            }
-            childel.addEventListener( l[1], evfun );
-          }
-        } );
-      }
-    } );
-
-  // now find the children
-  let lastWasConditional = false,
-      conditionalDone = false,
-      lastConditionalWasTrue = false;
-
-  instance.contents
-    .forEach( childInstance => {
-      const tagOrComponentName = childInstance.tag;
-      const key = childInstance.key;
-      const childEl = key2el[key];
-
-      if (childInstance.if) {
-        conditionalDone = lastConditionalWasTrue = childInstance.if( state );
-        lastWasConditional = true;
-      } else if (childInstance.elseif) {
-        if (conditionalDone) {
-          lastConditionalWasTrue = false;
-        } else {
-          conditionalDone = lastConditionalWasTrue = childInstance.elseif( state );
-        }
-      } else if (childInstance.else) {
-        if (conditionalDone) {
-          lastConditionalWasTrue = false;
-        } else {
-          lastConditionalWasTrue = true;
-        }
-      } else {
-        lastWasConditional = false;
-      }
-
-      if (lastWasConditional === false || lastConditionalWasTrue) {
-
-        if (childInstance.foreach) {
-          const basekey = key.replace( /_0$/, '' );
-          const forval = childInstance.forval;
-          const list = childInstance.foreach( state );
-          if (state.lastcount[forval] > list.length) {
-            for (let i=list.length === 0 ? 1 : list.length; i<state.lastcount[forval]; i++) {
-              const itEl = key2el[basekey + '_' + i];
-              itEl && itEl.remove();
-            }
-          }
-          state.lastcount[forval] = list.length;
-          if (list.length === 0) {
-            childEl.hidden = true;
-          } else {
-            let lastEl = key2el[basekey + '_0'];
-            for (let i=0; i<list.length; i++) {
-              const key = basekey + '_' + i;
-              let itEl = key2el[key];
-              if (!itEl) {
-                console.warn ( 'gotta do recipe instances here, too' );
-                itEl = document.createElement( tagOrComponentName );
-                key2el[key] = itEl;
-                itEl.key = key;
-                lastEl.after( itEl );
-              } else {
-                itEl.hidden = false;
-              }
-              state.idx[forval] = i;
-              state.it[forval] = list[i];
-              lastEl = itEl;
-
-              hang( childInstance, itEl );
-            }
-          }
-        } else {
-          childEl.hidden = false;
-          hang( childInstance, childEl );
-
-          // if it is a recipe, it may have internal
-          // content in the args
-          if (childInstance.isRecipe) {
-            const conel = findInternalContent( childEl );
-            if (conel) {
-              hang( { state, contents: childInstance.args.contents }, conel );
-            }
-          }
-
-        }
-      } else {
-        // hide old nodes if they are not going to be shown
-        // for the case of foreach nodes, hide them all
-        childEl.hidden = true;
-        if (childInstance.foreach) {
-          const lastCount = state.lastcount[childInstance.forval];
-          if (lastCount > 1) {
-            for (let i=1; i<lastCount; i++) {
-              const basekey = key.replace( /_0$/, '' );
-              const itEl = key2el[basekey + '_' + i];
-              itEl && (itEl.hidden = true);
-            }
-          }
-        }
-      }
-    } );
-
-  if (instance.isRecipe && ! instance.didLoad) {
-    if (instance.recipe.onLoad) {
-      Promise.resolve( instance.recipe.onLoad( instance.state ) );
-      instance.didLoad = true;
-      instance.state.refresh();
-    }
-  }
-
-}; //hang
+const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
 
 let serial = 1;
-const newState = (recipe,parent,args) => {
+const newState = (recipe,recipeNode,parent) => {
 
   // discover state data and state data generating functions
   // that will be called after the state is set up
@@ -400,12 +189,13 @@ const newState = (recipe,parent,args) => {
   //     call postLoad passing it the data
   //
   const data = {};
-  const dataFunConvert = {};
+  const recipeDataFunConvert = {};
+  const nodeDataFunConvert = {};
 
-  // populate data and dataFunConvert
-  [recipe,args]
-    .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => {
-      let val = level.data[arg];
+  // populate data
+  recipe && recipe.data && 
+    Object.keys(recipe.data).forEach( arg => {
+      let val = recipe.data[arg];
       if (typeof val === 'string') {
         const x = val.substr( 0, 1 );
         const checkVal = val.substr( 1 );
@@ -414,41 +204,44 @@ const newState = (recipe,parent,args) => {
         } else if (x === 'f') { // float
           val = Number.parseFloat( checkVal );
         } else if (x === 'c') { // code/function
-          dataFunConvert[arg] = Number.parseInt(checkVal);
+          recipeDataFunConvert[arg] = Number.parseInt(checkVal);
         } else if (x === 's') {
           val = checkVal;
         }
       }
       data[arg] = val;
-    } ) );
+    } );
 
-  // get a state object ready before calling the dataFunConvert and preLoad
-  // to populate the data
+
+  recipeNode && recipeNode.data && 
+    Object.keys(recipeNode.data).forEach( arg => {
+      let val = recipeNode.data[arg];
+      if (typeof val === 'string') {
+        const x = val.substr( 0, 1 );
+        const checkVal = val.substr( 1 );
+        if (x === 'i') { // int
+          val = Number.parseInt( checkVal );
+        } else if (x === 'f') { // float
+          val = Number.parseFloat( checkVal );
+        } else if (x === 'c') { // code/function
+          nodeDataFunConvert[arg] = Number.parseInt(checkVal);
+        } else if (x === 's') {
+          val = checkVal;
+        }
+      }
+      data[arg] = val;
+    } );
+
+
+  // get a state object ready before calling the  preLoad to populate the calculated data. this means that functions run after regular data values are placed
   const state = {
     id     : serial++,
 
-    desc : 'state',
+    desc : `state for recipe '${recipe.name}'`,
 
     parent,
 
     _key2substate: {},
-
-    data   : {
-      parent,
-      _data: data,
-      _check: function() { const changed = this._changed;
-                           this._changed = false; return changed; },
-      _changed: false,
-      get: function(k,defVal) { if (k in this._data) return this._data[k];
-                                let val = this.parent && this.parent.data.get( k );
-                                if (val===undefined && defVal !== undefined) {
-                                  val = this._data[k] = defVal;
-                                }
-                                return val;
-                              },
-      set: function(k,v) { this._changed = v !== this._data[k];
-                           this._data[k] = v; },
-    },
 
     calc   : {}, // attribute name -> calculation
     comp   : {}, // handle -> component state?
@@ -458,25 +251,27 @@ const newState = (recipe,parent,args) => {
     lastcount: {}, // iterator name -> last list count
     recipe,
 
-    refreshOld: function() { hang( this.instance, this.instance.rootel ) },
-
-    refresh: function( el, key, node ) {
+    refresh: function( el, node, key ) {
 
       const state = this;
       const recipe = state.recipe;
-      key = key || state.id; // for foreach case
+      el = el || state.rootEl;
       node = node || recipe.contents[0];
+      key = key || state.id; // for foreach case
 
       const needsInit = el.key ? false : true;
+      const isRecipeNode = node.nodeRecipe ? true : false;
+
       if (needsInit) {
         // element has not been given a key, so not initied
         el.key = key;
-        state.rootEl = el;
+
+        state.rootEl || (state.rootEl = el);
 
         // attach any event handlers
         node.on && Object.keys( node.on ).forEach( evname => {
           const evfun = function() {
-            const prom = con.on[evname]( state, ...arguments );
+            const prom = node.on[evname]( state, ...arguments );
             // resolve in case it returns undefined or returns a promise
             Promise.resolve( prom )
               .then( () => {
@@ -485,43 +280,38 @@ const newState = (recipe,parent,args) => {
           };
           el.addEventListener( evname, evfun );
         } );
-
-
-        console.warn( "how about defining component events that can be listened to" );
       }
 
       // update element attrs and textContent assigned thru calculation
       const seen = { id: 1 };
-      [ node.calculate, node.args && node.args.calculate ]
-        .forEach( source => {
-          source && Object.keys(source)
+      [ node.calculate, recipe.calculate ]
+        .forEach( calcs => 
+          calcs && Object.keys(calcs)
             .forEach( attr => {
               seen[attr] = seen[attr] || 0;
               if (0 === seen[attr]++) {
                 if (attr === 'textContent') {
-                  el.textContent = source[attr];
+                  el.textContent = calcs[attr](state);
                 } else {
-                  el.setAttribute( attr, source[attr] );
+                  el.setAttribute( attr, calcs[attr](state) );
                 }
               }
-            } )
-        } );
-
+            }));
+      
       // update element attrs and textContent assigned with constants
-      [ node.args && node.args.attrs, instance.attrs ]
-        .forEach( source => {
-          source && Object.keys(source)
+      [ node.attrs, recipe.attrs ]
+        .forEach( attrs =>
+          attrs && Object.keys(attrs)
             .forEach( attr => {
               seen[attr] = seen[attr] || 0;
               if (0 === seen[attr]++) {
                 if (attr === 'textContent') {
-                  el.textContent = source[attr];
+                  el.textContent = attrs[attr];
                 } else {
-                  el.setAttribute( attr, source[attr] );
+                  el.setAttribute( attr, attrs[attr] );
                 }
               }
-            } )
-        } );
+            }));
 
       // get a census of key --> element for child elements of this element.
       // then build the nodes as needed
@@ -531,134 +321,239 @@ const newState = (recipe,parent,args) => {
 
       // now fill in the contents. first make sure that the contents have
       // corresponding elements
+      const contents = isRecipeNode ? recipe.contents : node.contents;
 
-      recipe.contents
-        .forEach( con => {
-          let conKey, conEl;
-          const conRecipe = con.nodeRecipe;
-          if (conRecipe) {
-            // translate conRecipe id and con id to a state lookup
-            const lookup = `${state.id}_${conRecipe}`;
-            let conState = state._key2substate[ lookup ];
-            if ( ! conState ) {
-              conState = newState(conRecipe,state,con);
-              state._key2substate[ lookup ] = conState;
+      if (contents) {
+        let lastWasConditional = false,
+            conditionalDone = false,
+            lastConditionalWasTrue = false;
+        
+        contents
+          .forEach( con => {
+            console.log ( 'tag : ' + con.tag );
+            let conKey, conEl, conState;
+            const conRecipe = con.nodeRecipe;
+            if (conRecipe) {
+              // translate conRecipe id and con id to a state lookup
+              const lookup = `${state.id}_${conRecipe.id}`;
+              conState = state._key2substate[ lookup ];
+              if ( ! conState ) {
+                conState = newState(conRecipe,con,state);
+                if (con.handle) {
+                  state.comp[con.handle] = conState;
+                }
+                state._key2substate[ lookup ] = conState;
+              }
+              conKey = conState.id;
+            } else {
+              conKey = `${state.id}_${con.id}`;
             }
-            conKey = conState.id;
-          } else {
-            conKey = `${state.id}_${con.id}`;
-          }
-          if (con.foreach) {
-            conKey = conKey + '_0';
-          }
-          conEl = key2el[ conKey ];
-          if (!conEl) {
-            conEl = document.createElement( conRecipe ? conRecipe.rootTag : con.tag );
-            conEl.hidden = true;
-            conEl.key = conKey;
-            el.append( conEl );
-          }
+            if (con.foreach) {
+              conKey = conKey + '_0';
+            }
 
-          if (con.foreach) {
-
-          } else if (conRecipe) {
-              conState.refresh( conEl, undefined, con );
-              if (con.contents) {
-                // more contents to hang inside a child of the internal component
-                // though maybe in refresh?
-                const intEl = findInternalContent( conEl );
-                if (intEl) {
-                  conState.refresh( intEl, undefined, con.contents );
+            conEl = key2el[ conKey ];
+            if (!conEl) {
+              conEl = document.createElement( conRecipe ? conRecipe.rootNode.tag : con.tag );
+              if (con.handle) {
+                if (isRecipeNode) {
+                  if (conRecipe.rootNode.handle) {
+                    state.el[conRecipe.rootNode.handle] = conEl;
+                  }
+                } else {
+                  state.el[con.handle] = conEl;
                 }
               }
-          } else {
-            state.refresh( conEl, conKey, con );
-          }
+              key2el[conKey] = conEl;
+              conEl.hidden = true;
+              el.append( conEl );
+            }
 
-        } );
-    },
+            if (con.if) {
+              conditionalDone = lastConditionalWasTrue = con.if( state );
+              lastWasConditional = true;
+            } else if (con.elseif) {
+              if (conditionalDone) {
+                lastConditionalWasTrue = false;
+              } else {
+                conditionalDone = lastConditionalWasTrue = con.elseif( state );
+              }
+            } else if (con.else) {
+              if (conditionalDone) {
+                lastConditionalWasTrue = false;
+              } else {
+                lastConditionalWasTrue = true;
+              }
+            } else {
+              lastWasConditional = false;
+            }
 
+            if (lastWasConditional === false || lastConditionalWasTrue) {
+              // this element should be visible and populated
+
+              if (con.foreach) {
+                // remove extras but never the first index
+                const forval = con.forval;
+                const list = con.foreach( state );
+                const upto = state.lastcount[forval];
+                if (state.lastcount[forval] > list.length) {
+                  for (let i=list.length === 0 ? 1 : list.length; i<state.lastcount[forval]; i++) {
+                    conKey = conKey.replace( /_\d+$/, '_' + i );
+                    const itEl = key2el[conKey];
+                    itEl && itEl.remove();
+                  }
+                }
+                state.lastcount[forval] = list.length;
+                if (list.length === 0) {
+                  conEl.hidden = true;
+                } else {
+
+                  // make sure each foreach list item is populated
+                  // for those that are for components, they each get their
+                  // own state
+                  let lastEl;
+                  for (let i=0; i<list.length; i++ ) {
+                    conKey = conKey.replace( /_\d+$/, '_' + i );
+                    let forEl = key2el[conKey];
+                    if (forEl) {
+                      forEl.hidden = false;
+                    } else {
+                      forEl = document.createElement( conRecipe ? conRecipe.rootNode.tag : con.tag );
+                      lastEl.after( forEl );
+                    }
+                    state.idx[forval] = i;
+                    state.it[forval] = list[i];
+                    lastEl = forEl;
+
+                    if (conRecipe) {
+                      let forState = state._key2substate[ conKey ];
+                      if (!forState) {
+                        forState = newState( conRecipe, con, state );
+                        state._key2substate[ conKey ] = forState;
+                        if (conRecipe && con.handle) {
+                          state.comp[con.handle] = forState;
+                        }
+                      }
+                      forState.refresh( forEl, con );
+                      if (con.contents) {
+                        // more contents to hang inside a child of the internal component
+                        // though maybe in refresh?
+                        const intEl = findInternalContent( conEl );
+                        if (intEl) {
+                          forState.refresh( intEl, con.contents );
+                        }
+                      }
+                    } else {
+                      state.refresh( forEl, con );
+                    }
+                  }
+                }
+              } else if (conRecipe) {
+                // recipe component node that may have extra contents
+                conEl.hidden = false;
+
+                conState.refresh( conEl, con, conKey );
+                if (con.contents) {
+                  // more contents to hang inside a child of the internal component
+                  // though maybe in refresh?
+                  const intEl = findInternalContent( conEl );
+                  if (intEl) {
+                    conState.refresh( intEl, con.contents );
+                  }
+                }
+              } else {
+                // html element node
+                conEl.hidden = false;
+                state.refresh( conEl, con, conKey );
+              }
+            } else {
+              // hide this
+              conEl.hidden = true;
+              // if a list, remove all but the first
+              if (con.foreach) {
+                const upto = state.lastcount[state.forval];
+                for (let i=1; i<upto; i++) {
+                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  key2el[conKey].remove();
+                }
+              }
+              
+            }
+          } );
+      } // if contents
+
+      if (needsInit && isRecipeNode) {
+        // should be placed on the page an all now, so
+        // run onLoad which is outside in
+        recipe.onLoad && recipe.onLoad( state );
+      }
+    }, //refresh
+  }; //state
+
+  state.data = {
+    parent,
+    _data: data,
+    _check: function() { const changed = this._changed;
+                         this._changed = false; return changed; },
+    _changed: false,
+    get: function(k,defVal) { if (k in this._data) return dataVal( this._data[k], state );
+                              let val = this.parent && this.parent.data.get( k );
+                              if (val===undefined && defVal !== undefined) {
+                                val = this._data[k] = defVal;
+                              }
+                              return dataVal( val, state );
+                            },
+    set: function(k,v) { this._changed = v !== this._data[k];
+                         this._data[k] = v; },
   };
 
   // get defined functions
   const stateFuns = parent ? {...parent.fun} : {};
-  [recipe,args]
+  [recipe,recipeNode]
     .forEach( level => level &&
               level.functions &&
               Object.keys(level.functions).forEach( fun =>
                 stateFuns[fun] = function() { return level.functions[fun]( state, ...arguments ) }
               ) );
 
-  state.fun = stateFuns,
+  state.fun = stateFuns;
 
+  
+  Object.keys( nodeDataFunConvert )
+    .forEach( fld => data[fld] = funs[nodeDataFunConvert[fld]](parent) );
 
-  console.warn( 'maybe we dont need a state object seperate from the instance' );
-  // attach the state funs to the item itself. also maybe we don't need a
+  Object.keys( recipeDataFunConvert )
+    .forEach( fld => data[fld] = funs[recipeDataFunConvert[fld]](state) );
 
-
-  // now that there is a state, use it to calculate function'd data
-  // should be parent state, because that is what is sending the data to
-  Object.keys( dataFunConvert )
-    .forEach( fld => data[fld] = funs[dataFunConvert[fld]](parent) );
+  recipe.preLoad && recipe.preLoad( state );
 
   return state;
 };
 
-const instantiateRecipeContents = (contents,recipeInstance) => {
-  if (contents) {
-    const recipe = recipeInstance.recipe;
-    return contents.map( child => {
-
-      const childrecipe = lookupRecipe( child.tag, recipe.namespace );
-      if (childrecipe) {
-        return instantiateRecipe(childrecipe,child.args,recipeInstance.state);
-      }
-
-      const childInstance = {...child};
-
-      childInstance.id = serial++;
-      childInstance.desc = 'child instance',
-      childInstance.state = recipeInstance.state;
-      childInstance.recipe = recipe;
-      childInstance.args = {};
-      childInstance.contents = instantiateRecipeContents( childInstance.contents, recipeInstance );
-
-      return childInstance;
-    } );
-  }
-  return [];
-};
-
-const instantiateRecipe = (recipe,args,state) => {
-
-  state = newState( recipe, state, args );
-
-  const instance = {
-    args: args || {},
-    desc: 'recipe instance',
-    id: serial++,
-    recipe,
-    state,
-    isRecipe: true,
-  };
-
-  // run the preLoad if any
-  instance.preLoad = recipe.preLoad && recipe.preLoad( state, args );
-
-  instance.contents = instantiateRecipeContents(recipe.contents, instance);
-  state.instance = instance;
-
-  // collect compo
-  const handle = args && args.handle;
-  handle && ( state.parent.comp[handle] = instance );
-
-  return instance;
-};
-
 const compileBody = (body, filename) => {
-  const preLoad = body.preLoad;
-  delete body.preLoad;
-  return compileRecipe( { preLoad, contents: [{ tag:'body', ...body}] }, filename, 'body' );
+
+  // gotta compile the recipe and rewrite the body.
+  // the body should have no contents after this is done? 
+
+  const nodeRecipe = {};
+  body.nodeRecipe = body.recipe = nodeRecipe;
+  [ 'data', 'functions', 'preLoad', 'postLoad' ]
+    .forEach( bp => {
+      const val = body[bp];
+      if (val) {
+        nodeRecipe[bp] = val;
+        delete body[bp];
+      }
+    } );
+
+  nodeRecipe.contents = [ { tag: 'body', 
+                            attrs: body.attrs,
+                            contents: body.contents } ];
+
+  compileRecipe( nodeRecipe, filename, 'body' );
+
+  return nodeRecipe;
+
 };
 
 const compileRecipe = (recipe, filename, recipeName) => {
@@ -670,18 +565,92 @@ const compileRecipe = (recipe, filename, recipeName) => {
 
     recipe.id = serial++;
     recipe.namespace = filespaces[filename];
+
+    recipe.desc = `Recipe '${recipeName}'`;
     recipe.name = recipeName;
 
     prepFunctions( recipe, filename, recipeName );
     compileRecipeNodes( recipe, recipe, filename, recipeName, recipe.namespace, [] );
 
-    recipe.rootTag = recipe.contents[0].tag;
+    recipe.rootNode = recipe.contents[0];
   }
   catch( err ) {
     throw new Error( `Error compiling recipe '${recipeName}' in file '${filename}' : ${err}` );
   }
   return recipe;
 };
+
+const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recipesEncountered) => {
+
+  let lastWasConditional = false;
+
+  // transforms the root's contents
+  root.contents && root.contents
+    .forEach( node => {
+
+      //
+      // handle differently if node is for an html element like 'div'
+      // or a spiderpup component - aka - a recipe that is instantiated
+      //
+      // in both cases, normalize to a form like { contents: [...], attrs: {...}, ... }
+      //
+      const nodeRecipe = lookupRecipe( node.tag, namespace );
+      if (nodeRecipe) {
+        if (recipesEncountered[nodeRecipe.id]++) {
+          throw new Error( "circular reference detected" );
+        }
+        node.nodeRecipe = nodeRecipe;
+      }
+
+      prepFunctions( node, filename, recipeName );
+
+      node.id = serial++;
+      node.recipe = recipe;
+
+      node.desc = `Node '${node.tag}' for '${recipe.name}'`;
+
+      if (node.if) {
+        lastWasConditional = true;
+      } else if (node.elseif) {
+        if (!lastWasConditional) {
+          throw new Error( `error, got elseif without if` );
+        }
+      } else if (node.else) {
+        if (!lastWasConditional) {
+          throw new Error( `error, got elseif without if` );
+        }
+      } else {
+        lastWasConditional = false;
+      }
+      if (node.foreach && ! node.forval) {
+          throw new Error( `error, got foreach without forval` );
+      }
+
+      compileRecipeNodes( node, recipe, filename, recipeName, namespace, recipesEncountered );
+
+      return node;
+    } );
+};
+
+// for a recipe node, place the functions in spots where they are
+// references by function index
+const prepFunctions = (node, filename, recipeName) => {
+  const attrs = node.attrs = node.attrs || {};
+  const on = node.on = node.on || {};
+  const calcs = node.calculate = node.calculate || {};
+  Object.keys( node ).forEach( key => {
+    const val = node[key];
+    const m = key.match( /^on_(.*)/ );
+    if (m) {
+      on[ m[1] ] = funs[ val ];
+    } else if (key.match( /^((pre|on)Load|if|elseif|foreach)$/ ) ) {
+      node[key] = funs[ val ];
+    } else if (key.match( /^(calculate|on|functions)$/ ) ) {
+      Object.keys( val ).forEach( fld => val[fld] = funs[val[fld]]);
+    }
+  } );
+};
+
 
 const lookupRecipe = (tag,namespace) => {
   let recipe = namespace.components && namespace.components[tag];
@@ -707,82 +676,4 @@ const findInternalContent = (el,recur) => {
   if (!recur) {
     return el;
   }
-};
-
-
-// transform recipe instruction from {"tag":{...data...}} into { tag, ...data }
-// make sure if/then/else blocks are aligned properly.
-// if the instruction is a component, store its data in args
-// also toss up an error if there is a circular reference
-const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recipesEncountered) => {
-
-  let lastWasConditional = false;
-
-  // transforms the root's contents
-  root.contents = root.contents
-    .map( node => {
-
-      //
-      // handle differently if node is for an html element like 'div'
-      // or a spiderpup component - aka - a recipe that is instantiated
-      //
-      // in both cases, normalize to a form like { contents: [...], attrs: {...}, ... }
-      //
-      const nodeRecipe = lookupRecipe( node.tag, namespace );
-      if (nodeRecipe) {
-        if (recipesEncountered[nodeRecipe.id]++) {
-          throw new Error( "circular reference detected" );
-        }
-        node = {
-          tag: node.tag,
-          functions: node.functions || {},
-          nodeRecipe, //used to identify as a recipe instance
-          contents: node.contents,
-          args: {...node},
-        };
-      }
-
-      prepFunctions( node, filename, recipeName );
-
-      node.id = serial++;
-      node.recipe = recipe;
-
-      if (node.if) {
-        lastWasConditional = true;
-      } else if (node.elseif) {
-        if (!lastWasConditional) {
-          throw new Error( `error, got elseif without if` );
-        }
-      } else if (node.else) {
-        if (!lastWasConditional) {
-          throw new Error( `error, got elseif without if` );
-        }
-      } else {
-        lastWasConditional = false;
-      }
-      if (node.foreach && ! node.forval) {
-          throw new Error( `error, got foreach without forval` );
-      }
-      compileRecipeNodes( node, recipe, filename, recipeName, namespace, recipesEncountered );
-      return node;
-    } );
-};
-
-// for a recipe node, place the functions in spots where they are
-// references by function index
-const prepFunctions = (node, filename, recipeName) => {
-  const attrs = node.attrs = node.attrs || {};
-  const on = node.on = node.on || {};
-  const calcs = node.calculate = node.calculate || {};
-  Object.keys( node ).forEach( key => {
-    const val = node[key];
-    const m = key.match( /^on_(.*)/ );
-    if (m) {
-      on[ m[1] ] = funs[ val ];
-    } else if (key.match( /^((pre|on)Load|if|elseif|foreach)$/ ) ) {
-      node[key] = funs[ val ];
-    } else if (key.match( /^(calculate|on|functions)$/ ) ) {
-      Object.keys( val ).forEach( fld => val[fld] = funs[val[fld]]);
-    }
-  } );
 };
