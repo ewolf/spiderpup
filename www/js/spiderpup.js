@@ -147,7 +147,7 @@ window.onload = ev => {
         namespace.components[name] = compileRecipe( recipe, filename, name );
       } );
 
-    const bodyRecipe = compileRecipe( html.body, defaultFilename, 'body', true );
+    const bodyRecipe = compileBody( html.body, defaultFilename );
     
     // make state
     const state = newState( defaultNamespace );
@@ -460,10 +460,14 @@ const instantiateRecipe = (recipe,args,state) => {
   return instance;
 };
 
-const compileRecipe = (recipe, filename, recipeName, isBody) => {
+const compileBody = (body, filename) => {
+  return compileRecipe( { contents: [{ tag:'body', ...body}] }, filename, 'body' );
+};
+
+const compileRecipe = (recipe, filename, recipeName) => {
 
   try {
-    if (!isBody && !( recipe.contents && recipe.contents.length == 1)) {
+    if ( (!recipe.contents) || recipe.contents.length != 1) {
       throw new Error( "recipe '" + recipeName + "' must contain exactly one root element" );
     }
 
