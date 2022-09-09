@@ -14,7 +14,7 @@ components:
       value: 0
       name: ''
     functions:
-      inc: s => { debugger; s.data.set( 'value', 1 + s.data.get('value') ) }
+      inc: s => s.data.set( 'value', 1 + s.data.get('value') )
       dec: s => s.data.get( 'value' ) > 0 && s.data.set( 'value', s.data.get('value') - 1 )
     contents:
       - div:
