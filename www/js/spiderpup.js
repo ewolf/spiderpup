@@ -31,13 +31,13 @@
 
      * update instance( instance/recipe, args )
          - use seen i think
-         - find all properties/attributes in args (override) calculate, 
-                                             instance calculate, 
+         - find all properties/attributes in args (override) calculate,
+                                             instance calculate,
                                              args attrs,
                                              instance attrs
-           
+
          - id of attach point is the id of the instance or 'id_0'
-           it is a foreach 
+           it is a foreach
 
          - map child element array into element key -> element
          - iterate over instance contents / idx
@@ -149,24 +149,18 @@ window.onload = ev => {
       } );
 
     const bodyRecipe = compileBody( html.body, defaultFilename );
-    
+
     // make state
     const state = newState( defaultNamespace );
 
-    // make instance
-    const instance = instantiateRecipe( bodyRecipe, {}, state );
-    
-    // update body with this instance
-    hang( instance, document.body );
-
-    instance.rootel = document.body;
+    state.refresh( document.body );
 
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
 };
 
-// refresh the element with the instance 
+// refresh the element with the instance
 const hang = (instance, el) => {
 
   const state = instance.state;
@@ -224,7 +218,7 @@ const hang = (instance, el) => {
         // check if it is a recipe. if so, the tag is the tag of the recipe root instance
 
         const tag = childinstance.isRecipe ? childinstance.recipe.rootTag : childinstance.tag;
-        
+
         // now create and attach the element
         childel = document.createElement( tag );
 
@@ -384,22 +378,38 @@ const hang = (instance, el) => {
       instance.state.refresh();
     }
   }
-  
+
 }; //hang
 
 let serial = 1;
 const newState = (recipe,parent,args) => {
-  // get data fields
+
+  // discover state data and state data generating functions
+  // that will be called after the state is set up
+  // newState is also where the preLoad routine should be called
+  // after the data is set up.
+  //
+  //  so:
+  //     _data values set from constants
+  //     instance created
+  //     _data values set from functions
+  //     preLoad called and given the state so it can then call any data
+  //             manipulation
+  //
+  //  and after data is refreshed for the first time,
+  //     call postLoad passing it the data
+  //
   const data = {};
   const dataFunConvert = {};
 
+  // populate data and dataFunConvert
   [recipe,args]
     .forEach( level => level && level.data && Object.keys(level.data).forEach( arg => {
       let val = level.data[arg];
       if (typeof val === 'string') {
         const x = val.substr( 0, 1 );
         const checkVal = val.substr( 1 );
-        if (x === 'i') { // int          
+        if (x === 'i') { // int
           val = Number.parseInt( checkVal );
         } else if (x === 'f') { // float
           val = Number.parseFloat( checkVal );
@@ -412,17 +422,21 @@ const newState = (recipe,parent,args) => {
       data[arg] = val;
     } ) );
 
+  // get a state object ready before calling the dataFunConvert and preLoad
+  // to populate the data
   const state = {
     id     : serial++,
+
     desc : 'state',
+
     parent,
 
-    forRecipe: recipe.name,
+    _key2substate: {},
 
     data   : {
       parent,
       _data: data,
-      _check: function() { const changed = this._changed; 
+      _check: function() { const changed = this._changed;
                            this._changed = false; return changed; },
       _changed: false,
       get: function(k,defVal) { if (k in this._data) return this._data[k];
@@ -434,7 +448,8 @@ const newState = (recipe,parent,args) => {
                               },
       set: function(k,v) { this._changed = v !== this._data[k];
                            this._data[k] = v; },
-    }, 
+    },
+
     calc   : {}, // attribute name -> calculation
     comp   : {}, // handle -> component state?
     el     : {}, // handle -> element
@@ -442,15 +457,135 @@ const newState = (recipe,parent,args) => {
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
     recipe,
-    refresh: function() { hang( this.instance, this.instance.rootel ) },
+
+    refreshOld: function() { hang( this.instance, this.instance.rootel ) },
+
+    refresh: function( el, key, node ) {
+
+      const state = this;
+      const recipe = state.recipe;
+      key = key || state.id; // for foreach case
+      node = node || recipe.contents[0];
+
+      const needsInit = el.key ? false : true;
+      if (needsInit) {
+        // element has not been given a key, so not initied
+        el.key = key;
+        state.rootEl = el;
+
+        // attach any event handlers
+        node.on && Object.keys( node.on ).forEach( evname => {
+          const evfun = function() {
+            const prom = con.on[evname]( state, ...arguments );
+            // resolve in case it returns undefined or returns a promise
+            Promise.resolve( prom )
+              .then( () => {
+                if ( state.data._check() ) state.refresh();
+              } );
+          };
+          el.addEventListener( evname, evfun );
+        } );
+
+
+        console.warn( "how about defining component events that can be listened to" );
+      }
+
+      // update element attrs and textContent assigned thru calculation
+      const seen = { id: 1 };
+      [ node.calculate, node.args && node.args.calculate ]
+        .forEach( source => {
+          source && Object.keys(source)
+            .forEach( attr => {
+              seen[attr] = seen[attr] || 0;
+              if (0 === seen[attr]++) {
+                if (attr === 'textContent') {
+                  el.textContent = source[attr];
+                } else {
+                  el.setAttribute( attr, source[attr] );
+                }
+              }
+            } )
+        } );
+
+      // update element attrs and textContent assigned with constants
+      [ node.args && node.args.attrs, instance.attrs ]
+        .forEach( source => {
+          source && Object.keys(source)
+            .forEach( attr => {
+              seen[attr] = seen[attr] || 0;
+              if (0 === seen[attr]++) {
+                if (attr === 'textContent') {
+                  el.textContent = source[attr];
+                } else {
+                  el.setAttribute( attr, source[attr] );
+                }
+              }
+            } )
+        } );
+
+      // get a census of key --> element for child elements of this element.
+      // then build the nodes as needed
+      const key2el = {};
+      Array.from( el.children )
+        .forEach( el => el.key && ( key2el[el.key] = el ) );
+
+      // now fill in the contents. first make sure that the contents have
+      // corresponding elements
+
+      recipe.contents
+        .forEach( con => {
+          let conKey, conEl;
+          const conRecipe = con.nodeRecipe;
+          if (conRecipe) {
+            // translate conRecipe id and con id to a state lookup
+            const lookup = `${state.id}_${conRecipe}`;
+            let conState = state._key2substate[ lookup ];
+            if ( ! conState ) {
+              conState = newState(conRecipe,state,con);
+              state._key2substate[ lookup ] = conState;
+            }
+            conKey = conState.id;
+          } else {
+            conKey = `${state.id}_${con.id}`;
+          }
+          if (con.foreach) {
+            conKey = conKey + '_0';
+          }
+          conEl = key2el[ conKey ];
+          if (!conEl) {
+            conEl = document.createElement( conRecipe ? conRecipe.rootTag : con.tag );
+            conEl.hidden = true;
+            conEl.key = conKey;
+            el.append( conEl );
+          }
+
+          if (con.foreach) {
+
+          } else if (conRecipe) {
+              conState.refresh( conEl, undefined, con );
+              if (con.contents) {
+                // more contents to hang inside a child of the internal component
+                // though maybe in refresh?
+                const intEl = findInternalContent( conEl );
+                if (intEl) {
+                  conState.refresh( intEl, undefined, con.contents );
+                }
+              }
+          } else {
+            state.refresh( conEl, conKey, con );
+          }
+
+        } );
+    },
+
   };
 
   // get defined functions
   const stateFuns = parent ? {...parent.fun} : {};
   [recipe,args]
-    .forEach( level => level && 
-              level.functions && 
-              Object.keys(level.functions).forEach( fun => 
+    .forEach( level => level &&
+              level.functions &&
+              Object.keys(level.functions).forEach( fun =>
                 stateFuns[fun] = function() { return level.functions[fun]( state, ...arguments ) }
               ) );
 
@@ -458,14 +593,14 @@ const newState = (recipe,parent,args) => {
 
 
   console.warn( 'maybe we dont need a state object seperate from the instance' );
-  // attach the state funs to the item itself. also maybe we don't need a 
-  
+  // attach the state funs to the item itself. also maybe we don't need a
+
 
   // now that there is a state, use it to calculate function'd data
   // should be parent state, because that is what is sending the data to
   Object.keys( dataFunConvert )
     .forEach( fld => data[fld] = funs[dataFunConvert[fld]](parent) );
-  
+
   return state;
 };
 
@@ -578,11 +713,12 @@ const findInternalContent = (el,recur) => {
 // transform recipe instruction from {"tag":{...data...}} into { tag, ...data }
 // make sure if/then/else blocks are aligned properly.
 // if the instruction is a component, store its data in args
-// also toss up an error if there is a circular reference 
+// also toss up an error if there is a circular reference
 const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recipesEncountered) => {
 
   let lastWasConditional = false;
 
+  // transforms the root's contents
   root.contents = root.contents
     .map( node => {
 
@@ -650,372 +786,3 @@ const prepFunctions = (node, filename, recipeName) => {
     }
   } );
 };
-
-const yoteConfig = {
-    endpoint : "/yote"
-};
-
-let sess_ids_txt  = localStorage.getItem( 'sess_ids' );
-let sess_ids = sess_ids_txt ? JSON.parse( sess_ids_txt ) : {};
-
-let cache = {};
-let defs  = {};
-
-const marshal = args => {
-    if( typeof args === 'object' ) {
-        if( args._id ) {
-            return "r" + args._id;
-        }
-        if( Array.isArray( args ) ) {
-            return args.map( item => marshal( item ) );
-        }
-        let r = {};
-        Object.keys( args ).forEach( k => r[k] = marshal( args[k] ) );
-        return r;
-    }
-    if (args === undefined )
-	return 'u';
-    return "v" + args;
-} //marshal
-
-const unmarshal = (resp,app) => {
-    if( typeof resp === 'object' ) {
-        if( Array.isArray( resp ) ) {
-            return resp.map( item => unmarshal( item, app ) );
-        }
-        let r = {};
-        Object.keys( resp ).forEach( k => r[k] = unmarshal( resp[k], app ) );
-        return r;
-    }
-    if ( resp === undefined ) { return undefined; }
-    var type = resp.substring(0,1);
-    var val = resp.substring(1);
-    if( type === 'r' ) {
-        return cache[app][val];
-    }
-    else if( type === 'v' ) {
-        return val;
-    }
-    return undefined;
-} //unmarshal
-
-const rpc = (config,app,action,target,args,files) => {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.responseType = 'json';
-        xhr.open( 'POST', config.endpoint );
-        xhr.onload = () => {
-          if( xhr.status === 200 ) {
-
-//	    console.log( xhr.response, 'resp' );
-            
-            const resp = xhr.response.payload;
-            const token = xhr.response.token;
-	    
-            // xhr response succ, data, error, ret
-            let retv = resp.ret;
-	    let data = resp.data;
-	    
-            if( token && sess_ids[app] !== token ) {
-              //clear cache if new session
-	      const oldCache = cache[app] || {};
-	      Object.keys( oldCache )
-		.filter( k => ! (k in data) )
-		.forEach( k => delete oldCache[k] );
-              sess_ids[app] = token;
-              localStorage.setItem( 'sess_ids', JSON.stringify(sess_ids) );    
-            }
-            cache[app] = cache[app] || {};
-
-            let inDefs = resp.defs;
-            inDefs && Object.keys( inDefs ).forEach( k => defs[k] = inDefs[k] );
-
-	    // first round define
-            if (data) {
-              Object.keys( data ).forEach( id => {
-                if( ! cache[app][id] ) {
-		  const cls = data[id][0];
-		  const objdata = data[id][1];
-		  if (cls === 'ARRAY') {
-		    cache[app][id] = [];
-		  } else if (cls === 'HASH') {
-		    cache[app][id] = {};
-		  } else {
-		    cache[app][id] = new YoteObj( config, app, id, objdata, defs[cls] );
-		  }
-                }
-              } );
-
-	      // second round update
-              Object.keys( data ).forEach( id => {
-		const cls     = data[id][0];
-		const newdata = data[id][1];
-
-		const item = cache[app][id];
-		if (cls === 'ARRAY') {
-		  item.splice( 0, item.length, ...newdata.map( item => unmarshal(item,app) ) );
-		} else if (cls === 'HASH') {
-		  Object.keys( item ).forEach( k => delete item[k] );
-		  Object.keys( newdata ).forEach( k => item[k] = unmarshal(newdata[k],app) );
-		} else {
-                  item._update( newdata );
-		}
-              } );
-	    }
-
-            let payload = unmarshal( retv, app );
-	    resp.succ ? resolve(payload) : reject(payload);
-
-          } else {
-            reject('unknown');
-          }
-        };
-      xhr.onerror = () => reject(xhr.statusText);
-      
-      let fd = new FormData();
-
-      args = marshal( args );
-      
-        let payload = {
-            app,target,action,args,sess_id : sess_ids[app],
-        };
-
-//	console.log( payload, 'PAY' );
-        fd.append( 'payload', JSON.stringify(payload) );
-        if( files ) {
-            fd.append( 'files', files.length );
-            for( let i=0; i<files.length; i++ )
-                fd.append( 'file_' + i, files[i] );
-        }
-        xhr.send(fd);
-    } );
-}; //rpcs
-
-
-class YoteObj {
-    constructor( config, app, id, data, def ) {
-        this._config = config;
-        this._id = id;
-        this._app = app;
-        this._data = {};
-	this._methods = {}; // adding this field for Vue, to be able to bind right to Vue
-        if( def ) 
-            def.forEach( mthd => this._methods[mthd] = this[mthd] = this._callMethod.bind( this, mthd ) );
-        this._update( data );
-    } //constructor
-
-    // get any of the data. The data may not be set, but only updated by server calls
-    get( key ) {
-        return unmarshal( this._data[key], this._app );
-    }
-    
-    _callMethod( mthd, args, files ) {
-        return rpc( this._config, this._app, mthd, this._id, args, files );
-    }
-    _update( newdata ) {
-	let updated = false;
-        Object.keys( this._data )
-            .filter( k => ! k in newdata )
-            .forEach( k => {
-		delete this[ k ];
-		delete this._data[k];
-		updated = true;
-	    } );
-        Object.keys( newdata )
-            .forEach( k => {
-		if (typeof this[k] === 'function') {
-		    console.warn( `Obj ${this._id} clash between method and field for '${k}'` );
-		}
-		updated = updated || ( this._data[k] === newdata[k] );
-		this._data[k] = newdata[k];
-		this[k] = unmarshal( this._data[k], this._app );
-	    } );
-    } //_update
-
-} //YoteObj
-
-const fetchApp = (appName,yoteArgs) => {
-    const config = {...yoteConfig};
-    yoteArgs && Object.keys( yoteArgs ).
-	forEach( k => config[k] = yoteArgs[k] );
-
-    return rpc(config,appName,'load',undefined,undefined,undefined);
-};
-
-class LocationPath {
-    constructor(path) {
-	this.path = path || [];
-	this.top = this.path[0];
-    }
-    navigate( url, noPush ) {
-	console.log( `nav to locationpath ${url}` );
-	this.updateToUrl( url );
-	if (url != this.url ) {
-	    noPush || window.history.pushState( { app : 'test' }, '', url );
-	    this.url = url;
-	}
-    }
-    updateToUrl( url ) {
-	console.log(`location to ${url}`);
-	const matches = url.match( /^(https?:..[^/]+)?([^?#]+)[#?]?(.*)/ );
-	const newpath = matches ?  matches[2].split(/\//).filter( p => p.length > 0 ) : [];
-	console.log( newpath, matches[2], "NEWP" );
-	newpath.shift();
-	this.path.splice( 0, this.path.length, ...newpath );
-	this.top = this.path[0];
-	console.log( this.path.join(" "), this.top, "NEWPATH" );
-    }
-    subPath() {
-	return new LocationPath( this.path.splice(1) );
-    }
-} //LocationPath
-
-let locationPath; //singleton
-const getLocation = () => {
-    if (locationPath) return locationPath;
-    locationPath = new LocationPath();
-    locationPath.navigate( window.location.href );
-    window.addEventListener( 'popstate', e => locationPath.navigate( e.target.location.href, true ) );
-    return locationPath;
-};
-
-const el = (sel,loc) => (loc||document).querySelector(sel);
-const els = (sel,loc) => Array.from( (loc||document).querySelectorAll(sel) );
-
-const makeEl = builder => {
-    const el =document.createElement( builder.tag );
-    return el;
-};
-
-const makeBuilder = recipe => {
-    const r = recipe.slice();
-    const builder = { tag : r.shift(), builders : [] };
-    while ( r.length > 1 ) {
-        const attr = r.shift();
-        const val  = r.shift();
-        builder[attr] = val;
-    }
-    if (r.length === 1) {
-        // [ 'div', 'hello there' ]
-        // [ 'div', [ 'span', 'hello' ] ]
-        // [ 'div', [ ['span', 'spanone' ], [ 'span', 'span2' ] ] ]
-        if (Array.isArray(r[0])) {
-            const builders = Array.isArray( r[0][0] ) ? r[0] : r;
-            builders.forEach( r => builder.builders.push( makeBuilder(r) ) );
-        }
-        else if (typeof r[0] === "string") {
-            builder.text = r;
-        }
-    }
-    return builder;
-} //makeBuilder
-
-const shouldBuild = (stateObj, builder) => {
-    return true;
-};
-
-const buildKey = (stateObj, builder, idx) => {
-    return idx;
-};
-
-const calcState = (stateObj, builder) => {
-    return stateObj;
-}
-
-const createElement = (stateObj, builder) => {
-    return document.createElement( builder.tag );
-}
-
-const _fill = (stateObj, attachPointEl, startBuilder) => {
-
-    if (!shouldBuild( stateObj, startBuilder )) {
-        return;
-    }
-
-    // examine state and map key -> builder for the 
-    const key2builder = {};
-    const useKeys = [];
-    startBuilder.builders.forEach( (builder,idx) => {
-        if (shouldBuild( stateObj, builder )) {
-            const key = buildKey( stateObj, builder, idx );
-            if (key2builder[key]) {
-                console.warn( `not building anything. duplicate builder key ${key}` );
-                return;
-            }
-            useKeys.push( key );
-            key2builder[key] = builder;
-        }
-    } );
-
-    // gather child elements, find their keys and make a
-    // map of key -> element
-    const key2child = {};
-    let children = Array.from( attachPointEl.children || [] );
-    children.forEach( c => key2child[c.dataset.key] = c );
-
-    // prune out child nodes not paired with a builder
-    children = children.filter( child => {
-        if (!key2builder[child.dataset.key]) {
-            child.remove();
-            return false;
-        }
-        return true;
-    } );
-
-    if (children.length === useKeys.length) {
-        // no new child elements need be created
-        // so just update them all
-        useKeys.forEach( (key,idx) => {
-            const builder = key2builder[key];
-            const child = key2child[key];
-            child.dataset.key = key;
-            const childState = calcState( stateObj, builder );
-            _fill( childState, child, builder );
-        } );
-    }
-    else {
-        // inject or update the child elements, using append to
-        // get things in the correct order
-        useKeys.forEach( (key,idx) => {
-            const builder = key2builder[key];
-            const childState = calcState( stateObj, builder );
-            const child = key2child[key] || createElement( childState, builder );
-            // append will move a node that already exists to the
-            // end. find a faster way to do this like using insertBefore
-            // rather than moving nodes
-            attachPointEl.appendChild( child );
-            
-            _fill( childState, child, builder );
-        } );
-
-    }
-    
-    // update the attachPointEl with builder instructions, if any
-    if (startBuilder.text) {
-        attachPointEl.textContent = eval( '`' + startBuilder.text + '`');
-    }
-}; //_fill
-
-const fill = (stateObj, attachPointEl, recipe) => {
-    _fill( stateObj, attachPointEl, makeBuilder(recipe) );
-}
-
-const loadPage = ( appName, recipe ) => {
-    return fetchApp( appName )
-        .then( app => {
-            const bod = el('body');
-            fill( app, bod, recipe );
-            return app;
-        } );
-};
-
-
-const yote = {
-    fetchApp,
-    apps : {},
-    getLocation,
-    loadPage,
-    fill,
-}
-
-window.yote = yote;

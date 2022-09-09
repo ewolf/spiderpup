@@ -338,8 +338,7 @@ html:
     - button:
         calculate:
           textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-        on:
-          click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+        on_click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
         
 ```
 
@@ -378,16 +377,14 @@ components:
       - div:
           - button:
               textContent: '-'
-              on:
-                click: s => s.fun.dec()
+              on_click: s => s.fun.dec()
           - span:
               style: margin: 0 5px
               calculate:
                 textContent: s => s.data.get('name') + ': ' + s.data.get('value')
           - button:
               textContent: '+'
-              on:
-                click: s => s.fun.inc()
+              on_click: s => s.fun.inc()
 ```
 
 ## spiderpup loops and branching
@@ -438,8 +435,7 @@ components:
           contents:
             - button:
                 textContent: '-'
-                on:
-                  click: s => s.fun.dec(s)
+                on_click: s => s.fun.dec(s)
             - span:
                 style: margin: 0 5px
                 calculate:
@@ -455,8 +451,7 @@ components:
                   textContent: good enough
             - button:
                 textContent: '+'
-                on:
-                  click: s => s.fun.inc(s)
+                on_click: s => s.fun.inc(s)
 ```
 
 ### loops
@@ -508,12 +503,10 @@ html:
         - input:
             type: text
             handle: textfield
-            on:
-              change: s => s.refresh()
+            on_change: s => s.refresh()
         - button:
             textContent: click
-            on:
-              click: s => s.refresh()
+            on_click: s => s.refresh()
         - div:
             calculate:
               textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
@@ -564,8 +557,7 @@ components:
       - button:
           calculate:
             textContent: s => s.data.get( 'count' )
-          on:
-            click: >-
+          on_click: >-
               (s,ev) => {
                  s.data.set( 'count', 1 + s.data.get( 'count' ) )
                  s.parent.refresh();
