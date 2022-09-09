@@ -522,6 +522,8 @@ html:
     - h2: spiderpup static basics
     - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable components.
     - chapters:
+        data:
+          source: chapters
 
 components:
   try:
@@ -554,8 +556,8 @@ components:
 
   chapters:
     data:
-      source: chapters
       currPosition: 0
+      count: s => s.data.get(s.data.get('source')).length
     functions:
       curr: s => s.data.get(s.data.get('source'))[s.data.get('currPosition')]
       checkDisabled: >-
@@ -577,8 +579,6 @@ components:
            let pos = s.data.get( 'currPosition' );
            doInc ? pos++ : pos--;
            s.data.set( 'currPosition', pos );
-           s.el.previousButton.disabled = false;
-           s.el.nextButton.disabled = false;
            s.fun.checkDisabled();
            s.fun.setLessons();
         }
@@ -589,13 +589,6 @@ components:
           lstate.fun.setLessons( s.fun.curr().lessons );
         }
 
-    preLoad: >-
-       s => {
-         console.warn( 'preLoad is not running before child stuff is loaded, oh my' );
-         s.data.set( 'currPosition', 0 );
-         s.data.set( 'count', s.data.get(s.data.get('source')).length );
-       }
-
     onLoad: >-
       s => {
         s.fun.checkDisabled();
@@ -603,6 +596,7 @@ components:
 
     contents:
       - div:
+          - h1: HI
           - div:
               - button:
                   handle: previousButton
@@ -621,7 +615,7 @@ components:
                 - lessons:
                     handle: lessons
                     data:
-                      lessons: s => s.fun.curr().lessons
+                      chapterLessons: s => s.fun.curr().lessons
                       currLesson: 0
                       lessonCount: s => s.fun.curr().lessons.length;
                       fooy: () => 123
@@ -630,7 +624,7 @@ components:
   lessons:
     functions:
 
-      curr: s => s.data.get('lessons')[s.data.get('currLesson')]
+      curr: s => s.data.get('chapterLessons')[s.data.get('currLesson')]
 
       checkDisabled: >-
         s => {
@@ -658,7 +652,7 @@ components:
       setLessons: >-
         (s,lessons) => {
           s.data.set( 'currLesson', 0 );
-          s.data.set( 'lessons', lessons );
+          s.data.set( 'chapterLessons', lessons );
           s.data.set( 'lessonCount', lessons.length );
           s.fun.checkDisabled();
         }

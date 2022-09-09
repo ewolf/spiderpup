@@ -97,15 +97,16 @@ sub encode_fun {
 
 sub encode_fun_hash {
     my ($node, $funs) = @_;
-    my $res = {};
+
     if (ref $node eq 'HASH') {
+        my $res = {};
         for my $name (keys %$node) {
             my $fid = @$funs;
             push @$funs, $node->{$name};
             $res->{$name} = $fid;
         }
+        return $res;
     }
-    return $res;
 }
 
 sub build_recipe {
@@ -129,9 +130,14 @@ sub build_recipe {
 
 sub encode_functions_and_attrs {
     my ($node, $node_data, $funs, $filename) = @_;
-    my $attrs = $node->{attrs} = {};
-    my $calculate = $node->{calculate} = encode_fun_hash( $node_data->{calculate}, $funs );
-    my $on = $node->{on} = encode_fun_hash( $node_data->{on}, $funs );
+
+    if ($node_data->{calculate}) {
+        $node->{calculate} = encode_fun_hash( $node_data->{calculate}, $funs );
+    }
+    if ($node_data->{on}) {
+        $node->{on} = encode_fun_hash( $node_data->{on}, $funs );
+    }
+
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
         if ($field =~ /^(functions)$/) {
@@ -144,7 +150,7 @@ sub encode_functions_and_attrs {
             $node->{$field} = 1;
         }
         elsif ($field =~ /^on_(.*)/) {
-            $on->{$1} = encode_fun( $node_data, $field, $funs );
+            $node->{on}{$1} = encode_fun( $node_data, $field, $funs );
         }
         elsif ($field =~ /^(data|forval|handle|internalContent)$/) {
             if ($field eq 'data') {
@@ -155,9 +161,9 @@ sub encode_functions_and_attrs {
         elsif ($field !~ /^(calculate|contents|forval)$/) {
             # assume an attribute, and calculate was already handled
             if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
-                $calculate->{$field} = encode_fun( $node_data, $field, $funs );
+                $node->{calculate}{$field} = encode_fun( $node_data, $field, $funs );
             } else {
-                $attrs->{$field} = $val;
+                $node->{attrs}->{$field} = $val;
             }
         }
     }
@@ -188,9 +194,11 @@ sub build_node {
         }
     }
 
-    my $con = $node->{contents} = [];
-    for my $data (@{$data->{contents}||[]}) {
-        push @$con, build_node( $data, $funs, $filename );
+    if ($data->{contents}) {
+        my $con = $node->{contents} = [];
+        for my $data (@{$data->{contents}||[]}) {
+            push @$con, build_node( $data, $funs, $filename );
+        }
     }
 
     encode_functions_and_attrs( $node, $data, $funs, $filename );
@@ -293,7 +301,7 @@ sub load_namespace {
         }
 
         # encode functions, onLoad, preLoad
-        $namespace->{functions} = encode_fun_hash( $yaml->{functions}, $funs );
+        $namespace->{functions} = encode_fun_hash( $yaml->{functions}, $funs ) || {};
         for my $fun (qw( onLoad preLoad )) {
             if ($namespace->{$fun}) {
                 $namespace->{$fun} = encode_fun( $yaml, $fun, $funs );
