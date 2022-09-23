@@ -66,7 +66,7 @@ window.onload = ev => {
 
   // instantiate
   if (html && html.body) {
-//    console.log( filespaces );
+    console.log( filespaces );
 
     // now make an instance
     const bodyInstance = newInstance( html.body );
@@ -788,13 +788,20 @@ const newInstance = (node, enclosingInstance) => {
     const el = instance.rootEl;
     const rootNode = recipe.rootNode;
 
+    const needsInit = !!!el.hasInit;
+
     instance._refreshElement( el, rootNode );
     
-    return instance;
+    if (needsInit && asRecipe.onLoad) {
+      // indicates that this is the root node for a component that
+      // has not had its onLoad done. The preLoad may be a promise,
+      // so resolve that and then run the onLoad
+      Promise.resolve( instance.preLoad )
+        .then (() => asRecipe.onLoad( instance ) );
+    }
   }; //refresh
 
   asRecipe.preLoad && (instance.preLoad = asRecipe.preLoad(instance));
-
   return instance;
 
 

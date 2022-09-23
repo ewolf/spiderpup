@@ -264,6 +264,7 @@ print STDERR Data::Dumper->Dump([$js,"JS"]);
 sub load_namespace {
     my ( $root, $filename, $filespaces, $funs ) = @_;
     my $yaml_file = "$root/$filename";
+
     return $yaml_file if $filespaces->{$yaml_file};
 
     if (-e $yaml_file) {
