@@ -87,6 +87,12 @@ css: >-
 
 title: spiderpup example page
 
+onLoad: >-
+  c => setTimeout( () => { c.set('deltime',3); c.refresh() }, 30000 )
+
+data:
+  treat: yes
+
 body:
   - myapp:
       on_green: (s,e) => alert( `got green ${e}` )
@@ -94,6 +100,7 @@ body:
   - myapp:
       # this overrides the default data in the component
       # recipe
+      if: c => c.get( 'deltime' ) > 2
       data:
         red: 10
         toggled: true
@@ -143,7 +150,7 @@ components:
         - [ 15, hella, thinker, pander, aroba ]
 
     # called after app is placed on the page. the state s is passed
-    onLoad: s => { s.get( 'toggled' ) && s.fun.flip() }
+    onLoad: s => s.get( 'toggled' ) && s.fun.flip()
 
     # functions are available thru s.fun
     #   s.fun.flip for exaple

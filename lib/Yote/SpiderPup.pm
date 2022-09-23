@@ -246,7 +246,8 @@ sub transform_data {
 # 
 #
 sub yaml_to_js {
-    my ($filename) = @_;
+    my ($yaml_root_directory,$filename) = @_;
+    $root_directory = $yaml_root_directory;
 
     my $funs       = [];
     my $filespaces = {};
@@ -257,7 +258,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-#print STDERR Data::Dumper->Dump([$js,"JS"]);
+    print STDERR Data::Dumper->Dump([$js,"JS"]);
     return $js;
 }
 
@@ -285,12 +286,25 @@ sub load_namespace {
 
         # check for imports
         if (my $imports = $yaml->{import}) {
-            for my $ns (keys %$imports) {
-                if ($ns =~ /\./) {
-                    die "namespace may not contain '.' and got '$ns'";
+            if (ref $imports eq 'HASH') {
+                for my $ns (keys %$imports) {
+                    if ($ns =~ /\./) {
+                        die "namespace may not contain '.' and got '$ns'";
+                    }
+                    my $imp_filename = $imports->{$ns};
+                    $namespace->{namespaces}{$ns} = load_namespace( "recipes/$imp_filename.yaml", $filespaces, $funs, $root_namespace );
                 }
-                my $imp_filename = $imports->{$ns};
-                $namespace->{namespaces}{$ns} = load_namespace( "recipes/$imp_filename.yaml", $filespaces, $funs, $root_namespace );
+            } else {
+                # array
+                for my $imp (@$imports) {
+                    for my $ns (keys %$imp) {
+                        if ($ns =~ /\./) {
+                            die "namespace may not contain '.' and got '$ns'";
+                        }
+                        my $imp_filename = $imp->{$ns};
+                        $namespace->{namespaces}{$ns} = load_namespace( "recipes/$imp_filename.yaml", $filespaces, $funs, $root_namespace );
+                    }
+                }
             }
         }
 
@@ -345,7 +359,6 @@ sub load_namespace {
         }
         if (@css) {
             $root_namespace->{html}{head}{style} .= join( '', @css );
-            print STDERR Data::Dumper->Dump([$root_namespace->{html}{head}{style},$filename,"TYA"]);
         }
         if ($yaml->{javascript}) {
             $root_namespace->{html}{head}{script} .= $yaml->{javascript};
@@ -363,7 +376,7 @@ sub serve_recipe {
     $page //= $c->req->url->to_abs->path;
     $page =~ s~^/_/~/~;
 
-    my $js = yaml_to_js( "recipes$page.yaml" );
+    my $js = yaml_to_js( $root_directory, "recipes$page.yaml" );
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );

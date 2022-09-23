@@ -340,7 +340,8 @@ const newInstance = (node, enclosingInstance) => {
   const inRecipe = node.inRecipe;
   const inNamespace = inRecipe.namespace;
 
-  console.log( 'making instance of ' + asRecipe.name + ' ' + (serial) );
+  //console.log( 'making instance of ' + asRecipe.name + ' ' + (serial) );
+  //console.log( node.data, "NOD" );
 
   const instance = {
     id: serial++,
@@ -615,7 +616,7 @@ const newInstance = (node, enclosingInstance) => {
           // if it is branched, determine if it should appear by running the branching
           // check functions
           if (con.if) {
-            conditionalDone = lastConditionalWasTrue = con.if( instance );
+            conditionalDone = lastConditionalWasTrue = con.if( instance._key2subinstance[ conKey ] || instance );
             lastWasConditional = true;
             conEl.dataset.ifCondition = conditionalDone;
             conEl.noshow = !conditionalDone;
@@ -623,7 +624,7 @@ const newInstance = (node, enclosingInstance) => {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
             } else {
-              conditionalDone = lastConditionalWasTrue = con.elseif( instance );
+              conditionalDone = lastConditionalWasTrue = con.elseif( instance._key2subinstance[ conKey ] || instance );
               conEl.dataset.elseIfCondition = conditionalDone;
               conEl.noshow = !conditionalDone;
             }
@@ -692,7 +693,7 @@ const newInstance = (node, enclosingInstance) => {
                     comps.length = list.length;
                     comps[i] = componentInstance;
 
-                    forInstance._refreshComponent( con, forEl, i );
+                    forInstance._refreshComponent( con, forEl, i, true );
                     if (con.contents) {
                       // more contents to hang inside a child of the internal instance
                       // though maybe in refresh?
@@ -712,7 +713,7 @@ const newInstance = (node, enclosingInstance) => {
             } // end of has foreach
 
             else if (con.isComponent) {
-              conInstance = instance._refreshComponent( con, conEl );
+              conInstance = instance._refreshComponent( con, conEl, undefined, true );
 
               // more contents to hang inside a child of the internal instance
               // though maybe in refresh?
@@ -729,8 +730,11 @@ const newInstance = (node, enclosingInstance) => {
               instance._refreshElement( conEl, con );
             }
           } else {
-            // if if is a component, if it has a handle, it should have an instance, hidden or not. 
-            if (con.isComponent && con.handle && ! instance.comp[con.handle]) {
+            // hide this element
+            conEl.style.display = 'none';
+
+            // if if is a component, it should have an instance, hidden or not. 
+            if (con.isComponent && ! instance.comp[con.handle]) {
               let newinst;
               if (con.foreach) {
                 instance.comp[con.handle] = instance.comp[con.handle] || [];
@@ -745,12 +749,10 @@ const newInstance = (node, enclosingInstance) => {
                   = instance._key2subinstance[ conKey ]
                   = newInstance( con, instance );
               }
-              
+              newinst.noInit = true;
               newinst.rootEl = conEl;
             }
 
-            // hide this element
-            conEl.style.display = 'none';
             // if a list, remove all but the first
             if (con.foreach) {
               const upto = instance.lastcount[instance.forval];
@@ -766,7 +768,7 @@ const newInstance = (node, enclosingInstance) => {
   }; //_refreshElement
 
   // method _refreshComponent
-  instance._refreshComponent = ( node, el, idx ) => {
+  instance._refreshComponent = ( node, el, idx, noMoreInit ) => {
     // the node is a node that represents a component.
     const asRecipe = node.asRecipe;
 
@@ -776,7 +778,13 @@ const newInstance = (node, enclosingInstance) => {
     const key = `${instance.id}.${node.id}`;
     let componentInstance = instance._key2subinstance[key];
 
-    const needsInit = !!!componentInstance;
+    let needsInit = !!!componentInstance;
+    if (noMoreInit && componentInstance) {
+      needsInit = componentInstance.noInit;
+      componentInstance.noInit = false;
+    } else {
+      needsInit = needsInit && !(componentInstance && componentInstance.noInit);      
+    }
     if (! componentInstance ) {
       // no instance yet, so build one and attach the root element to the document.
 
@@ -840,7 +848,7 @@ const newInstance = (node, enclosingInstance) => {
 
     instance._refreshElement( el, rootNode );
     
-    if (needsInit && asRecipe.onLoad) {
+    if (needsInit && asRecipe.onLoad && asRecipe.name === 'body') {
       // indicates that this is the root node for a component that
       // has not had its onLoad done. The preLoad may be a promise,
       // so resolve that and then run the onLoad
