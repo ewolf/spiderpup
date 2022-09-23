@@ -1,6 +1,14 @@
 
 window.onload = ev => {
+  init( filespaces, funs, defaultFilename );
+}
 
+const init = (spaces,funz,defFilename) => {
+  
+  filespaces = spaces;
+  funs = funz;
+  defaultFilename = defFilename;
+  
   // stores
   const recipeNames = {};
 
@@ -126,7 +134,7 @@ window.onload = ev => {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
 
-}; //window.onLoad
+}; //init
 
 
 let serial = 1;
@@ -307,7 +315,6 @@ const newBodyInstance = (node, el) => {
   el.dataset.key = inst.id;
   return inst;
 }
-
 
 const newInstance = (node, enclosingInstance) => {
 

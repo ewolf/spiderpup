@@ -254,9 +254,9 @@ sub yaml_to_js {
 
     my $default_filename = [load_namespace( $filename, $filespaces, $funs )];
 
-    my $js = "const funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
-        "const filespaces = ".to_json( $filespaces ) . ";\n" .
-        "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
+    my $js = "let funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
+        "let filespaces = ".to_json( $filespaces ) . ";\n" .
+        "let defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
     print STDERR Data::Dumper->Dump([$js,"JS"]);
     return $js;
