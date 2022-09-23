@@ -18,14 +18,15 @@
 #     simple html structure
 #     include components
 #     include components function override
-#
-#
-#   todo
 #     nodes with internal content and a specified spot
 #     nodes with internal content and no specified spot
+#     functions inherited from default namespace
+#
+#   todo
 #     nodes with internal content that has if/then
 #     nodes with internal content that has foreach
 #     nodes with internal content that has if/then and foreach
+#     functions inherited from non-default namespace
 #     if/elseif/else
 #     foreach
 #     foreach with nodes
@@ -36,7 +37,7 @@
 #     test css styles 
 #     test less styles 
 #     test javascript in seperate modules
-# 
+#     namespace inclusions
 #     add more todo
 #
 
@@ -181,24 +182,31 @@ javascript: |
     reset();
     const def = 
         { TEST: 
-            { html: { body: { contents: [ el( 'span', "FIRST" ),
-                                          el( 'div', "SECOND",
-                                              [
-                                                node( 'foo' ),
-                                                node( 'foo', { functions: { bar: 1 } } ),
-                                                node( 'foo', { functions: { bar: 3 } },
-                                                      [ el( 'span', 'a span' ),
-                                                        el( 'span', 'with stuff' ) ] ),
-                                                node( 'foo', [ el( 'ul', 
-                                                                   [el( 'li', 'I am' ),
-                                                                    el( 'li', 'going' ),
-                                                                    el( 'li', 'in' ) ] ) ] ),
-                                              ] ),
-                                          el( 'containery' ),
-                                          el( 'containery', [
-                                            el( 'div', 'in the middle' )
-                                          ] ),
-                                        ] } },
+            {
+              import: {
+                ON: 'OTHERNAME',
+              },
+              html: { 
+                body: { 
+                  contents: [ el( 'span', "FIRST" ),
+                              el( 'div', "SECOND",
+                                  [
+                                    node( 'foo' ),
+                                    node( 'foo', { functions: { bar: 1 } } ),
+                                    node( 'foo', { functions: { bar: 3 } },
+                                          [ el( 'span', 'a span' ),
+                                            el( 'span', 'with stuff' ) ] ),
+                                    node( 'foo', [ el( 'ul', 
+                                                       [el( 'li', 'I am' ),
+                                                        el( 'li', { textContent: 5 } ),
+                                                        el( 'li', 'in' ) ] ) ] ),
+                                  ] ),
+                              node( 'containery' ),
+                              node( 'containery', [
+                                el( 'div', 'in the middle' )
+                              ] ),
+                            ] }, //body
+              }, //html
               components: {
 
                 foo: {
@@ -222,19 +230,26 @@ javascript: |
                   ],
                 },
               }, //components
-            }, //html
-          }; // filespaces
+             
+              functions: {
+                groan: 4,
+              } //functions
+            }, //TEST (default)
 
-    init( def,
+        }; // filespaces
 
-          [ c => "BAR",
-            c => "BAR2",
-            c => c.fun.bar(),
-            c => "BAR3",
-          ], // functions list
+    const namespace = init( def,
 
-          'TEST' // default filespace (the one with the body)
-        );
+                        [ c => "BAR",         // 0
+                          c => "BAR2",        // 1
+                          c => c.fun.bar(),   // 2
+                          c => "BAR3",        // 3
+                          c => "groan",       // 4
+                          c => {debugger; return c.fun.groan()}, // 5
+                        ], // functions list
+
+                        'TEST' // default filespace (the one with the body)
+                      );
     checkNode( "body|0 span", { textContent: 'FIRST' }, 'first div text' );
 
     checkNode( "body|1 div", { textContent: 'SECOND' }, 'second div text' );
@@ -247,7 +262,7 @@ javascript: |
 
     checkNode( "body|1 div|3 div|0 span", { textContent: 'BAR' }, 'fourth bar' );
     checkNode( "body|1 div|3 div|1 ul|0 li", { textContent: 'I am' }, 'fourth bar with more content 1' );
-    checkNode( "body|1 div|3 div|1 ul|1 li", { textContent: 'going' }, 'fourth bar with more content 2' );
+    checkNode( "body|1 div|3 div|1 ul|1 li", { textContent: 'groan' }, 'fourth bar with more content 2' );
     checkNode( "body|1 div|3 div|1 ul|2 li", { textContent: 'in' }, 'fourth bar with more content 3' );
 
     checkNode( "body|2 div|0 header", { textContent: 'head' }, 'containery 1 head' );
@@ -258,6 +273,11 @@ javascript: |
     checkNode( "body|3 div|1 main", { textContent: 'main' }, 'containery 2 main' );
     checkNode( "body|3 div|1 main|0 div", { textContent: 'in the middle' }, 'containery 2 added content' );
     checkNode( "body|3 div|2 footer", { textContent: 'foot' }, 'containery 2 footer' );
+
+    console.log(namespace);
+    debugger;
+
+
     doneTesting();
   }
 

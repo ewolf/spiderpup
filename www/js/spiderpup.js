@@ -134,6 +134,7 @@ const init = (spaces,funz,defFilename) => {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
 
+  return defaultNamespace;
 }; //init
 
 
@@ -431,7 +432,7 @@ const newInstance = (node, enclosingInstance) => {
   Object.keys( instanceFuns )
     .forEach( funName => {
       const oldFun = instanceFuns[funName];
-      instanceFuns[funName] = function() { oldFun( instance, ...arguments ) };
+      instanceFuns[funName] = function() { return oldFun( instance, ...arguments ) };
     } );
 
 
