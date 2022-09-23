@@ -130,11 +130,11 @@ const init = (spaces,funz,defFilename) => {
     }
     bodyInstance.refresh( document.body );
 
+    return bodyInstance;
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
 
-  return defaultNamespace;
 }; //init
 
 
@@ -195,7 +195,7 @@ const prepNode = (node,namespace) => {
       const tag = con.tag;
       const tagParts = tag.split( '.');
 
-      con.inRecipe = node.inRecipe;
+      con.inRecipe = node.isComponent ? node.asRecipe: node.inRecipe;
 
       if ( [con.else, con.elseif, con.if].filter( x => x !== undefined ).length > 1 ) {
         throw new Error( `may not have more than one of if,elseif,else in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
@@ -312,6 +312,7 @@ const makeKey2el = el => {
 const newBodyInstance = (node, el) => {
   const inst = newInstance( node );
   inst.rootEl = el;
+  el.instance = inst;
   el.key = inst.id;
   el.dataset.key = inst.id;
   return inst;
@@ -319,13 +320,12 @@ const newBodyInstance = (node, el) => {
 
 const newInstance = (node, enclosingInstance) => {
 
-
   // the recipe that builds this component instance
   const asRecipe = node.asRecipe;
   const asNamespace = asRecipe.namespace;
 
   // the recipe that this component instance is embedded in
-  const inRecipe = node.inRecipe;
+  const inRecipe = (enclosingInstance && enclosingInstance.node.asRecipe ) || node.inRecipe;
   const inNamespace = inRecipe.namespace;
 
   //console.log( 'making instance of ' + asRecipe.name + ' ' + (serial) );
@@ -676,6 +676,7 @@ const newInstance = (node, enclosingInstance) => {
                     if (!forInstance) {
                       forInstance = newInstance( con, instance );
                       forInstance.rootEl = forEl;
+                      forEl.instance = forInstance;
                       instance._key2subinstance[ conKey ] = forInstance;
                     }
 
@@ -703,13 +704,14 @@ const newInstance = (node, enclosingInstance) => {
             } // end of has foreach
 
             else if (con.isComponent) {
+
               conInstance = instance._refreshComponent( con, conEl );
 
               // more contents to hang inside a child of the internal instance
               // though maybe in refresh?
               if (con.contents) {
                 const intEl = findInternalContent( conEl );
-                instance._refreshContents( intEl, con.contents );
+                conInstance._refreshContents( intEl, con.contents );
                 // const intKey2el = makeKey2el(intEl);
                 // const intRoot = con.contents[0];
                 // const intKey = `${instance.id}.${intRoot.id}`;
@@ -733,7 +735,6 @@ const newInstance = (node, enclosingInstance) => {
                   = instance.comp[con.handle][0]
                   = instance._key2subinstance[ conKey ]
                   = newInstance( con, instance );
-                newinst.rootEl = conEl;
               } else {
                 newinst 
                   = instance.comp[con.handle]
@@ -742,6 +743,7 @@ const newInstance = (node, enclosingInstance) => {
               }
               newinst.noInit = true;
               newinst.rootEl = conEl;
+              conEl.instance = newinst;
             }
 
             // if a list, remove all but the first
@@ -781,10 +783,10 @@ const newInstance = (node, enclosingInstance) => {
 
       componentInstance = instance._key2subinstance[key] = newInstance(node, instance);
       componentInstance.rootEl = el;
+      el.instance = componentInstance;
 
       // install component event listeners. these can only come from the node
       // and send the messages to the parent node
-      const inRecipe = node.inRecipe;
       node.on && Object.keys( node.on ).forEach( evname => {
         // so a componentInstance uses 'event' to send a message
         // to its listeners
@@ -838,6 +840,11 @@ const newInstance = (node, enclosingInstance) => {
     const needsInit = !!!el.hasInit;
 
     instance._refreshElement( el, rootNode );
+
+    if (instance.node.contents && instance.node.name !== 'body' && instance.node.contents.length > 0) {
+      const intel = findInternalContent(el);
+      instance._refreshContents( intel, instance.node.contents);
+    }
     
     if (needsInit && asRecipe.onLoad && asRecipe.name === 'body') {
       // indicates that this is the root node for a component that
