@@ -330,7 +330,6 @@ sub load_namespace {
             }
 
             $namespace->{html}{body} = build_recipe( $body, $funs, $filename, $fn );
-print STDERR Data::Dumper->Dump([$body,'BOD']);
             for my $targ (qw( listen onLoad preLoad )) {
                 if ($yaml->{$targ}) {
                     $namespace->{html}{body}{$targ} = encode_fun($yaml, $targ, $funs);

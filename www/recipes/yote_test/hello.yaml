@@ -28,12 +28,21 @@ style: >-
     }
   }
 
+javascript: >-
+  console.log('loaded');
+
+
 data:
   appName: test
   pageMode: default
 
 onLoad: >-
   c => {
+    // set up the listener
+    window.onpopstate= ev => {
+      console.log( ev, 'LI' );
+    };
+
     yote.fetchAppTryLogin( c.get( 'appName' ) )
       .then( app => {
         if (app) {
@@ -42,7 +51,16 @@ onLoad: >-
             c.broadcast( 'login', app.acct );
           }
         }
-      }) }
+      });
+      
+      // try to look at the url. maybe it wants login?
+      const usp = new URLSearchParams( window.location.search );
+      for (const [key, value] of usp) {
+         if (key === 'pageMode') {
+           c.set( 'pageMode', value );
+         }
+      }
+  }
 
 listen: >-
   (c,msg,data) => {
@@ -50,8 +68,14 @@ listen: >-
       case "login":
         c.set( 'pageMode', 'default' );
       case "app":
-      case "pageMode":
         c.set( msg, data );
+        break;
+      case "pageMode":
+        // maybe navigate to a new url
+        // catch that and have that in the history?
+        // so there is no reload
+        window.location = '?pageMode=logging-in';
+        //c.set( msg, data );
         break;
       case "logout":
         c.set( 'login', undefined );
@@ -67,6 +91,8 @@ body:
   contents:
     - header:
     - main:
+      - h1: c => c.get( 'pageMode' )
+
       - loginControl:
           if: c => c.get( 'pageMode' ) === 'logging-in'
       - div:
@@ -134,6 +160,7 @@ components:
                 - button:
                     type: button
                     textContent: log in
+                    # maybee catch the pageMode change?
                     on_click: (c,e) => c.broadcast( 'pageMode', 'logging-in' )
           - ul:
               if: c => c.get( 'show-menu' )

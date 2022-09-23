@@ -1,6 +1,16 @@
 Current things to do:
 
 * navigation help, for example, a login page url
+    - maybe not part of spiderpup yet, but could be in 
+      recipes. spiderpup can be agnostic about this
+      but maybe there will be traditions to follow
+      
+    - like window popstate and hashchange events
+      
+* transition fades and stuff
+      
+* test file uploads / downloads
+    - in app for avatars, for example
 
 * bottle up the filespaces / namespaces better
    this should correspond to a top level component, maybe
