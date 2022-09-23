@@ -1,5 +1,11 @@
 Current things to do:
 
+* a page that takes a spiderpup yaml and builds it on the page
+  - how about iframes. can they refresh each other?
+    yes with messages, @whee
+    
+* error messages rather than a 500
+
 * navigation help, for example, a login page url
     - maybe not part of spiderpup yet, but could be in 
       recipes. spiderpup can be agnostic about this

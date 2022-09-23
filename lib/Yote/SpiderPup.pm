@@ -256,7 +256,7 @@ sub yaml_to_js {
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-print STDERR Data::Dumper->Dump([$filespaces,$js,"JS"]);
+print STDERR Data::Dumper->Dump([$js,"JS"]);
     return $js;
 }
 
@@ -334,6 +334,17 @@ sub load_namespace {
                 if ($yaml->{$targ}) {
                     $namespace->{html}{body}{$targ} = encode_fun($yaml, $targ, $funs);
                 }
+            }
+
+            my @css;
+            if ($yaml->{css}) {
+                push @css, $yaml->{css};
+            }
+            if ($yaml->{less}) {
+                push @css, CSS::LESSp->parse( $yaml->{less} );
+            }
+            if (@css) {
+                $namespace->{html}{head}{style} = join( '', @css );
             }
 
             if ($yaml->{style}) {

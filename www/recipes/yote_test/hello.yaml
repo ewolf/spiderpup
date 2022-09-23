@@ -2,7 +2,29 @@
 
 import:
 
-style: >-
+css: >-
+  @keyframes blinker {
+    50% {
+      border: solid 3px green;
+      opacity: 0;
+    }
+  }
+  
+
+less: >-
+  .loading {
+    color: blue;
+    animation: blinker 4s linear infinite;
+  }
+
+  .counter {
+    border: solid 3px brown;
+    margin: 12px;
+    padding: 5px;
+    span {
+      margin: 0 10px;
+    }
+  }
   body {
     .button {
        border: solid 1px black;
@@ -47,7 +69,18 @@ style: >-
             background-color: #dbdbdb;
         }
     }
-
+    .demo {
+      display: flex;
+      flex-direction: row;
+      border: solid 2px black;
+      form {
+        padding: 2px;
+        margin: 0 3px;
+        border: solid 2px black;
+        display: flex;
+        flex-direction: column;
+      }
+    }
     main {
        margin-top: 2em;
        display: flex;
@@ -76,6 +109,7 @@ functions:
         c.set( 'pageMode', mode );
       }
     }
+  greetings: (body,ev) => alert( `hello there from ${ev.target}` )
 
 data:
   appName: test
@@ -153,17 +187,31 @@ body:
             - div:
                 if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'login-control'
                 contents:
-                  - form:
-                      on_submit: >-
-                        (c,ev) => { ev.preventDefault();
-                              yote.apps.test.echo( c.el.something.value )
+                  - div:
+                      - form:
+                          on_submit: >-
+                            (c,ev) => { ev.preventDefault();
+                               yote.apps.test.echo( c.el.something.value )
                                  .then( r => alert( 'hello world ' + r ) ); }
-                      contents:
-                        - input:
-                            placeholder: say something
-                            handle: something
-                            required: true
-                        - button: click me
+                          contents:
+                            - input:
+                                placeholder: say something
+                                handle: something
+                                required: true
+                            - button: click me
+                      - counter:
+                          data:
+                            title: counter 1
+                      - counter:
+                          data:
+                            clicks: 12
+                      - button:
+                          type: button
+                          on_click: (body,ev) => body.fun.greetings(ev)
+                          textContent: click me
+                          style: font-weight: bold;
+                  - hr:
+                  - demo:
             - div:
                 if: c => ! c.get('app')
                 textContent: app not yet loaded
@@ -399,3 +447,62 @@ components:
                 if: c => c.get( 'err' )
                 style: background-color: pink; border: solid 1px; padding: 2px;
                 textContent: c => c.get( 'err' )
+  counter:
+    data:
+      clicks: 0
+      title: no title set
+    functions:
+      inc: c => c.set( 'clicks', 1 + c.get( 'clicks' ) )
+      dec: c => c.set( 'clicks', c.get( 'clicks' ) -1 )
+    contents:
+      - div:
+          class: counter
+          contents:
+            - h2: c => c.get( 'title' )
+            - div:
+                - button:
+                    textContent: '<'
+                    on_click: c => c.fun.dec()
+                - span: c => `${c.get('clicks')} clicks`
+                - button:
+                    textContent: '>'
+                    on_click: c => c.fun.inc()
+  demo:
+    data:
+      yamlText: ''
+      loaded: false
+    onLoad: >-
+      c => {
+        yote.apps.test.fetch_yaml()
+           .then( txt => {
+              c.set( 'yamlText' );
+              c.set( 'loaded', true );
+              //c.refresh();
+          } );
+      }
+    contents:
+      - div:
+          class: demo
+          contents:
+            - form:
+                if: c => c.get( 'loaded' ) 
+                on_submit: >-
+                  (c,ev) => {
+                    
+                  }
+                contents:
+                  - h3: Spiderpup Yaml
+                  - textarea:
+                      value: c => c.get( 'yamlText' )
+                      on_keyup: (c,ev) => c.set( 'yamlText', ev.target.value )
+                  - button: generate output
+            - div:
+                if: c => c.get( 'loaded' ) 
+                contents:
+                  - h3: Yaml output
+                  - iframe:
+                      src: /yote_test/test.html
+            - div:
+                class: loading
+                else:
+                textContent: loading
