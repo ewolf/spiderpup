@@ -443,16 +443,29 @@ const newInstance = (node, enclosingInstance) => {
     );
 
   // already sends the enclosing instance as first argument
-  if (enclosingInstance && enclosingInstance.fun) {
-    Object.keys( enclosingInstance.fun )
-      .forEach( fun =>
-        (instanceFuns[fun] = enclosingInstance.fun[fun]) );
+  if (enclosingInstance) {
+    if (enclosingInstance.fun) {
+      Object.keys( enclosingInstance.fun )
+        .forEach( fun =>
+          (instanceFuns[fun] = enclosingInstance.fun[fun]) );
+    }
+
+    // grab looping from enclosing instance as well, if it exists
+    // these may be overridden if there is looping in this instance
+    // so programmers beware of recycling looping vars in loops
+    Object.keys( enclosingInstance.it ).forEach( loopname => {
+      instance.it[loopname] = enclosingInstance.it[loopname];
+      instance.idx[loopname] = enclosingInstance.idx[loopname];
+    } );
+
   }
 
   node.functions &&
     Object.keys(node.functions).forEach( fun =>
       instanceFuns[fun] = function() { return node.functions[fun]( instance, ...arguments ) }
     );
+
+  
 
 
   // SET UP LISTENERS -----------------
@@ -641,6 +654,8 @@ const newInstance = (node, enclosingInstance) => {
               const forval = con.forval;
               const list = con.foreach( instance );
               const upto = instance.lastcount[forval];
+              
+              if (con.debug) { debugger; }
 
               // remove any that are more than the list count
               if (instance.lastcount[forval] > list.length) {
@@ -695,17 +710,6 @@ const newInstance = (node, enclosingInstance) => {
                     }
 
                     instance._refreshComponent( con, forEl, i );
-                    if (con.contents) {
-                      // more contents to hang inside a child of the internal instance
-                      // though maybe in refresh?
-                      const intEl = findInternalContent( conEl );
-                      const intKey2el = makeKey2el(intEl);
-                      const intRoot = con.contents[0];
-                      const intKey = `${instance.id}.${intRoot.id}_${i}`;
-                      const child = intKey2el[intKey] || forInstance._prepElement( intRoot, intKey, intEl );
-                
-                      forInstance._refreshElement( child, intRoot );
-                    }
                   }
                   else {
                     instance._refreshElement( forEl, con, conKey );
