@@ -1,9 +1,14 @@
 Current things to do:
 
+* test internal content with foreach
+
+* decide if dynamic component should be a thing
+   (am thinking not)
+
 * a page that takes a spiderpup yaml and builds it on the page
   - how about iframes. can they refresh each other?
     yes with messages, @whee
-    
+
 * error messages rather than a 500
 
 * navigation help, for example, a login page url

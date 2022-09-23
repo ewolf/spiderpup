@@ -66,7 +66,7 @@ window.onload = ev => {
 
   // instantiate
   if (html && html.body) {
-    console.log( filespaces );
+//    console.log( filespaces );
 
     // now make an instance
     const bodyInstance = newInstance( html.body );
@@ -329,7 +329,6 @@ const makeKey2el = el => {
 
 // node - root node of creating recipe
 const newInstance = (node, enclosingInstance) => {
-
   // the recipe that builds this component instance
   const asRecipe = node.asRecipe;
   const asNamespace = asRecipe.namespace;
@@ -495,7 +494,7 @@ const newInstance = (node, enclosingInstance) => {
       instance.el[node.handle] = newEl;
     }
     if (attachAfter) {
-      newEl.after( attachToEl );
+      attachToEl.after( newEl );
     } else {
       attachToEl.append( newEl );
     }
@@ -596,6 +595,7 @@ const newInstance = (node, enclosingInstance) => {
           }
 
           conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el );
+          key2el[ conKey ] = conEl;
 
           // if it is branched, determine if it should appear by running the branching
           // check functions
@@ -626,6 +626,8 @@ const newInstance = (node, enclosingInstance) => {
               const forval = con.forval;
               const list = con.foreach( instance );
               const upto = instance.lastcount[forval];
+
+              // remove any that are more than the list count
               if (instance.lastcount[forval] > list.length) {
                 for (let i=list.length === 0 ? 1 : list.length; i<instance.lastcount[forval]; i++) {
                   conKey = conKey.replace( /_\d+$/, '_' + i );
@@ -645,7 +647,8 @@ const newInstance = (node, enclosingInstance) => {
                 let lastEl;
                 for (let i=0; i<list.length; i++ ) {
                   conKey = conKey.replace( /_\d+$/, '_' + i );
-                  let forEl = key2el[conKey] || instance._prepElement( con, conKey, el, 'after' );
+
+                  let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el ) : instance._prepElement( con, conKey, lastEl, 'after' ) );
                   // hide this element for now
                   forEl.style.display = null;
                   
@@ -654,18 +657,14 @@ const newInstance = (node, enclosingInstance) => {
                   instance.it[forval] = list[i];
                   lastEl = forEl;
 
-                  if (asRecipe) {
+                  if (con.isComponent) {
                     let forInstance = instance._key2subinstance[ conKey ];
                     if (!forInstance) {
-                      forInstance = newInstance( asRecipe, con, instance );
+                      forInstance = newInstance( con, instance );
                       forInstance.rootEl = forEl;
                       instance._key2subinstance[ conKey ] = forInstance;
-                      if (asRecipe && con.handle) {
-                        instance.comp[con.handle] = instance.comp[con.handle] || [];
-                        instance.comp[con.handle][i] = forInstance;
-                      }
                     }
-                    forInstance.refresh( forEl, con );
+                    forInstance._refreshComponent( con, forEl, i );
                     if (con.contents) {
                       // more contents to hang inside a child of the internal instance
                       // though maybe in refresh?
@@ -678,7 +677,7 @@ const newInstance = (node, enclosingInstance) => {
                       forInstance._refreshElement( child, intRoot );
                     }
                   } else {
-                    instance.refresh( forEl, con, conKey );
+                    instance._refreshElement( forEl, con, conKey );
                   }
                 }
               }
@@ -719,7 +718,7 @@ const newInstance = (node, enclosingInstance) => {
   }; //_refreshElement
 
   // method _refreshComponent
-  instance._refreshComponent = ( node, el ) => {
+  instance._refreshComponent = ( node, el, idx ) => {
     // the node is a node that represents a component.
     const asRecipe = node.asRecipe;
 
@@ -758,7 +757,12 @@ const newInstance = (node, enclosingInstance) => {
     }
 
     if (node.handle) {
-      instance.comp[node.handle] = componentInstance;
+      if (idx !== undefined) {
+        instance.comp[node.handle] = instance.comp[node.handle] || [];
+        instance.comp[node.handle][idx] = componentInstance;
+      } else {
+        instance.comp[node.handle] = componentInstance;
+      }
     }
 
     componentInstance.refresh();
