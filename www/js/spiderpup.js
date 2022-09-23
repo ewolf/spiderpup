@@ -69,10 +69,7 @@ window.onload = ev => {
     console.log( filespaces );
 
     // now make an instance
-    const bodyInstance = newInstance( html.body );
-    bodyInstance.rootEl = document.body;
-    document.body.key = bodyInstance.id;
-    document.body.dataset.key = bodyInstance.id;
+    const bodyInstance = newBodyInstance( html.body, document.body );
 
     if (html.head) {
       const head = document.head;
@@ -125,50 +122,39 @@ window.onload = ev => {
     }
     bodyInstance.refresh( document.body );
 
-    // build the body instance and refresh it
-    // may have to update the body element key before the refresh
-
-
-
-    // // attach any body listeners
-    // if (html.body.on) {
-    //   Object.keys( html.body.on ).forEach( evname => {
-    //     const evfun = function() {
-    //       const prom = html.body.on[evname]( bodyComponent, ...arguments );
-    //       // resolve in case it returns undefined or returns a promise
-    //       Promise.resolve( prom )
-    //         .then( () => {
-    //           if ( bodyComponent._check() ) bodyComponent.refresh();
-    //         } );
-    //     };
-    //     // element event listeners
-    //     document.body.addEventListener( evname, evfun );
-    //   } );
-    // }
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
-/*
-  const defaultNamespace = filespaces[defaultFilename];
-  defaultNamespace.filename = defaultFilename;
-  const html = defaultNamespace.html;
 
-  const namespaceComponent = newComponentInstance( { data: defaultNamespace.data,
-                                                     functions: defaultNamespace.functions,
-                                                     namespace: defaultNamespace,
-                                              }, {} );
-*/
-
-}; //onLoad
+}; //window.onLoad
 
 
 let serial = 1;
+
+const prepBodyNode = (node,namespace) => {
+  node.namespace = namespace;
+  node.type = 'recipe';
+  node.name = 'body';
+  const rootNode = { tag: 'body',
+                     type: 'element',
+                     id: serial++,
+                     isRoot: true,
+                     contents: node.contents };
+  node.rootNode = rootNode;
+  node.contents = [rootNode];
+  node.inRecipe = node; // self referential
+  node.asRecipe = node; // self referential
+  prepNode( node, namespace );
+  rootNode.on = node.on;
+  return node;
+} // prepBodyNode
 
 const prepNode = (node,namespace) => {
   namespace = namespace || node;
   node.id = serial++;
   attachFunctions( node );
   if (node.type === 'namespace') {
+
     node.components && Object.keys( node.components )
       .forEach( recipeName => {
         const comp = node.components[recipeName];
@@ -188,23 +174,9 @@ const prepNode = (node,namespace) => {
         prepNode( comp, namespace );
       } );
     if (node.html && node.html.body) {
-      node = node.html.body;
-      node.namespace = namespace;
-      node.type = 'recipe';
-      node.name = 'body';
-      const rootNode = { tag: 'body',
-                         type: 'element',
-                         id: serial++,
-                         isRoot: true,
-                         contents: node.contents };
-      node.rootNode = rootNode;
-      node.contents = [rootNode];
-      node.inRecipe = node; // self referential
-      node.asRecipe = node; // self referential
-      prepNode( node, namespace );
-      rootNode.on = node.on;
+      prepBodyNode( node.html.body, namespace );
     }
-  }
+  } //namespace node
   else if (node.contents) {
 
     // check integrity of if/elseif/else
@@ -243,8 +215,8 @@ const prepNode = (node,namespace) => {
       }
       prepNode( con, namespace );
     } );
-  }
-
+  } //node with contents
+  return node;
 }; //prepNode
 
 const attachFunctions = node => {
@@ -328,7 +300,15 @@ const makeKey2el = el => {
   return key2el;
 }
 
-// node - root node of creating recipe
+const newBodyInstance = (node, el) => {
+  const inst = newInstance( node );
+  inst.rootEl = el;
+  el.key = inst.id;
+  el.dataset.key = inst.id;
+  return inst;
+}
+
+
 const newInstance = (node, enclosingInstance) => {
 
 
@@ -565,8 +545,7 @@ const newInstance = (node, enclosingInstance) => {
           }
         }));
 
-    // update element attrs and textContent assigned with constants
-    [ node.attrs, node.isRoot && instance.node.attrs ]
+    [ node.isRoot && instance.node.attrs, node.attrs ]
       .forEach( attrs =>
         attrs && Object.keys(attrs)
           .forEach( attr => {

@@ -1,2 +1,15 @@
+---
+
+javascript: |
+  // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
+  function test() {
+    const node = prepBodyNode( { attrs: {textContent: "BEEP"} }, filespaces[defaultFilename] );
+    const inst = newInstance( node );
+    inst.rootEl = document.body;
+    document.body.key = inst.id;
+    inst.refresh( document.body );
+  }
+
 body:
-  - h1: hello world
+  textContent: x
+  onLoad: c => test()

@@ -58,8 +58,23 @@
 #   state.idx[forval value] while it builds that element.
 #
 css: >-
+  @keyframes blinker {
+    50% {
+      border: solid 3px green;
+      opacity: 0;
+    }
+  }
+  .loading {
+    color: blue;
+    animation: blinker 4s linear infinite;
+  }
   .red { background: red; }
   .green { background: green; }
+
+  .new {
+    background-color: skyblue;
+    border: bevel 3px lightblue;
+  }
 
   .red,
   .green {
@@ -101,10 +116,15 @@ body:
       # this overrides the default data in the component
       # recipe
       if: c => c.get( 'deltime' ) > 2
+      class: new myapp
       data:
         red: 10
         toggled: true
         title: Hello there, I'm a new instance
+  - div:
+      class: loading
+      textContent: loading
+      else:
   - myapp:
       # default functions may be overridden in this
       # instance of the coponent
