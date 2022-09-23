@@ -318,11 +318,11 @@ sub load_namespace {
             };
 
             for my $thing (qw( css javascript )) {
-                if (ref $namespace->{include}{$thing} eq 'ARRAY') {
-                    $namespace->{html}{head}{$thing} = $namespace->{include}{$thing};
+                if (ref $yaml->{include}{$thing} eq 'ARRAY') {
+                    $namespace->{html}{head}{$thing} = $yaml->{include}{$thing};
                 } 
-                elsif ($namespace->{include}{$thing}) {
-                    $namespace->{html}{head}{$thing} = [$namespace->{include}{$thing}];
+                elsif ($yaml->{include}{$thing}) {
+                    $namespace->{html}{head}{$thing} = [$yaml->{include}{$thing}];
                 }
             }
 

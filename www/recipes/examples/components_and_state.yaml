@@ -1,10 +1,9 @@
 ---
-html:
-  body:
-    - greeting:
-    - greeting:
-        data:
-          greeting: I override
+body:
+  - greeting:
+  - greeting:
+      data:
+        greeting: I override
 
 components:
   greeting:
@@ -12,4 +11,4 @@ components:
       greeting: Hello there
     contents:
       - div:
-          textContent: s => 'greet ' + s.data.get( 'greeting' )
+          textContent: s => 'greet ' + s.get( 'greeting' )

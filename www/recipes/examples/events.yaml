@@ -1,8 +1,8 @@
 ---
-html:
-  body:
-    - h1: Hello Events
-    - button:
-        textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-        on_click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+
+body:
+  - h1: Hello Events
+  - button:
+      textContent: s => 'clicked ' + s.get('count',0) + ' times'
+      on_click: (s,ev) => s.set( 'count', 1 + s.get( 'count' ) )
         

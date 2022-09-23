@@ -1,26 +1,24 @@
+---
 
-
-html:
-  head:
-    functions:
-      add: s => { s.data.set( 'count', s.data.get( 'count' ) + 1 ); s.create( 'dyno', { attachTo: 'box' } ) }
-  body:
-    onLoad: s => s.data.set( 'count', 0 )
-    contents:
-      - h1: dynamic components
-      - h2: add a component with the press of a button
-      - button:
-          on:
-            click: (s,ev) => { s.fun.add(s) }
-          textContent: add
-      - div:
-          attach-el: box
+functions:
+  add: s => { s.set( 'count', s.get( 'count' ) + 1 ); s.create( 'dyno', { attachTo: 'box' } ) }
+  
+body:
+  onLoad: s => s.set( 'count', 0 )
+  contents:
+    - h1: dynamic components
+    - h2: add a component with the press of a button
+    - button:
+        on:
+          click: (s,ev) => { s.fun.add(s) }
+        textContent: add
+    - div:
+        attach-el: box
 
 components:
   dyno:
-    #create: (s,...args) => s.data.set('count', args[0])
     contents:
       - div:
           calculate: 
-            textContent: s => `Hi there: ${s.data.get('count')}`
+            textContent: s => `Hi there: ${s.get('count',0)}`
     

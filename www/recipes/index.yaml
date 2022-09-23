@@ -128,8 +128,8 @@ components:
 
     # default data for an instance of myapp. can be acccessed thru
     # the state (s) variable like so.
-    #     s.data.get( 'title' )
-    #     s.data.set( 'title', 'new title' )
+    #     s.get( 'title' )
+    #     s.set( 'title', 'new title' )
     # changing data in this way causes the app to be refreshed after
     # the function it was run from completes.
     # the initial state data may be overridden in instances of myapp
@@ -143,7 +143,7 @@ components:
         - [ 15, hella, thinker, pander, aroba ]
 
     # called after app is placed on the page. the state s is passed
-    onLoad: s => { s.data.get( 'toggled' ) && s.fun.flip() }
+    onLoad: s => { s.get( 'toggled' ) && s.fun.flip() }
 
     # functions are available thru s.fun
     #   s.fun.flip for exaple
@@ -167,7 +167,7 @@ components:
                 # a span with textContent of 'TITLE:'
                 - span: TITLE:
                 - span: ' '
-                - span: s => s.data.get('title')
+                - span: s => s.get('title')
             - div:
                 class: spaced row
                 contents:
@@ -181,8 +181,8 @@ components:
                         - span:
                             handle: red
                             class: red
-                            textContent: s => s.data.get( 'red' ) + ' red clicks'
-                            on_click: (s,ev) => s.data.set( 'red', 1 + parseInt(s.data.get('red')))
+                            textContent: s => s.get( 'red' ) + ' red clicks'
+                            on_click: (s,ev) => s.set( 'red', 1 + parseInt(s.get('red')))
 
                         - span:
                             handle: green
@@ -200,20 +200,20 @@ components:
                           on_click: >
                               (s,ev) => {
                                 s.fun.flip()
-                                s.data.set('toggled', ! s.data.get('toggled') )
+                                s.set('toggled', ! s.get('toggled') )
                               }
 
             # branching with if / elseif / else
             # only one of the following divs will appear
             - div:
                 textContent: green on left
-                if: s => s.data.get('toggled')
+                if: s => s.get('toggled')
             - div:
                 textContent: more than 100 red on left
-                elseif: s => s.data.get( 'red' ) > 100
+                elseif: s => s.get( 'red' ) > 100
             - div:
                 textContent: more than 10 red on left
-                elseif: s => s.data.get( 'red' ) > 10
+                elseif: s => s.get( 'red' ) > 10
             - div:
                 textContent: red on left
                 else:
@@ -228,18 +228,18 @@ components:
                   - table:
                       border: 1
   
-                      if: s => s.data.get( 'table' ).length > 0
+                      if: s => s.get( 'table' ).length > 0
 
                       contents:
                         - tr:
                             - th:
-                                foreach: s => s.data.get('number')
+                                foreach: s => s.get('number')
                                 forval: col
                                 textContent: s => s.it.col
                             
                         - tr:
                             # function must return a list or iterable
-                            foreach: s => s.data.get('table')
+                            foreach: s => s.get('table')
 
                             # if there is a foreach, there must be a var to store
                             # each item in the list in. the var will be accessible in
@@ -258,9 +258,9 @@ components:
                                     s => {
                                        const rowVal = parseInt(s.it.row[0]);
                                        const rowName = s.it.col;
-                                       const colVal = parseInt(s.data.get('number')[s.idx.col + 1]);
+                                       const colVal = parseInt(s.get('number')[s.idx.col + 1]);
                                        return `${rowName} : ${rowVal} x ${colVal} = ${colVal*rowVal}`;
-#                                       s.it.col + ' : ' + s.it.row[0] + ' x ' + s.data.get('table')[0][s.idx.col + 1] + ' = ' +  (parseInt(s.it.row[0]) * parseInt(s.data.get('table')[0][s.idx.col + 1]))
+#                                       s.it.col + ' : ' + s.it.row[0] + ' x ' + s.get('table')[0][s.idx.col + 1] + ' = ' +  (parseInt(s.it.row[0]) * parseInt(s.get('table')[0][s.idx.col + 1]))
                                     }
                                   
 
