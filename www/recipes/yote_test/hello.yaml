@@ -2,12 +2,6 @@
 
 import:
 
-include:
-  css:
-    - foo.css
-  javascript:
-    - foo.js
-
 style: >-
   body {
     margin: 0;
@@ -40,7 +34,7 @@ data:
 
 onLoad: >-
   c => {
-    yote.fetchAppTryLogin( c.data.get( 'appName' ) )
+    yote.fetchAppTryLogin( c.get( 'appName' ) )
       .then( app => {
         if (app) {
           c.broadcast( 'app', app );
@@ -54,14 +48,14 @@ listen: >-
   (c,msg,data) => {
     switch( msg ) {
       case "login":
-        c.data.set( 'pageMode', 'default' );
+        c.set( 'pageMode', 'default' );
       case "app":
       case "pageMode":
-        c.data.set( msg, data );
+        c.set( msg, data );
         break;
       case "logout":
-        c.data.set( 'login', undefined );
-        c.data.set( 'pagMode', 'default' );
+        c.set( 'login', undefined );
+        c.set( 'pagMode', 'default' );
         break;
     }
   }
@@ -69,17 +63,17 @@ listen: >-
 title: fun example
 
 body:
-  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.data.set( 'pageMode', 'default' ) } }
+  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.set( 'pageMode', 'default' ) } }
   contents:
     - header:
     - main:
       - loginControl:
-          if: c => c.data.get( 'pageMode' ) === 'logging-in'
+          if: c => c.get( 'pageMode' ) === 'logging-in'
       - div:
-          if: c => c.data.get( 'login' ) && c.data.get( 'pageMode' ) !== 'logging-in'
+          if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'logging-in'
           textContent: logged in stuff
       - div:
-          if: c => c.data.get( 'app' ) && c.data.get( 'pageMode' ) !== 'logging-in'
+          if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'logging-in'
           contents:
             - form:
                 on_submit: >-
@@ -93,7 +87,7 @@ body:
                       required: true
                   - button: click me
       - div:
-          if: c => ! c.data.get('app')
+          if: c => ! c.get('app')
           textContent: app not yet loaded
 
 
@@ -108,41 +102,41 @@ components:
     functions:
       logout_done: >-
         c => {
-          c.data.set('login',undefined);
-          c.data.set('show-menu',undefined);
+          c.set('login',undefined);
+          c.set('show-menu',undefined);
           c.broadcast( 'logout' );
         }
       logout: >-
-        c => yote.logout( c.data.get('appName') )
+        c => yote.logout( c.get('appName') )
              .then( msg => c.fun.logout_done() )
              .catch( err => c.fun.logout_done() )
     listen: >-
       (c,key,msg) => {
         if (key === 'keyup' && msg === 'Escape' ) {
-          c.data.set( 'show-menu', false );
+          c.set( 'show-menu', false );
         }
       }
     contents:
       - div:
           - div:
               # logged in / logout
-              if: c => c.data.get( 'login' )
+              if: c => c.get( 'login' )
               contents:
                 - button:
                     type: button
-                    on_click: (c,e) => c.data.set( 'show-menu', !!!c.data.get('show-menu') )
+                    on_click: (c,e) => c.set( 'show-menu', !!!c.get('show-menu') )
                     contents:
                       - span: <avatar> downarrow
           - div:
               # button to open login / create thingo
-              elseif: c => c.data.get( 'app' )
+              elseif: c => c.get( 'app' )
               contents:
                 - button:
                     type: button
                     textContent: log in
                     on_click: (c,e) => c.broadcast( 'pageMode', 'logging-in' )
           - ul:
-              if: c => c.data.get( 'show-menu' )
+              if: c => c.get( 'show-menu' )
               contents:
                 - li: identity
                 - li: page break
@@ -196,38 +190,34 @@ components:
 
       clear: >-
         c => {
-          c.data.set( 'err' );
-          c.el.login.value = '';
-          c.el.loginPassword.value = '';
-          c.el.email.value = '';
-          c.el.login.value = '';
-          c.el.password.value = '';
+          c.set( 'err' );
+          ['login','loginPassword','email','login','password']
+            .forEach( ctl => c.el[ctl] && (c.el[ctl].value = '' ) );
         }
 
       login: >-
         (c,login,password) => {
-          c.data.set('err',undefined);
-          c.data.get('app')
+          c.get('app')
             .login( { login, password } )
             .then( acct => { c.fun.clear();
                              c.broadcast( 'login', acct );
                            })
-            .catch( err => { c.data.set( 'err', err ); c.refresh() } );
+            .catch( err => { c.set( 'err', err ); c.refresh() } );
         }
       createAccount: >-
         (c,handle,email,password) => {
-          c.data.set('err',undefined);
-          c.data.get('app')
+          c.get('app')
             .create_account( { handle, email, password } )
                      .then( acct => { c.fun.clear();
                                       c.broadcast( 'login', acct );
                                      } )
-           .catch( err => { c.data.set( 'err', err ); c.refresh() } )
+           .catch( err => { c.set( 'err', err ); c.refresh() } )
         }
+
     listen: >-
       (c,key,msg) => {
         if (key === 'keyup' && msg === 'Escape' ) {
-          c.data.set( 'mode', 'login' );
+          c.set( 'mode', 'login' );
           c.fun.clear();
         }
       }
@@ -239,7 +229,7 @@ components:
           contents:
             - div:
                 # create account
-                if: c => c.data.get( 'mode' ) === 'show-create-account'
+                if: c => c.get( 'mode' ) === 'show-create-account'
                 contents:
                   - form:
                       on_submit: >-
@@ -306,10 +296,10 @@ components:
                                   textContent: Log In
                               - a:
                                   href: '#'
-                                  on_click: (c,ev) => { c.data.set('mode', 'show-create-account'); c.fun.clear() }
+                                  on_click: (c,ev) => { c.set('mode', 'show-create-account'); c.fun.clear() }
                                   textContent: 'create account'
             - div:
                 # error
-                if: c => c.data.get( 'err' )
+                if: c => c.get( 'err' )
                 style: background-color: pink; border: solid 1px; padding: 2px;
-                textContent: c => c.data.get( 'err' )
+                textContent: c => c.get( 'err' )

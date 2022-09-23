@@ -177,7 +177,7 @@ window.onload = ev => {
           // resolve in case it returns undefined or returns a promise
           Promise.resolve( prom )
             .then( () => {
-              if ( bodyComponent.data._check() ) bodyComponent.refresh();
+              if ( bodyComponent._check() ) bodyComponent.refresh();
             } );
         };
         // element event listeners
@@ -304,7 +304,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
               // resolve in case it returns undefined or returns a promise
               Promise.resolve( prom )
                 .then( () => {
-                  if ( component.data._check() ) component.refresh();
+                  if ( component._check() ) component.refresh();
                 } );
             };
             // element event listeners
@@ -378,7 +378,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                     // resolve in case it returns undefined or returns a promise
                     Promise.resolve( prom )
                       .then( () => {
-                        if ( component.data._check() ) component.refresh();
+                        if ( component._check() ) component.refresh();
                       } );
                   };
                   // node event listeners
@@ -571,21 +571,25 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     listeners && listeners.forEach( l => l( result ) );
   };
 
-  component.data = {
-    parent,
-    _data: data,
-    _check: function() { const changed = this._changed;
-                         this._changed = false; return changed; },
-    _changed: false,
-    get: function(k,defVal) { if (k in this._data) return dataVal( this._data[k], component );
-                              let val = this.parent && this.parent.data.get( k );
-                              if (val===undefined && defVal !== undefined) {
-                                val = this._data[k] = defVal;
-                              }
-                              return dataVal( val, component );
-                            },
-    set: function(k,v) { this._changed = v !== this._data[k];
-                         this._data[k] = v; },
+  component._data = data;
+  component.get = function(k,defVal) { 
+    if (k in this._data) return dataVal( this._data[k], component );
+    let val = this.parent && this.parent.get( k );
+    if (val===undefined && defVal !== undefined) {
+      val = this._data[k] = defVal;
+    }
+    return dataVal( val, component );
+  };
+
+  component.set = function(k,v) { 
+    this._changed = v !== this._data[k];
+    this._data[k] = v; 
+  };
+
+  component._check = function() { 
+    const changed = this._changed;
+    this._changed = false; 
+    return changed; 
   };
 
   // get defined functions

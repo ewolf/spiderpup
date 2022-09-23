@@ -1,10 +1,9 @@
 Current things to do:
 
-* start with page or 'body' rather than html ....
+* navigation help, for example, a login page url
 
 * bottle up the filespaces / namespaces better
    this should correspond to a top level component, maybe
-
 
 * startup script to directory that makes a configuration
   if there isn't one in that directory
