@@ -57,12 +57,41 @@
 #   item value in the state at state.it[forval value] and the iteration index at
 #   state.idx[forval value] while it builds that element.
 #
+css: >-
+  .red { background: red; }
+  .green { background: green; }
+
+  .red,
+  .green {
+    margin: 3px;
+    padding: 2px;
+    border: solid black 2px;
+    cursor: pointer;
+  }
+
+  .row {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .myapp {
+    //border: solid 4px grey;
+    padding: 5px;
+    margin: 10px;
+  }
 
 html:
   head:
     title: spiderpup example page
   body:
     - myapp:
+        on_green: (s,e) => alert( `got green ${e}` )
+          
     - myapp:
         # this overrides the default data in the component
         # recipe
@@ -161,7 +190,7 @@ components:
                             handle: green
                             class: green
                             textContent: green
-                            on_click: () => alert( 'Green' )
+                            on_click: s => { alert( 'Green' ); s.event( 'green', 'click' ); }
 
                   - div:
                       - button:

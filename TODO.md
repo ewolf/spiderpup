@@ -1,22 +1,21 @@
 Current things to do:
 
-BUGS:
-  * refresh not removing old stuff?
+* startup script to directory that makes a configuration
+  if there isn't one in that directory
+
+* decide to remove automatic js and css loading/mirror
+
+* integration with RPC like yote
+
+* program to set up object store with an app to edit
+  chapters and lessons
+
+* rewrite howto docs after things work
 
 * more explanations in gotchas
   - weed out semicolons at the end of '() => something;'
   - better error messages
   - bind functions to components
-
-* dynamically add a component
-  - start with an example of this and add to it
-  - shape it into the syntax desired
-  - make sure it works
-  - oh, can o worms with stats - if they have variables ...
-    - no more global than page/package/file globals?
-  - this couldprobably be all done using looping however
-
-* integration with RPC like yote
 
 * better name for internal content?
 
@@ -36,7 +35,3 @@ BUGS:
 
 * add tests
 
-The idea bin
-
-* imports with functions?
-    no for now, the functions can be included in the components

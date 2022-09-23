@@ -136,6 +136,13 @@ window.onload = ev => {
       } );
 
     // translate the 'namespaces' of each file to a reference to the filespace indicated
+    // for example, the yaml:
+    //
+    // ---
+    // import:
+    //   - bar: examples/more_imports
+    //
+    // will get translated to namespaces.bar = [...namespace referenced by examples/more_imports...]
     Object.keys( filespaces )
       .forEach( filename => {
         const namespace = filespaces[filename];
@@ -249,6 +256,7 @@ const newState = (recipe,recipeNode,parent) => {
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
+    eventListeners: {}, // event name -> listeners
     recipe,
 
     refresh: function( el, node, key ) {
@@ -270,18 +278,21 @@ const newState = (recipe,recipeNode,parent) => {
 
         state.rootEl || (state.rootEl = el);
 
-        // attach any event handlers
-        node.on && Object.keys( node.on ).forEach( evname => {
-          const evfun = function() {
-            const prom = node.on[evname]( state, ...arguments );
-            // resolve in case it returns undefined or returns a promise
-            Promise.resolve( prom )
-              .then( () => {
-                if ( state.data._check() ) state.refresh();
-              } );
-          };
-          el.addEventListener( evname, evfun );
-        } );
+        // attach element event handlers
+        if (! isRecipeNode && node.on) {
+          Object.keys( node.on ).forEach( evname => {
+            const evfun = function() {
+              const prom = node.on[evname]( state, ...arguments );
+              // resolve in case it returns undefined or returns a promise
+              Promise.resolve( prom )
+                .then( () => {
+                  if ( state.data._check() ) state.refresh();
+                } );
+            };
+            // element event listeners
+            el.addEventListener( evname, evfun );
+          } );
+        }
       }
 
       // update element attrs and textContent assigned thru calculation
@@ -343,6 +354,20 @@ const newState = (recipe,recipeNode,parent) => {
                 if (con.handle) {
                   state.comp[con.handle] = conState;
                 }
+                con.on && Object.keys( con.on ).forEach( evname => {
+                  const evfun = function() {
+                    const prom = con.on[evname]( state, ...arguments );
+                    // resolve in case it returns undefined or returns a promise
+                    Promise.resolve( prom )
+                      .then( () => {
+                        if ( state.data._check() ) state.refresh();
+                      } );
+                  };
+                  // node event listeners
+                  conState.eventListeners[evname] = conState.eventListeners[evname] || [];
+                  conState.eventListeners[evname].push( evfun );
+                } );
+
                 state._key2substate[ lookup ] = conState;
               }
               conKey = conState.id;
@@ -496,6 +521,11 @@ const newState = (recipe,recipeNode,parent) => {
       }
     }, //refresh
   }; //state
+
+  state.event = (event,result) => {
+    const listeners = state.eventListeners[event];
+    listeners && listeners.forEach( l => l( result ) );
+  };
 
   state.data = {
     parent,

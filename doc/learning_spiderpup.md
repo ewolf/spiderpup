@@ -194,35 +194,6 @@ components:
 
 ## spiderpup files
 
-### default css and javascript
-
-http://localhost:3000/examples/defaults.html
-
-Spiderpup by default tries to load a css and a javascript
-file that mirrors the target path. For this example the
-target path is `/examples/default.html`. Spiderpup
-tries to load `/js/examples/default.js` and `/css/examples/default.css`.
-
-
-CSS file *.../spiderpup/www/css/examples/defaults.css*
-```
-div {
-    background: yellow;
-}
-
-```
-
-JS file *.../spiderpup/www/js/examples/defaults.js*
-```
-alert ('default javascript' );
-```
-
-YAML file *.../spiderpup/www/recipes/examples/defaults.yaml*
-```
-html:
-  body:
-    - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
-```
 
 ### additional css and javascript
 

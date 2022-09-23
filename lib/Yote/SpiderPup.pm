@@ -12,6 +12,7 @@ use YAML;
 
 my %config;
 my $root;
+my $yote;
 
 #
 # server function that serves up the named file and type.
@@ -64,11 +65,8 @@ sub serve_html {
         }
         $page =~ s/.html$//;
         if (-e "$root/recipes$page.yaml") {
-            my $defjs  = -e "$root/js$page.js" ? "/js$page.js" : '';
-            my $defcss = -e "$root/css$page.css" ? "/css$page.css" : '';
             return $c->render( template => 'page',
-                               css      => $defcss,
-                               js       => $defjs,
+                               yote     => $yote, # to load yote or note
                                yaml     => "/_$page" );
         }
         return $c->render(text => "recipe NOTFOUND / $root/recipes$page.yaml / $filename");
@@ -353,9 +351,11 @@ sub serve_recipe {
 } #serve_recipe
 
 sub prepare_handlers {
-    my ($pkg, $spider_root, $mojo_app) = @_;
+    my ($pkg, $spider_root, $mojo_app, $use_yote) = @_;
 
     $root = $spider_root;
+
+    $yote = $use_yote;
 
     push @{$mojo_app->renderer->paths}, "$root/templates";
 
