@@ -1,11 +1,13 @@
 Current things to do:
 
+* start with page or 'body' rather than html ....
+
+* bottle up the filespaces / namespaces better
+   this should correspond to a top level component, maybe
+
+
 * startup script to directory that makes a configuration
   if there isn't one in that directory
-
-* decide to remove automatic js and css loading/mirror
-
-* integration with RPC like yote
 
 * program to set up object store with an app to edit
   chapters and lessons

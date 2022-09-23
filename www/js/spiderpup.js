@@ -81,8 +81,8 @@ window.onload = ev => {
 
       document.title = html.head.title || '';
 
-      // explicit css
-      let style = defaultNamespace.css;
+      // explicit style
+      let style = html.head.style
       if (style) {
         const stylel = document.createElement( 'style' );
         stylel.setAttribute( 'type', 'text/css' );
@@ -161,13 +161,29 @@ window.onload = ev => {
         }
         namespace.components[name] = compileRecipe( recipe, filename, name );
       } );
-
     const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
     const bodyComponent = newComponentInstance( bodyRecipe, html.body, pageComponent );
     pageComponent._key2subcomponent['body'] = bodyComponent;
     html.body.key = bodyRecipe.id;
+
     bodyComponent.refresh( document.body );
+
+    // attach any body listeners
+    if (html.body.on) {
+      Object.keys( html.body.on ).forEach( evname => {
+        const evfun = function() {
+          const prom = html.body.on[evname]( bodyComponent, ...arguments );
+          // resolve in case it returns undefined or returns a promise
+          Promise.resolve( prom )
+            .then( () => {
+              if ( bodyComponent.data._check() ) bodyComponent.refresh();
+            } );
+        };
+        // element event listeners
+        document.body.addEventListener( evname, evfun );
+      } );
+    }
 
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
@@ -312,9 +328,9 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                 }
               }
             }));
-      
+
       // update element attrs and textContent assigned with constants
-      [ node.attrs, recipe.rootNode.attrs ]
+      [ node.attrs, node.nodeRecipe && recipe.rootNode.attrs ]
         .forEach( attrs =>
           attrs && Object.keys(attrs)
             .forEach( attr => {
@@ -468,6 +484,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                           component.comp[con.handle][i] = forComponent;
                         }
                       }
+                      if (forEl.tagName === 'SECTION') { debugger; }
                       forComponent.refresh( forEl, con );
                       if (con.contents) {
                         // more contents to hang inside a child of the internal component
@@ -616,6 +633,7 @@ const compileBody = (body, filename, namespace) => {
 
   namespace.components.body = nodeRecipe;
   compileRecipe( nodeRecipe, filename, 'body' );
+  prepFunctions(body,filename,'body');
   return nodeRecipe;
 
 }; //compileBody

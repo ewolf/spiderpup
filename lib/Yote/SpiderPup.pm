@@ -159,7 +159,7 @@ sub encode_functions_and_attrs {
             $node->{$field} = $val;
         }
         elsif ($field !~ /^(calculate|contents|forval)$/) {
-            # assume an attribute, and calculate was already handled
+            # assume an attribute for this case, (other calculate was already handled)
             if ($val =~ /^((\([^)]*\)|\w+)\s*=\>|function\s*\([^)]*\)\s*\{.*\}\s*$)/ ) {
                 $node->{calculate}{$field} = encode_fun( $node_data, $field, $funs );
             } else {
@@ -281,12 +281,6 @@ sub load_namespace {
         $fn =~ s!/!_!g;
         $fn =~ s![.]!-!g;
 
-        if ($yaml->{css}) {
-            my $less = ".$fn { $yaml->{css} }";
-            my @css = CSS::LESSp->parse( $less );
-            $namespace->{css} = join( '', @css );
-        }
-
         # check for imports
         if (my $imports = $yaml->{import}) {
             for my $imp (@$imports) {
@@ -302,7 +296,7 @@ sub load_namespace {
 
         # encode functions, onLoad, preLoad
         $namespace->{functions} = encode_fun_hash( $yaml->{functions}, $funs ) || {};
-        for my $fun (qw( onLoad preLoad )) {
+        for my $fun (qw( onLoad preLoad listen )) {
             if ($namespace->{$fun}) {
                 $namespace->{$fun} = encode_fun( $yaml, $fun, $funs );
             }
@@ -318,15 +312,37 @@ sub load_namespace {
         $namespace->{data} = $yaml->{data} || {};
         transform_data( $namespace->{data}, $funs );
 
-        if (my $head = $yaml->{html}{head}) {
-            $namespace->{html}{head} = $head;
-        }
-
-        my $body = $yaml->{html}{body};
+        my $body = $yaml->{body};
 
         if ($body) {
-            $body = $namespace->{html}{body} = build_recipe( $body, $funs, $filename, $fn );
-            $body->{attrs}{class} .= " $fn";
+
+            $namespace->{html}{head} = {
+                title => $yaml->{title},
+            };
+
+            for my $thing (qw( css javascript )) {
+                if (ref $namespace->{include}{$thing} eq 'ARRAY') {
+                    $namespace->{html}{head}{$thing} = $namespace->{include}{$thing};
+                } 
+                elsif ($namespace->{include}{$thing}) {
+                    $namespace->{html}{head}{$thing} = [$namespace->{include}{$thing}];
+                }
+            }
+
+            $namespace->{html}{body} = build_recipe( $body, $funs, $filename, $fn );
+print STDERR Data::Dumper->Dump([$body,'BOD']);
+            for my $targ (qw( listen onLoad preLoad )) {
+                if ($yaml->{$targ}) {
+                    $namespace->{html}{body}{$targ} = encode_fun($yaml, $targ, $funs);
+                }
+            }
+
+            if ($yaml->{style}) {
+                my @css = CSS::LESSp->parse( $yaml->{style} );
+                $namespace->{html}{head}{style} = join( '', @css );
+            }
+
+
         }
     }
     return $yaml_file;

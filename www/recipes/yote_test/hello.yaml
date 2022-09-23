@@ -1,63 +1,162 @@
 ---
 
-html:
-  head:
-    title: yote test
-  body:
+import:
+
+include:
+  css:
+    - foo.css
+  javascript:
+    - foo.js
+
+style: >-
+  body {
+    margin: 0;
+    header {
+       background-color: pink;
+
+       height: 2em;
+       top: 0;
+       width: 100%;
+       position: fixed;
+
+       > div {
+        padding: 4px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+       }
+    }
+    main {
+       margin-top: 2em;
+       .login-control {
+          margin: auto;
+       }
+    }
+  }
+
+data:
+  appName: test
+  pageMode: default
+
+onLoad: >-
+  c => {
+    yote.fetchAppTryLogin( c.data.get( 'appName' ) )
+      .then( app => {
+        if (app) {
+          c.broadcast( 'app', app );
+          if (app.acct) {
+            c.broadcast( 'login', app.acct );
+          }
+        }
+      }) }
+
+listen: >-
+  (c,msg,data) => {
+    switch( msg ) {
+      case "login":
+        c.data.set( 'pageMode', 'default' );
+      case "app":
+      case "pageMode":
+        c.data.set( msg, data );
+        break;
+      case "logout":
+        c.data.set( 'login', undefined );
+        c.data.set( 'pagMode', 'default' );
+        break;
+    }
+  }
+
+title: fun example
+
+body:
+  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.data.set( 'pageMode', 'default' ) } }
+  contents:
+    - header:
+    - main:
+      - loginControl:
+          if: c => c.data.get( 'pageMode' ) === 'logging-in'
+      - div:
+          if: c => c.data.get( 'login' ) && c.data.get( 'pageMode' ) !== 'logging-in'
+          textContent: logged in stuff
+      - div:
+          if: c => c.data.get( 'app' ) && c.data.get( 'pageMode' ) !== 'logging-in'
+          contents:
+            - form:
+                on_submit: >-
+                  (c,ev) => { ev.preventDefault();
+                              yote.apps.test.echo( c.el.something.value )
+                                 .then( r => alert( 'hello world ' + r ) ); }
+                contents:
+                  - input:
+                      placeholder: say something
+                      handle: something
+                      required: true
+                  - button: click me
+      - div:
+          if: c => ! c.data.get('app')
+          textContent: app not yet loaded
+
+
+components:
+  header:
+    - header:
+        - div:
+          - div: LOGO
+          - loginWidget:
+
+  loginWidget:
+    functions:
+      logout_done: >-
+        c => {
+          c.data.set('login',undefined);
+          c.data.set('show-menu',undefined);
+          c.broadcast( 'logout' );
+        }
+      logout: >-
+        c => yote.logout( c.data.get('appName') )
+             .then( msg => c.fun.logout_done() )
+             .catch( err => c.fun.logout_done() )
     listen: >-
-      (c,msg,data) => {
-        if (msg === 'login') {
-           c.data.set( 'login', data );
-        }
-        else if (msg === 'logout') {
-           c.data.set( 'login', undefined );
-        }
-        else if (msg === 'app') {
-           c.data.set( 'app', data );
+      (c,key,msg) => {
+        if (key === 'keyup' && msg === 'Escape' ) {
+          c.data.set( 'show-menu', false );
         }
       }
     contents:
-      - h1: yote test
-      - div: hi there
-      - loginControl:
-          handle: loginControl
-          data:
-            appName: test
       - div:
-          if: c => c.data.get( 'login' )
-          textContent: logged in stuff
-      - div:
-          elseif: c => c.data.get( 'app' )
-          content:
-            - form:
-                on_submit: (c,ev) => { ev.preventDefault(); yote.apps.test.echo( c.el.something.value ).then( r => alert( 'hello world ' + r ) ); }
+          - div:
+              # logged in / logout
+              if: c => c.data.get( 'login' )
               contents:
-                - input:
-                    placeholder: say something
-                    handle: something
-                    required: true
-                - button: click me
-      - div:
-          else:
-          textContent: app not yet loaded
-      
+                - button:
+                    type: button
+                    on_click: (c,e) => c.data.set( 'show-menu', !!!c.data.get('show-menu') )
+                    contents:
+                      - span: <avatar> downarrow
+          - div:
+              # button to open login / create thingo
+              elseif: c => c.data.get( 'app' )
+              contents:
+                - button:
+                    type: button
+                    textContent: log in
+                    on_click: (c,e) => c.broadcast( 'pageMode', 'logging-in' )
+          - ul:
+              if: c => c.data.get( 'show-menu' )
+              contents:
+                - li: identity
+                - li: page break
+                - li: set status
+                - li: edit profile
+                - li: page break
+                - li:
+                    textContent: log out
+                    on_click: c => c.fun.logout()
 
-components:
   loginControl:
-    onLoad: >-
-      c => { 
-        yote.fetchAppTryLogin( c.data.get( 'appName' ) )
-          .then( app => {
-             if (app) {
-               c.broadcast( 'app', app );
-               if (app.acct) {
-                 c.broadcast( 'login', app.acct );
-               }
-             }
-          }) }
     functions:
-      app: c => c.data.get( 'app' )
-      check: >
+
+      checkLogin: >
         (c,ev) => {
           if (!c.el.login.value) {
              c.el.login.style['background-color'] = 'pink';
@@ -65,10 +164,10 @@ components:
              delete c.el.login.style['background-color'];
              // c.el.login.style['background-color'] = 'green';
           }
-          if (!c.el.password.value) {
-             c.el.password.style['background-color'] = 'pink';
+          if (!c.el.loginPassword.value) {
+             c.el.loginPassword.style['background-color'] = 'pink';
           } else {
-             delete c.el.password.style['background-color'];
+             delete c.el.loginPassword.style['background-color'];
              // c.el.password.style['background-color'] = 'green';
           }
         }
@@ -95,115 +194,122 @@ components:
           }
         }
 
-      login: >
-        (c,login,password) => c.data.get('app')
-          .login( { login, password } )
-           .then( acct => { c.el.login.value = ''; 
-                            c.el.password.value = ''; 
-                            c.data.set( 'login', acct );
-                            c.broadcast( 'login', acct );
-                          })
-           .catch( err => { alert(err); } )
-      logout: >-
-        c => yote.logout( c.data.get('appName') )
-             .then( msg => { c.data.set('login',undefined); c.broadcast( 'logout' ) } )
-             .catch( err => { c.data.set('login',undefined); c.broadcast( 'logout' ) } )
-      createAccount: >
-        (c,handle,email,password) => app()
-           .create_account( { handle, email, password } )
-                     .then( acct => { c.el.email.value = ''; 
-                                      c.el.login.value = ''; 
-                                      c.el.password.value = ''; 
-                                      c.data.set( 'login', acct );
+      clear: >-
+        c => {
+          c.data.set( 'err' );
+          c.el.login.value = '';
+          c.el.loginPassword.value = '';
+          c.el.email.value = '';
+          c.el.login.value = '';
+          c.el.password.value = '';
+        }
+
+      login: >-
+        (c,login,password) => {
+          c.data.set('err',undefined);
+          c.data.get('app')
+            .login( { login, password } )
+            .then( acct => { c.fun.clear();
+                             c.broadcast( 'login', acct );
+                           })
+            .catch( err => { c.data.set( 'err', err ); c.refresh() } );
+        }
+      createAccount: >-
+        (c,handle,email,password) => {
+          c.data.set('err',undefined);
+          c.data.get('app')
+            .create_account( { handle, email, password } )
+                     .then( acct => { c.fun.clear();
                                       c.broadcast( 'login', acct );
                                      } )
-                    .catch( err => alert(err) )
-                    
+           .catch( err => { c.data.set( 'err', err ); c.refresh() } )
+        }
+    listen: >-
+      (c,key,msg) => {
+        if (key === 'keyup' && msg === 'Escape' ) {
+          c.data.set( 'mode', 'login' );
+          c.fun.clear();
+        }
+      }
+
     contents:
-      - div:
-          - div:
-              # logged in / logout
-              if: c => c.data.get( 'login' )
-              contents:
-                - span: c => `welcome ${c.data.get('login').handle}`
-                - a:
-                    textContent: log out
-                    href: '#'
-                    on_click: >-
-                      (c,ev) => {
-                        ev.preventDefault();
-                        return c.fun.logout();
-                      }
-          - div:
-              # create account
-              elseif: c => c.data.get( 'create-account' )
-              contents:
-                - form:
-                    on_submit: >-
-                      (c,ev) => { ev.preventDefault();
-                         c.fun.createAccount( c.el.handle.value,
-                                              c.el.email.value,
-                                              c.el.password.value ) }
-                    style: display: inline-block; border: solid 3px black; padding: .5em;
-                    contents:
-                      - div:
-                          style: display:flex; flex-direction: column
-                          contents:
-                            - input:
-                                handle: handle
-                                placeholder: handle
-                                type: text
-                                style: margin: 3px auto
-                                required: true
-                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
-                            - input:
-                                handle: email
-                                placeholder: email
-                                type: text
-                                style: margin: 3px auto
-                                required: true
-                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
-                            - input:
-                                handle: password
-                                style: margin: 3px auto
-                                type: password
-                                placeholder: password
-                                required: true
-                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
-                            - button:
-                                style: margin: 3px auto
-                                type: submit
-                                textContent: Create Account
-          - div:
-              # login
-              elseif: c => c.data.get( 'app' )
-              contents:
-                - form:
-                    on_submit: (c,ev) => { ev.preventDefault(); c.fun.login( c.el.login.value, c.el.password.value ) }
-                    style: display: inline-block; border: solid 3px black; padding: .5em;
-                    contents:
-                      - div:
-                          style: display:flex; flex-direction: column
-                          contents:
-                            - input:
-                                handle: login
-                                placeholder: login or email
-                                type: text
-                                style: margin: 3px auto
-                                required: true
-                                on_keyup: (c,ev) => c.fun.check(ev)
-                            - input:
-                                handle: password
-                                style: margin: 3px auto
-                                type: password
-                                placeholder: password
-                                required: true
-                                on_keyup: (c,ev) => c.fun.check(ev)
-                            - button:
-                                style: margin: 3px auto
-                                type: submit
-                                textContent: Log In
-                            - a:
-                                href: '#'
-                                on_click: (c,ev) => c.data.set('create-account','1')
-                                textContent: 'create account'
+      - section:
+          class: login-control
+          style: display: inline-block; border: solid 3px black; padding: .5em;
+          contents:
+            - div:
+                # create account
+                if: c => c.data.get( 'mode' ) === 'show-create-account'
+                contents:
+                  - form:
+                      on_submit: >-
+                        (c,ev) => { ev.preventDefault();
+                           c.fun.createAccount( c.el.handle.value,
+                                                c.el.email.value,
+                                                c.el.password.value ) }
+                      contents:
+                        - div:
+                            style: display:flex; flex-direction: column
+                            contents:
+                              - input:
+                                  handle: handle
+                                  placeholder: handle
+                                  type: text
+                                  style: margin: 3px auto
+                                  required: true
+                                  on_keyup: (c,ev) => c.fun.checkCreate(ev)
+                              - input:
+                                  handle: email
+                                  placeholder: email
+                                  type: text
+                                  style: margin: 3px auto
+                                  required: true
+                                  on_keyup: (c,ev) => c.fun.checkCreate(ev)
+                              - input:
+                                  handle: password
+                                  style: margin: 3px auto
+                                  type: password
+                                  placeholder: password
+                                  required: true
+                                  on_keyup: (c,ev) => c.fun.checkCreate(ev)
+                              - button:
+                                  style: margin: 3px auto
+                                  type: submit
+                                  textContent: Create Account
+            - div:
+                # login
+                else:
+                contents:
+                  - form:
+                      on_submit: (c,ev) => { ev.preventDefault(); c.fun.login( c.el.login.value, c.el.loginPassword.value ) }
+                      contents:
+                        - div:
+                            style: display:flex; flex-direction: column
+                            contents:
+                              - input:
+                                  handle: login
+                                  placeholder: login or email
+                                  type: text
+                                  style: margin: 3px auto
+                                  required: true
+                                  on_keyup: (c,ev) => c.fun.checkLogin(ev)
+                              - input:
+                                  handle: loginPassword
+                                  style: margin: 3px auto
+                                  type: password
+                                  placeholder: password
+                                  required: true
+                                  on_keyup: (c,ev) => c.fun.checkLogin(ev)
+                              - button:
+                                  style: margin: 3px auto
+                                  type: submit
+                                  textContent: Log In
+                              - a:
+                                  href: '#'
+                                  on_click: (c,ev) => { c.data.set('mode', 'show-create-account'); c.fun.clear() }
+                                  textContent: 'create account'
+            - div:
+                # error
+                if: c => c.data.get( 'err' )
+                style: background-color: pink; border: solid 1px; padding: 2px;
+                textContent: c => c.data.get( 'err' )
