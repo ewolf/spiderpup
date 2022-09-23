@@ -1,5 +1,47 @@
 ---
 
+#
+# Tests.
+# 
+#   this tests client spiderpup javascript by 
+#   writing data structures like the server would
+#   have in the page and executing them.
+#
+#   it provies a path (from body) structure that returns
+#   an element. body must be the first thing in this. 
+#   Path parts are delimited by pipe characters. The body
+#   stands alone, but each subsequent path item is a number
+#   followed by an html tag. the number is the index in the
+#   children list of the previous element.
+#
+#   completed
+#     simple html structure
+#     include components
+#     include components function override
+#
+#
+#   todo
+#     nodes with internal content and a specified spot
+#     nodes with internal content and no specified spot
+#     nodes with internal content that has if/then
+#     nodes with internal content that has foreach
+#     nodes with internal content that has if/then and foreach
+#     if/elseif/else
+#     foreach
+#     foreach with nodes
+#     foreach with if/elseif/else
+#     foreach with internal content
+#     foreach with nodes and if/elseif/else
+#     foreach with nodes and internal content
+#     test css styles 
+#     test less styles 
+#     test javascript in seperate modules
+# 
+#     add more todo
+#
+
+
+
 javascript: |
 
   function reset() {
@@ -23,6 +65,7 @@ javascript: |
       if (childel && childel.tagName === tag.toUpperCase()) {
         node = childel;
       } else {
+        debugger;
         return undefined;
       }
     }
@@ -104,17 +147,34 @@ javascript: |
     const calculate = {};
     // check for calculations. if the attr is a number
     const attrNames = Object.keys( attrs );
+
+    const elNode = { tag, attrs, contents, calculate };
+    
     attrNames.forEach( attr => {
       if ( Number.isInteger( attrs[attr] ) ) {
         calculate[attr] = attrs[attr];
         delete attrs[attr];
       } 
+      else if (attr === 'internalContent' ) {
+        elNode.internalContent = true;
+        delete attrs[attr];
+      }
     } );
-    return { tag, attrs, contents, calculate };
+    return elNode;
   }
 
-  function node(tag, args) {
-    return { tag, functions:(args&&args.functions) || {}, data: (args&&args.data) || {} };
+  function node(tag, args, contents) {
+    if (Array.isArray(args)) {
+      contents = args;
+      args = undefined;
+    }
+    const n = { tag, 
+                functions:(args&&args.functions) || {}, 
+                data: (args&&args.data) || {} };
+    if (contents) {
+      n.contents = contents;
+    }
+    return n;
   }
 
   // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
@@ -127,34 +187,72 @@ javascript: |
                                               [
                                                 node( 'foo' ),
                                                 node( 'foo', { functions: { bar: 1 } } ),
-                                              ] )
+                                                node( 'foo', [ el( 'span', 'a span' ),
+                                                               el( 'span', 'with stuff' ) ] ),
+                                                node( 'foo', [ el( 'ul', 
+                                                                   [el( 'li', 'I am' ),
+                                                                    el( 'li', 'going' ),
+                                                                    el( 'li', 'in' ) ] ) ] ),
+                                              ] ),
+                                          el( 'containery' ),
+                                          el( 'containery', [
+                                            el( 'div', 'in the middle' )
+                                          ] ),
                                         ] } },
               components: {
+
                 foo: {
                   functions: {
                     bar: 0
                   },
                   contents: [
                     el ( 'div', '', [
-                      el ('span', { textContent: 2 } ),
+                      el ('span', { textContent: 2 } ), // 2 references a function in the function list
+                    ] ),
+                  ],
+                }, // foo component
+
+                containery: {
+                  contents: [
+                    el( 'div', [
+                      el( 'header', 'head' ),
+                      el( 'main', { textContent: 'main', internalContent: true } ),
+                      el( 'footer', 'foot' ),
                     ] ),
                   ],
                 },
-              },
-            },
-          };
+              }, //components
+            }, //html
+          }; // filespaces
 
     init( def,
+
           [ c => "BAR",
             c => "BAR2",
             c => c.fun.bar()
-          ],
-          'TEST'
+          ], // functions list
+
+          'TEST' // default filespace (the one with the body)
         );
     checkNode( "body|0 span", { textContent: 'FIRST' }, 'first div text' );
+
     checkNode( "body|1 div", { textContent: 'SECOND' }, 'second div text' );
     checkNode( "body|1 div|0 div|0 span", { textContent: 'BAR' }, 'first bar' );
     checkNode( "body|1 div|1 div|0 span", { textContent: 'BAR2' }, 'bar override' );
+
+    checkNode( "body|1 div|3 div|0 span", { textContent: 'BAR' }, 'fourth bar' );
+    checkNode( "body|1 div|3 div|1 ul|0 li", { textContent: 'I am' }, 'fourth bar with more content 1' );
+    checkNode( "body|1 div|3 div|1 ul|1 li", { textContent: 'going' }, 'fourth bar with more content 2' );
+    checkNode( "body|1 div|3 div|1 ul|2 li", { textContent: 'in' }, 'fourth bar with more content 3' );
+
+    checkNode( "body|2 div|0 header", { textContent: 'head' }, 'containery 1 head' );
+    checkNode( "body|2 div|1 main", { textContent: 'main' }, 'containery 1 main' );
+    checkNode( "body|2 div|2 footer", { textContent: 'foot' }, 'containery 1 footer' );
+
+    checkNode( "body|3 div|0 header", { textContent: 'head' }, 'containery 2 head' );
+    checkNode( "body|3 div|1 main", { textContent: 'main' }, 'containery 2 main' );
+    checkNode( "body|3 div|1 main|0 div", { textContent: 'in the middle' }, 'containery 2 added content' );
+    checkNode( "body|3 div|2 footer", { textContent: 'foot' }, 'containery 2 footer' );
     doneTesting();
   }
 
