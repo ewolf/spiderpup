@@ -202,6 +202,7 @@ const prepNode = (node,namespace) => {
       node.inRecipe = node; // self referential
       node.asRecipe = node; // self referential
       prepNode( node, namespace );
+      rootNode.on = node.on;
     }
   }
   else if (node.contents) {
@@ -329,6 +330,8 @@ const makeKey2el = el => {
 
 // node - root node of creating recipe
 const newInstance = (node, enclosingInstance) => {
+
+
   // the recipe that builds this component instance
   const asRecipe = node.asRecipe;
   const asNamespace = asRecipe.namespace;
@@ -337,7 +340,7 @@ const newInstance = (node, enclosingInstance) => {
   const inRecipe = node.inRecipe;
   const inNamespace = inRecipe.namespace;
 
-//  console.log( 'making instance of ' + asRecipe.name + ' ' + (serial+1) );
+  console.log( 'making instance of ' + asRecipe.name + ' ' + (serial) );
 
   const instance = {
     id: serial++,
@@ -414,10 +417,11 @@ const newInstance = (node, enclosingInstance) => {
     return dataVal( val, instance );
   };
 
-  // sets data in this instance
+  // sets data in this instance. returns the instance so it can be chained
   instance.set = function(k,v) {
     this._changed = this._changed || v !== this._data[k];
     this._data[k] = v;
+    return this;
   };
 
   // function that returns true if data from this instance
@@ -435,11 +439,20 @@ const newInstance = (node, enclosingInstance) => {
   const instanceFuns = {...asNamespace.functions};
   instance.fun = instanceFuns;
 
+  // set up all functions to take this instance as their first argument
+  Object.keys( instanceFuns )
+    .forEach( funName => {
+      const oldFun = instanceFuns[funName];
+      instanceFuns[funName] = function() { oldFun( instance, ...arguments ) };
+    } );
+
+
   asRecipe.functions &&
     Object.keys(asRecipe.functions).forEach( fun =>
       instanceFuns[fun] = function() { return asRecipe.functions[fun]( instance, ...arguments ) }
     );
 
+  // already sends the enclosing instance as first argument
   if (enclosingInstance && enclosingInstance.fun) {
     Object.keys( enclosingInstance.fun )
       .forEach( fun =>
@@ -451,12 +464,6 @@ const newInstance = (node, enclosingInstance) => {
       instanceFuns[fun] = function() { return node.functions[fun]( instance, ...arguments ) }
     );
 
-  // set up all functions to take this instance as their first argument
-  Object.keys( instanceFuns )
-    .forEach( funName => {
-      const oldFun = instanceFuns[funName];
-      instanceFuns[funName] = function() { oldFun( instance, ...arguments ) };
-    } );
 
   // SET UP LISTENERS -----------------
 
@@ -578,7 +585,9 @@ const newInstance = (node, enclosingInstance) => {
     const key2el = makeKey2el(el);
 
     // make this element visible
-    el.style.display = null;
+    if (!el.noshow) {
+      el.style.display = null;
+    }
 
     // now fill in the contents. first make sure that the contents have
     // corresponding elements
@@ -609,20 +618,24 @@ const newInstance = (node, enclosingInstance) => {
             conditionalDone = lastConditionalWasTrue = con.if( instance );
             lastWasConditional = true;
             conEl.dataset.ifCondition = conditionalDone;
+            conEl.noshow = !conditionalDone;
           } else if (con.elseif) {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
             } else {
               conditionalDone = lastConditionalWasTrue = con.elseif( instance );
               conEl.dataset.elseIfCondition = conditionalDone;
+              conEl.noshow = !conditionalDone;
             }
           } else if (con.else) {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
               conEl.dataset['else'] = false;
+              conEl.noshow = true;
             } else {
               lastConditionalWasTrue = true;
               conEl.dataset['else'] = true;
+              conEl.noshow = false;
             }
           } else {
             lastWasConditional = false;
@@ -732,6 +745,7 @@ const newInstance = (node, enclosingInstance) => {
                   = instance._key2subinstance[ conKey ]
                   = newInstance( con, instance );
               }
+              
               newinst.rootEl = conEl;
             }
 

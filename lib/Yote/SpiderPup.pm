@@ -12,7 +12,7 @@ use JSON;
 use YAML;
 
 my %config;
-my $root;
+my $root_directory;
 my $yote;
 
 #
@@ -24,7 +24,7 @@ sub serve_file {
     my ($c,$filename,$type) = @_;
 
     if (! $filename) {
-        $filename = "$root".$c->req->url->to_abs->path;
+        $filename = "$root_directory".$c->req->url->to_abs->path;
     }
 
     $c->app->log->debug( "**FILE**, $filename" );
@@ -54,7 +54,7 @@ sub serve_html {
 
     $page = ($page eq '' || $page eq '/') ? '/index.html' : $page;
 
-    my $filename = "$root/html$page";
+    my $filename = "$root_directory/html$page";
 
     my $css = $filename;
 
@@ -65,12 +65,12 @@ sub serve_html {
             return serve_file( $c, $filename );
         }
         $page =~ s/.html$//;
-        if (-e "$root/recipes$page.yaml") {
+        if (-e "$root_directory/recipes$page.yaml") {
             return $c->render( template => 'page',
                                yote     => $yote, # to load yote or note
                                yaml     => "/_$page" );
         }
-        return $c->render(text => "recipe NOTFOUND / $root/recipes$page.yaml / $filename");
+        return $c->render(text => "recipe NOTFOUND / $root_directory/recipes$page.yaml / $filename");
     }
 
     # 404
@@ -91,7 +91,7 @@ sub encode_fun {
         push @$funs, $val;
         return $fid;
     }
-}
+} #encode_fun
 
 
 sub encode_fun_hash {
@@ -106,7 +106,7 @@ sub encode_fun_hash {
         }
         return $res;
     }
-}
+} #encode_fun_hash
 
 sub build_recipe {
     my ($recipe_data, $funs, $filename) = @_;
@@ -125,7 +125,7 @@ sub build_recipe {
     encode_functions_and_attrs( $recipe, $recipe_data, $funs, $filename );
 
     return $recipe;
-}
+} #build_recipe
 
 sub encode_functions_and_attrs {
     my ($node, $node_data, $funs, $filename) = @_;
@@ -168,7 +168,7 @@ sub encode_functions_and_attrs {
             }
         }
     }
-}
+} #encode_functions_and_attrs
 
 sub build_node {
     my ($node_data, $funs, $filename) = @_;
@@ -246,24 +246,24 @@ sub transform_data {
 # 
 #
 sub yaml_to_js {
-    my ($root,$filename) = @_;
+    my ($filename) = @_;
 
     my $funs       = [];
     my $filespaces = {};
 
-    my $default_filename = [load_namespace( $root, $filename, $filespaces, $funs )];
+    my $default_filename = [load_namespace( $filename, $filespaces, $funs )];
 
     my $js = "const funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
-print STDERR Data::Dumper->Dump([$js,"JS"]);
+#print STDERR Data::Dumper->Dump([$js,"JS"]);
     return $js;
 }
 
 sub load_namespace {
-    my ( $root, $filename, $filespaces, $funs ) = @_;
-    my $yaml_file = "$root/$filename";
+    my ( $filename, $filespaces, $funs, $root_namespace ) = @_;
+    my $yaml_file = "$root_directory/$filename";
 
     return $yaml_file if $filespaces->{$yaml_file};
 
@@ -275,6 +275,8 @@ sub load_namespace {
         };
 
         $filespaces->{$yaml_file} = $namespace;
+
+        $root_namespace //= $namespace;
 
         # css defined
         my $fn = $filename;
@@ -288,7 +290,7 @@ sub load_namespace {
                     die "namespace may not contain '.' and got '$ns'";
                 }
                 my $imp_filename = $imports->{$ns};
-                $namespace->{namespaces}{$ns} = load_namespace( $root, "recipes/$imp_filename.yaml", $filespaces, $funs );
+                $namespace->{namespaces}{$ns} = load_namespace( "recipes/$imp_filename.yaml", $filespaces, $funs, $root_namespace );
             }
         }
 
@@ -314,9 +316,7 @@ sub load_namespace {
 
         if ($body) {
 
-            $namespace->{html}{head} = {
-                title => $yaml->{title},
-            };
+            $namespace->{html}{head}{title} = $yaml->{title};
 
             for my $thing (qw( css javascript )) {
                 if (ref $yaml->{include}{$thing} eq 'ARRAY') {
@@ -334,25 +334,25 @@ sub load_namespace {
                     $namespace->{html}{body}{$targ} = encode_fun($yaml, $targ, $funs);
                 }
             }
+        } #if a body
 
-            my @css;
-            if ($yaml->{css}) {
-                push @css, $yaml->{css};
-            }
-            if ($yaml->{less}) {
-                push @css, CSS::LESSp->parse( $yaml->{less} );
-            }
-            if (@css) {
-                $namespace->{html}{head}{style} = join( '', @css );
-            }
-
-            if ($yaml->{javascript}) {
-                $namespace->{html}{head}{script} = $yaml->{javascript};
-            }
+        my @css;
+        if ($yaml->{css}) {
+            push @css, $yaml->{css};
+        }
+        if ($yaml->{less}) {
+            push @css, CSS::LESSp->parse( $yaml->{less} );
+        }
+        if (@css) {
+            $root_namespace->{html}{head}{style} .= join( '', @css );
+            print STDERR Data::Dumper->Dump([$root_namespace->{html}{head}{style},$filename,"TYA"]);
+        }
+        if ($yaml->{javascript}) {
+            $root_namespace->{html}{head}{script} .= $yaml->{javascript};
         }
     }
     return $yaml_file;
-}
+} #load_namespace
 
 #
 # Loads in yaml corresponding to the path, builds a javascript
@@ -363,7 +363,7 @@ sub serve_recipe {
     $page //= $c->req->url->to_abs->path;
     $page =~ s~^/_/~/~;
 
-    my $js = yaml_to_js( $root, "recipes$page.yaml" );
+    my $js = yaml_to_js( "recipes$page.yaml" );
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );
@@ -377,11 +377,11 @@ sub serve_recipe {
 sub prepare_handlers {
     my ($pkg, $spider_root, $mojo_app, $use_yote) = @_;
 
-    $root = $spider_root;
+    $root_directory = $spider_root;
 
     $yote = $use_yote;
 
-    push @{$mojo_app->renderer->paths}, "$root/templates";
+    push @{$mojo_app->renderer->paths}, "$root_directory/templates";
 
     my $routes = $mojo_app->routes;
 
@@ -394,7 +394,7 @@ sub prepare_handlers {
     $routes->get ('/css/*' => \&serve_file);
     $routes->get ('/recipes/*' => sub {
 	my $c = shift;
-	my $filename = "$root".$c->req->url->to_abs->path;
+	my $filename = "$root_directory".$c->req->url->to_abs->path;
 	serve_file( $c, $filename, 'text/plain' );
     } );
 
@@ -414,8 +414,8 @@ sub prepare_handlers {
 # Active the server
 #
 sub launch {
-    my ($pkg,$root,$mojo_app) = @_;
-    $pkg->prepare_handlers( $root, $mojo_app );
+    my ($pkg,$root_dir,$mojo_app) = @_;
+    $pkg->prepare_handlers( $root_dir, $mojo_app );
     $mojo_app->start;
 } #launch
 

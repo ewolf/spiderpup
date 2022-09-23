@@ -147,6 +147,7 @@ onLoad: >-
            c.set( 'pageMode', value );
          }
       }
+      c.comp.header.fun.attach(c.comp.loginBodyWidget)
   }
 
 listen: >-
@@ -167,7 +168,6 @@ listen: >-
         //c.set( msg, data );
         break;
       case "logout":
-        console.log( c.id, 'logout' );
         c.set( 'login', undefined );
         c.fun.pageMode( 'default' );
         break;
@@ -177,6 +177,7 @@ listen: >-
 title: fun example
 
 body:
+  style: background: wheat;
   on_keyup: >-
     (c,ev) => { 
        if (ev.key === 'Escape') { 
