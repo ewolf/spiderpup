@@ -34,14 +34,16 @@
      foreach elements in foreach elements
      foreach components in foreach elements
      foreach components in foreach components in foreach components
+     test element handlers
+     test component handlers
 
    todo
+     test handles for elements
+     test handles for components
 
      nodes with internal content that has foreach
      nodes with internal content that has if/then and foreach
 
-     test handles for elements
-     test handles for components
      test handles for elements in loops
      test handles for components in loops
 
@@ -51,9 +53,6 @@
 
      test broadcast
 
-     test element handlers
-
-     test component handlers
 
      add more todo
 
@@ -400,10 +399,13 @@ function test() {
 
                             el( 'section', [ // 9 for other stuff
 
-                              node( 'clicky', {
+                              node( 'clicky', { // 0 event handlers and component handlers
                                 on_gotclick: 29
                               } ),
                             
+                              // element and component handles
+                              
+                              
                             ] ),
                           ] }, //body
             }, //html
