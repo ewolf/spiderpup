@@ -251,7 +251,6 @@ sub yaml_to_js {
     my $filespaces = {};
 
     my $default_filename = [load_namespace( $root, $filename, $filespaces, $funs )];
-
     my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
@@ -262,9 +261,7 @@ print STDERR Data::Dumper->Dump([$js,"JS"]);
 
 sub load_namespace {
     my ( $root, $filename, $filespaces, $funs ) = @_;
-
     my $yaml_file = "$root/$filename";
-
     return $yaml_file if $filespaces->{$yaml_file};
 
     if (-e $yaml_file) {
@@ -283,13 +280,11 @@ sub load_namespace {
 
         # check for imports
         if (my $imports = $yaml->{import}) {
-            for my $imp (@$imports) {
-                my ($ns) = keys %$imp;
+            for my $ns (keys %$imports) {
                 if ($ns =~ /\./) {
                     die "namespace may not contain '.' and got '$ns'";
                 }
-                my $imp_filename = $imp->{$ns};
-
+                my $imp_filename = $imports->{$ns};
                 $namespace->{namespaces}{$ns} = load_namespace( $root, "recipes/$imp_filename.yaml", $filespaces, $funs );
             }
         }
