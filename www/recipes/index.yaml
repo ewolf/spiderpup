@@ -85,36 +85,34 @@ css: >-
     margin: 10px;
   }
 
-html:
-  head:
-    title: spiderpup example page
-  body:
-    - myapp:
-        on_green: (s,e) => alert( `got green ${e}` )
-          
-    - myapp:
-        # this overrides the default data in the component
-        # recipe
-        data:
-          red: 10
-          toggled: true
-          title: Hello there, I'm a new instance
-    - myapp:
-        # default functions may be overridden in this
-        # instance of the coponent
-        functions:
-          flip: >
-            s => {
-              alert( 'flip override' );
-              const bb = s.el.buttonBox;
-              bb.appendChild( bb.children[0] );
-            }
+title: spiderpup example page
 
-        data:
-          red: 100
-          number:  [ 4, 12, 82, 5, 0 ]
-          toggled: false
-          title: check this out, i'm newest
+body:
+  - myapp:
+      on_green: (s,e) => alert( `got green ${e}` )
+          
+  - myapp:
+      # this overrides the default data in the component
+      # recipe
+      data:
+        red: 10
+        toggled: true
+        title: Hello there, I'm a new instance
+  - myapp:
+      # default functions may be overridden in this
+      # instance of the coponent
+      functions:
+        flip: >
+          s => {
+            alert( 'flip override' );
+            const bb = s.el.buttonBox;
+            bb.appendChild( bb.children[0] );
+          }
+      data:
+        red: 100
+        number:  [ 4, 12, 82, 5, 0 ]
+        toggled: false
+        title: check this out, i'm newest
 
 components:
   myapp:

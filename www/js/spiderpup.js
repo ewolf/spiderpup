@@ -87,38 +87,49 @@ window.onload = ev => {
   //     onLoad|on|contents|listen
   //     contents: content node (singular)
   //
-  //   an content node can be an element or instance node
+  //   an content node can be an element or component node
   //
   //   an element node has the following fields:
   //     contents -> content nodes
   //     if|elsif|else|foreach|forval - flow control and looping functions
   //     on -> { element event name -> event function }
-  //     
-  //   an instance node has the following fields:
+  //
+  //   a component node has the following fields:
   //     contents -> content nodes to be inserted into the component
   //     if|elsif|else|foreach|forval - flow control and looping functions
   //     on -> { component event name -> event function }
   //
-  // in addition, each node will gain 
+  // in addition, each node will gain
   //    id -> serialized field
   //    key -> uniquely identify this node
   //    recipe -> a link to the recipe that it is attached to
-  //    
+  //
+  //
   // an instance node will gain
   //    componentRecipe - link to the recipe that created it
 
-  // serialize all filespace nodes and translate functions where appropriate
+
+  // connect the namespaces to each other via imports, set namespace types and filename
   Object.keys( filespaces )
     .forEach( filename => {
       const namespace = filespaces[filename];
+      namespace.type = 'namespace';
       namespace.filename = filename;
-      prepNode( namespace );
-      if (namespace.components) {
-        Object.keys(namespace.components)
-          .forEach( name => (recipeNames[name] = [namespace.components[name], filename, name] ));
+
+      // connect namespaces
+      if (namespace.imports) {
+        Object.keys( namespace.imports )
+          .forEach( alias => namespace[alias] = filespaces[namespace[alias]] );
       }
     } );
-  
+
+  // now prep the nodes
+  Object.keys( filespaces )
+    .forEach( filename => {
+      const namespace = filespaces[filename];
+      prepNode( namespace );
+    } );
+
 
   const defaultNamespace = filespaces[defaultFilename];
   defaultNamespace.filename = defaultFilename;
@@ -259,32 +270,37 @@ window.onload = ev => {
   }
 }; //onLoad
 
-const prepNode = node => {
+const prepNode = (node,namespace) => {
+  namespace = namespace || node;
   node.id = serial++;
   attachFunctions( node );
-  if (node.components) {
-    Object.values( node.components )
-      .forEach( comp => prepNode( comp ) );
+  if (node.type === 'namespace') {
+    node.components && Object.values( node.components )
+      .forEach( comp => {
+        comp.type = 'recipe';
+        prepNode( comp, namespace );
+      } );
+    if (node.body) {
+      node.type = 'recipe';
+      prepNode( node.body, namespace );
+    }
   }
-  else if(node.contents) {
-    node.contents.forEach( con => prepNode( con ) );    
+  else if (node.contents) {
+    node.contents.forEach( con => {
+      
+      prepNode( con, namespace );
+    } );
   }
-
-  if (node.body) {
-    
-  }
-
 
 }; //prepNode
 
 const attachFunctions = node => {
   [ 'preLoad', 'onLoad', 'if', 'elseif', 'foreach', 'listen' ]
-    .forEach( fun => 
-      node[fun] && ( node[fun] = funs[node[fun]] );
-    );
+    .forEach( fun =>
+      node[fun] !== undefined && ( node[fun] = funs[node[fun]] ) );
 
   [ 'calculate', 'on', 'functions' ]
-    .forEach( funHash => 
+    .forEach( funHash =>
       Object.keys( funHash )
         .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) )
     );
@@ -315,7 +331,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
   const nodeDataFunConvert = {};
 
   // populate data
-  recipe.data && 
+  recipe.data &&
     Object.keys(recipe.data).forEach( arg => {
       let val = recipe.data[arg];
       if (typeof val === 'string') {
@@ -335,7 +351,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     } );
 
 
-  recipeNode.data && 
+  recipeNode.data &&
     Object.keys(recipeNode.data).forEach( arg => {
       let val = recipeNode.data[arg];
       if (typeof val === 'string') {
@@ -364,7 +380,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     parent,
 
     namespace: recipe.namespace && recipe.namespace.namespaces,
-    
+
     _key2subcomponent: {},
 
     calc   : {}, // attribute name -> calculation
@@ -418,7 +434,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
       // update element attrs and textContent assigned thru calculation
       const seen = { id: 1 };
       [ node.calculate, recipe.calculate ]
-        .forEach( calcs => 
+        .forEach( calcs =>
           calcs && Object.keys(calcs)
             .forEach( attr => {
               seen[attr] = seen[attr] || 0;
@@ -464,7 +480,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
         let lastWasConditional = false,
             conditionalDone = false,
             lastConditionalWasTrue = false;
-        
+
         contents
           .forEach( con => {
             let conKey, conEl, conComponent;
@@ -633,13 +649,13 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                   key2el[conKey].remove();
                 }
               }
-              
+
             }
           } );
       } // if contents
 
       if (needsInit && isRecipeNode) {
-        // indicates that this is a recipe (component) node that 
+        // indicates that this is a recipe (component) node that
         // has not had its onLoad done. The preLoad may be a promise,
         // so resolve that and then run the onLoad
         recipe.onLoad &&
@@ -677,7 +693,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
   };
 
   component._data = data;
-  component.get = function(k,defVal) { 
+  component.get = function(k,defVal) {
     if (k in this._data) return dataVal( this._data[k], component );
     let val = this.parent && this.parent.get( k );
     if (val===undefined && defVal !== undefined) {
@@ -686,19 +702,19 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     return dataVal( val, component );
   };
 
-  component.set = function(k,v) { 
+  component.set = function(k,v) {
     this._changed = this._changed || v !== this._data[k];
-    this._data[k] = v; 
+    this._data[k] = v;
   };
 
-  component._check = function() { 
+  component._check = function() {
     const changed = this._changed;
-    this._changed = false; 
-    return changed; 
+    this._changed = false;
+    return changed;
   };
 
   // get defined functions
-  
+
   const componentFuns = {...recipe.namespace.functions};
   if (parent) {
     Object.keys( parent.fun ).forEach( fun => (componentFuns[fun] = parent.fun[fun]) );
@@ -713,7 +729,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
 
   component.fun = componentFuns;
 
-  
+
   Object.keys( nodeDataFunConvert )
     .forEach( fld => data[fld] = funs[nodeDataFunConvert[fld]](parent) );
 
@@ -728,7 +744,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
 const compileBody = (body, filename, namespace) => {
 
   // gotta compile the recipe and rewrite the body.
-  // the body should have no contents after this is done? 
+  // the body should have no contents after this is done?
 
   const nodeRecipe = {};
   body.nodeRecipe = body.recipe = nodeRecipe;
@@ -741,7 +757,7 @@ const compileBody = (body, filename, namespace) => {
       }
     } );
 
-  nodeRecipe.contents = [ { tag: 'body', 
+  nodeRecipe.contents = [ { tag: 'body',
                             attrs: body.attrs,
                             contents: body.contents } ];
 
