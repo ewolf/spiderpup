@@ -4,6 +4,10 @@ import:
 
 style: >-
   body {
+    .button {
+       border: solid 1px black;
+       cursor: pointer;
+    }
     margin: 0;
     header {
        background-color: pink;
@@ -20,6 +24,15 @@ style: >-
         justify-content: space-between;
        }
     }
+    .login-widget {
+        ul {
+            position: absolute;
+        }
+        li {
+            cursor: pointer;
+        }
+    }
+
     main {
        margin-top: 2em;
        display: flex;
@@ -30,11 +43,6 @@ style: >-
          margin-block-end: 0;
          a {
            text-align: center;
-         }
-       }
-       .login-widget {
-         li {
-           cursor: pointer;
          }
        }
     }
@@ -48,11 +56,9 @@ javascript: >-
 functions:
   pageMode: >-
     (c,mode) => {
-      console.log( mode, c.get( 'pageMode'), 'setting page mode for ', c.id );
       if ( c.get( 'pageMode' ) !== mode ) {
-        history.pushState( { pageMode: mode }, undefined, `?pageMode=${mode}` );
+        history.pushState( { pageMode: mode }, undefined, mode === 'default' ? '/yote_test/hello.html' : `?pageMode=${mode}` );
         c.set( 'pageMode', mode );
-        c.refresh();
       }
     }
 
@@ -64,7 +70,6 @@ onLoad: >-
   c => {
     // set up the listener
     addEventListener( 'popstate', ev => {
-      console.log( 'pop state for ', c );
       c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
       c.refresh();
     } );
@@ -85,7 +90,6 @@ onLoad: >-
       const usp = new URLSearchParams( window.location.search );
       for (const [key, value] of usp) {
          if (key === 'pageMode') {
-           console.log( 'set page mode for ', c.id );
            c.set( 'pageMode', value );
          }
       }
@@ -93,7 +97,7 @@ onLoad: >-
 
 listen: >-
   (c,msg,data) => {
-    console.log( msg, data, 'LISTEN', c.id );
+    debugger;
     switch( msg ) {
       case "login":
         c.set( 'pageMode', 'default' );
@@ -109,7 +113,7 @@ listen: >-
         break;
       case "logout":
         c.set( 'login', undefined );
-        c.set( 'pagMode', 'default' );
+        c.fun.pageMode( 'default' );
         break;
     }
   }
@@ -151,7 +155,10 @@ components:
   header:
     - header:
         - div:
-          - div: LOGO
+          - div:
+              textContent: LOGO
+              class: button
+              on_click: (c,e) => c.broadcast( 'pageMode', 'default' )
           - loginWidget:
 
   loginWidget:
@@ -184,7 +191,8 @@ components:
                       type: button
                       on_click: (c,e) => c.set( 'show-menu', !!!c.get('show-menu') )
                       contents:
-                        - span: <avatar> downarrow
+                        - span:
+                            innerHTML: () => 'avatar &#8964';
             - div:
                 # button to open login / create thingo
                 elseif: c => c.get( 'app' )
@@ -354,7 +362,7 @@ components:
                                   textContent: Log In
                               - a:
                                   href: '#'
-                                  on_click: (c,ev) => { c.set('mode', 'show-create-account'); c.fun.clear() }
+                                  on_click: (c,ev) => { ev.preventDefault(); c.set('mode', 'show-create-account'); c.fun.clear() }
                                   textContent: 'create account'
             - div:
                 # error

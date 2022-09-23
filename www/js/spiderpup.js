@@ -334,6 +334,8 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
               if (0 === seen[attr]++) {
                 if (attr === 'textContent') {
                   el.textContent = calcs[attr](component);
+                } else if (attr === 'innerHTML') {
+                  el.innerHTML = calcs[attr](component);
                 } else {
                   el.setAttribute( attr, calcs[attr](component) );
                 }
@@ -349,6 +351,8 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
               if (0 === seen[attr]++) {
                 if (attr === 'textContent') {
                   el.textContent = attrs[attr];
+                } else if (attr === 'innerHTML') {
+                  el.innerHTML = attrs[attr];
                 } else {
                   el.setAttribute( attr, attrs[attr] );
                 }
