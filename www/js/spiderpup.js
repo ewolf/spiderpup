@@ -386,9 +386,10 @@ const newInstance = (node, enclosingInstance) => {
           } else if (x === 'f') { // float
             val = Number.parseFloat( checkVal );
           } else if (x === 'c') { // code/function
-            recipeDataFunConvert[arg] = Number.parseInt(checkVal);
+            val = funs[Number.parseInt(checkVal)];
           } else if (x === 's') {
             val = checkVal;
+          } else {
           }
         }
         data[arg] = val;
@@ -673,6 +674,7 @@ const newInstance = (node, enclosingInstance) => {
 
                   if (con.isComponent) {
                     let forInstance = instance._key2subinstance[ conKey ];
+
                     if (!forInstance) {
                       forInstance = newInstance( con, instance );
                       forInstance.rootEl = forEl;
@@ -680,11 +682,16 @@ const newInstance = (node, enclosingInstance) => {
                       instance._key2subinstance[ conKey ] = forInstance;
                     }
 
-                    const comps = instance.comp[con.handle] = instance.comp[con.handle] || [];
-                    comps.length = list.length;
-                    comps[i] = componentInstance;
+                    forInstance.idx[forval] = i;
+                    forInstance.it[forval] = list[i];
 
-                    forInstance._refreshComponent( con, forEl, i );
+                    if (con.handle) {
+                      const comps = instance.comp[con.handle] = instance.comp[con.handle] || [];
+                      comps.length = list.length;
+                      comps[i] = forInstance;
+                    }
+
+                    instance._refreshComponent( con, forEl, i );
                     if (con.contents) {
                       // more contents to hang inside a child of the internal instance
                       // though maybe in refresh?
@@ -696,7 +703,8 @@ const newInstance = (node, enclosingInstance) => {
                 
                       forInstance._refreshElement( child, intRoot );
                     }
-                  } else {
+                  }
+                  else {
                     instance._refreshElement( forEl, con, conKey );
                   }
                 }
@@ -768,7 +776,10 @@ const newInstance = (node, enclosingInstance) => {
     // it will be anchored in the document at its root element
     // which has the key of instance id of which it is embedded
     // in, and node id for the root node for this element
-    const key = `${instance.id}.${node.id}`;
+    let key = `${instance.id}.${node.id}`;
+    if (idx !== undefined) {
+      key = key + '_' + idx;
+    }
     let componentInstance = instance._key2subinstance[key];
 
     let needsInit = !!!componentInstance;

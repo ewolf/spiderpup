@@ -24,11 +24,11 @@
 #     functions inherited from default namespace
 #     functions inherited from non-default namespace
 #     if/elseif/else with elements
+#     if/elseif/else with components
 #     nodes with internal content that has if/then
+#     foreach with looping elements
 #
 #   todo
-#     if/elseif/else with components
-#     foreach with looping elements
 #     foreach with looping components
 #     foreach with if/elseif/else
 #     foreach with internal content
@@ -168,7 +168,7 @@ javascript: |
     const elNode = { tag, attrs, contents, calculate };
     
     attrNames.forEach( attr => {
-      if (attr.match(/^(if|elseif|else|foreach|forval|data)/)) {
+      if (attr.match(/^(if|elseif|else|foreach|forval|data)$/)) {
         elNode[attr] = attrs[attr];
         delete attrs[attr];
       }
@@ -198,9 +198,11 @@ javascript: |
       if (fld.match(/^(if|elseif|else|foreach|forval)/)) {
         n[fld] = args[fld];
       }
-      else if(fld.match(/^(functions|data)$/)) {
-        // already dealt with
-      } else {
+      // else if(fld.match(/^(functions|data)$/)) {
+      else if(fld.match( /^(functions|data)$/)) {
+        // already covered
+      }
+      else {
         // attribute for the root element
         n.attrs[fld] = args[fld];
       }
@@ -222,7 +224,7 @@ javascript: |
               ON: 'OTHERNAME',
             },
             data: {
-              blat: 1
+              blat: 'i1',
             },
             html: { 
               body: { 
@@ -253,7 +255,7 @@ javascript: |
                                       textContent: 'nop nope' } ),
                                   ] ),
                             node( 'ON.containery', //5
-                                  { data: { blat: 2 } },
+                                  { data: { blat: 'i2' } },
                                   [
                                     el( 'div', { 
                                       if: 10,
@@ -264,8 +266,8 @@ javascript: |
                                   ]
                                 ),
                             el( 'div', [ //6
-                              node( 'iffy', { data : { number: 3 } }),
-                              node( 'iffy', { data : { number: 2 } }),
+                              node( 'iffy', { data : { number: 'i3' } }),
+                              node( 'iffy', { data : { number: 'i2' } }),
                               node( 'iffy' ),
                             ] ),
 
@@ -286,7 +288,14 @@ javascript: |
 
                             ] ),
                                   
-
+                            el( 'section', [ //8 foreach land
+                              el( 'div', [
+                                el( 'span', { foreach: 14, forval: 'numb', textContent: 15 } )
+                              ] ),
+                              el( 'div', [
+                                node( 'echo', { foreach: 16, forval: 'numb', data:{ echo: 'c15'} } )
+                              ] ),
+                            ] ),
                           ] }, //body
             }, //html
             components: {
@@ -308,7 +317,7 @@ javascript: |
 
 
               iffy: {
-                data: { number: 1 },
+                data: { number: 'i1' },
                 contents: [
                   el ('div', [
                     el ('h1', { if: 8, textContent: 'is one' } ),
@@ -359,10 +368,13 @@ javascript: |
                           c => c.fun.foot(),  // 7
                           c => c.get('number') == 1, // 8
                           c => c.get('number') < 3,  // 9
-                          c => c.get('blat') == 1,  // 10
+                          c => c.get('blat') == 1,   // 10
                           c => c.get('echo'),  // 11
                           c => c.get('echo') === 'nothing to say',  // 12
                           c => false,          // 13
+                          c => [1,2,3,4],      // 14
+                          c => c.idx.numb + ") " + c.it.numb, //15
+                          c => [2,4,6,8],      // 16
                         ], // functions list
 
                         'TEST' // default filespace (the one with the body)
@@ -480,6 +492,16 @@ javascript: |
     checkNode( "body|7 div|0 div|3 span", 
                { style: {display: ''}, class: 'never', textContent: 'NUBU' }, 
                ' foo echo third now showing and class is set' );
+
+    // foreach tests
+    checkNode( "body|8 section|0 div|0 span", 
+               { textContent: '0) 1' }, 'first foreach span' );
+    checkNode( "body|8 section|0 div|1 span", 
+               { textContent: '1) 2' }, 'second foreach span' );
+    checkNode( "body|8 section|0 div|2 span", 
+               { textContent: '2) 3' }, 'third foreach span' );
+    checkNode( "body|8 section|0 div|3 span", 
+               { textContent: '3) 4' }, 'fourth foreach span' );
 
 
     doneTesting();
