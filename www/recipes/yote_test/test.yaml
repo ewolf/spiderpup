@@ -27,13 +27,15 @@
 #     if/elseif/else with components
 #     nodes with internal content that has if/then
 #     foreach with looping elements
+#     foreach with looping components
 #
 #   todo
-#     foreach with looping components
-#     foreach with if/elseif/else
+#     foreach with if/elseif/else elements
+#     foreach with if/elseif/else components
 #     foreach with internal content
 #     foreach with nodes and if/elseif/else
 #     foreach with nodes and internal content
+#     foreach in foreach
 #     nodes with internal content that has foreach
 #     nodes with internal content that has if/then and foreach
 #
@@ -295,6 +297,18 @@ javascript: |
                               el( 'div', [
                                 node( 'echo', { foreach: 16, forval: 'numb', data:{ echo: 'c15'} } )
                               ] ),
+                              el( 'div', [
+                                node( 'echo', { foreach: 16, 
+                                                forval: 'numb', 
+                                                if: 17,
+                                                data:{ echo: 'c15'} } ),
+                              ] ),
+                              el( 'div', [
+                                el( 'span', { foreach: 16, 
+                                              forval: 'numb', 
+                                              if: 18,
+                                              textContent: 15 } ),
+                                ] ),
                             ] ),
                           ] }, //body
             }, //html
@@ -374,7 +388,9 @@ javascript: |
                           c => false,          // 13
                           c => [1,2,3,4],      // 14
                           c => c.idx.numb + ") " + c.it.numb, //15
-                          c => [2,4,6,8],      // 16
+                          c => [2,4,6,8,10],   // 16
+                          c => c.idx.numb == 0 || c.idx.numb == 3,   // 17
+                          c => true,           // 18
                         ], // functions list
 
                         'TEST' // default filespace (the one with the body)
@@ -494,6 +510,8 @@ javascript: |
                ' foo echo third now showing and class is set' );
 
     // foreach tests
+    
+    // elements in loop
     checkNode( "body|8 section|0 div|0 span", 
                { textContent: '0) 1' }, 'first foreach span' );
     checkNode( "body|8 section|0 div|1 span", 
@@ -502,7 +520,29 @@ javascript: |
                { textContent: '2) 3' }, 'third foreach span' );
     checkNode( "body|8 section|0 div|3 span", 
                { textContent: '3) 4' }, 'fourth foreach span' );
+    elp = elPath( "body|8 section|0 div" );
+    is (elp.childElementCount, 4, 'for in span foreach' );
 
+    // components in loop
+    checkNode( "body|8 section|1 div|0 span", 
+               { textContent: '0) 2' }, 'first foreach component' );
+    checkNode( "body|8 section|1 div|1 span", 
+               { textContent: '1) 4' }, 'second foreach component' );
+    checkNode( "body|8 section|1 div|2 span", 
+               { textContent: '2) 6' }, 'third foreach component' );
+    checkNode( "body|8 section|1 div|3 span", 
+               { textContent: '3) 8' }, 'fourth foreach component' );
+    checkNode( "body|8 section|1 div|4 span", 
+               { textContent: '4) 10' }, 'fifth foreach component' );
+    elp = elPath( "body|8 section|1 div" );
+    is (elp.childElementCount, 5, 'for in component foreach' );
+
+
+    // if and loop with components
+    checkNode( "body|8 section|2 div|0 span", 
+               { textContent: undefined, style: {display:'none'} }, 'first foreach if component hidden' );
+    elp = elPath( "body|8 section|2 div" );
+    is (elp.childElementCount, 1, 'for in if component foreach' );
 
     doneTesting();
 

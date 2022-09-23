@@ -660,6 +660,7 @@ const newInstance = (node, enclosingInstance) => {
                 // for those that are for instances, they each get their
                 // own instance
                 let lastEl;
+                const forInstances = [];
                 for (let i=0; i<list.length; i++ ) {
                   conKey = conKey.replace( /_\d+$/, '_' + i );
 
@@ -681,6 +682,8 @@ const newInstance = (node, enclosingInstance) => {
                       forEl.instance = forInstance;
                       instance._key2subinstance[ conKey ] = forInstance;
                     }
+                    forInstances.push( forInstance );
+
 
                     forInstance.idx[forval] = i;
                     forInstance.it[forval] = list[i];
@@ -707,7 +710,12 @@ const newInstance = (node, enclosingInstance) => {
                   else {
                     instance._refreshElement( forEl, con, conKey );
                   }
-                }
+                } //foreach list item
+
+                // reset it and idx back to undefined
+                instance.idx[forval] = undefined;
+                instance.it[forval] = undefined;
+                forInstances.forEach( fi => { fi.it[forval] = undefined; fi.idx[forval] = undefined } );
               }
             } // end of has foreach
 
