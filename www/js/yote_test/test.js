@@ -41,6 +41,8 @@
      test handles for components
 
    todo
+     test components in elements in loops
+
 
      test handles for elements in loops
      test handles for components in loops
@@ -422,10 +424,10 @@ function test() {
                                         foreach: 22,
                                         forval: 'clickfor',
                                         handle: 'forclickholder',
-                                        debug:  true,
+                                        textContent: 31
                                       },
                                       [
-                                        node( 'clicky', { handle: 'forclicker', debug: true } )
+                                        node( 'clicky', { handle: 'forclicker', data: { txt: 'shoy'}  } )
                                       ] ) ] ),
                             ] ),
                           ] }, //body
@@ -463,13 +465,14 @@ function test() {
 
 
               clicky: {
+                data : { txt: 'sclickme' },
                 contents: [
                   el( 'button', {
-                    textContent: 'clickme',
+                    textContent: 30,
                     on_click: 28,
                   } )
                 ],
-              }
+              }, //clicky component
 
             }, //components
             
@@ -533,7 +536,8 @@ function test() {
           
           c => c.event( 'gotclick' ), //28
           c => window.misc++, //29
-
+          c => c.get('txt'), //30
+          c => `txt : ${c.idx.clickfor}`, //30
         ], // functions list
 
         'TEST' // default filespace (the one with the body)

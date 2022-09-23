@@ -507,15 +507,21 @@ const newInstance = (node, enclosingInstance) => {
     newEl.key = key;
     newEl.dataset.key = key;
     if (node.handle) {
+      if (node.handle==='forclickholder') { debugger; }
       if (idx !== undefined) {
         if (! Array.isArray( instance.el[node.handle])) {
           const old = instance.el[node.handle];
           instance.el[node.handle] = [];
-          old && (instance.el[node.handle][0] = old);
+          if (old) {
+            instance.el[node.handle][0] = old;
+            old.dataset.handle = `${node.handle} [0]`;
+          }
         }
         instance.el[node.handle][idx] = newEl;
+        newEl.dataset.handle = `${node.handle} [${idx}]`;
       } else {
         instance.el[node.handle] = newEl;
+        newEl.dataset.handle = node.handle;
       }
     }
     if (attachAfter) {
@@ -529,7 +535,7 @@ const newInstance = (node, enclosingInstance) => {
   }; //_prepElement
 
   // method _refreshElement
-  instance._refreshElement = ( el, node ) => {
+  instance._refreshElement = ( el, node, idx ) => {
 
     // an element that needs init has no handlers and stuff
     // so attach those now
@@ -623,7 +629,7 @@ const newInstance = (node, enclosingInstance) => {
             conKey = conKey + '_0';
           }
 
-          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el );
+          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el, undefined, 0 );
           key2el[ conKey ] = conEl;
 
           // if it is branched, determine if it should appear by running the branching
@@ -724,15 +730,13 @@ const newInstance = (node, enclosingInstance) => {
                     if (con.handle) {
 
                       if (! Array.isArray( instance.el[con.handle])) {
-                        const old = instance.el[con.handle];
                         instance.el[con.handle] = [];
-                        old && (instance.el[con.handle][0] = old);
                       }
                       const els = instance.el[con.handle];
                       els.length = list.length;
                       els[i] = forEl;
                     }
-                    instance._refreshElement( forEl, con );
+                    instance._refreshElement( forEl, con, i );
                   }
                 } //foreach list item
 
