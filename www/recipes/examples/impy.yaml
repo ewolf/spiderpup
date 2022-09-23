@@ -1,6 +1,6 @@
 ---
 import:
-  - bar: examples/more_impy
+  bar: examples/more_impy
   
 components:
   myform:

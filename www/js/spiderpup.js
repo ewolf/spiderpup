@@ -303,6 +303,23 @@ const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
   //
   //
 
+const findInternalContent = (el,recur) => {
+  if ( el.internalContent ) return el;
+
+  const chilInts = Array.from( el.children )
+        .map( chld => findInternalContent( chld, true ) )
+        .filter( chld => chld !== undefined );
+
+  if (chilInts.length > 0) {
+    return chilInts[0];
+  }
+
+  if (!recur) {
+    return el;
+  }
+};
+
+
 // node - root node of creating recipe
 const newInstance = (node, enclosingInstance) => {
 
@@ -460,6 +477,9 @@ const newInstance = (node, enclosingInstance) => {
   instance._prepElement = ( node, key, attachToEl, attachAfter ) => {
     const tag = node.isComponent ? node.asRecipe.rootNode.tag : node.tag;
     const newEl = document.createElement( tag );
+    if (node.internalContent) {
+      newEl.internalContent = true;
+    }
     newEl.key = key;
     newEl.dataset.key = key;
     if (node.handle) {

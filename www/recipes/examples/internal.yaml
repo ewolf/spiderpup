@@ -1,11 +1,11 @@
 ---
-html:
-  head:
-    style: span { margin: 5px }
-  body:
-    - with-specified-internal:
+
+style: span { margin: 5px }
+
+body:
+  - with-specified-internal:
       - span: MIDDLE
-    - no-specified-internal:
+  - no-specified-internal:
       - span: AFTER FINISH
 
 components:
