@@ -41,8 +41,20 @@ style: >-
   }
 
 javascript: >-
-  console.log('loaded garf');
+  function does() { console.log('hoeet') }
+  const stilldoes = () => console.log( 'still' );
+  console.log('loaded javascript');
 
+functions:
+  pageMode: >-
+    (c,mode) => {
+      console.log( mode, c.get( 'pageMode'), 'setting page mode for ', c.id );
+      if ( c.get( 'pageMode' ) !== mode ) {
+        history.pushState( { pageMode: mode }, undefined, `?pageMode=${mode}` );
+        c.set( 'pageMode', mode );
+        c.refresh();
+      }
+    }
 
 data:
   appName: test
@@ -51,10 +63,14 @@ data:
 onLoad: >-
   c => {
     // set up the listener
-    window.onpopstate= ev => {
-      console.log( ev, 'LI' );
-    };
+    addEventListener( 'popstate', ev => {
+      console.log( 'pop state for ', c );
+      c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
+      c.refresh();
+    } );
 
+    does();
+    stilldoes();
     yote.fetchAppTryLogin( c.get( 'appName' ) )
       .then( app => {
         if (app) {
@@ -69,6 +85,7 @@ onLoad: >-
       const usp = new URLSearchParams( window.location.search );
       for (const [key, value] of usp) {
          if (key === 'pageMode') {
+           console.log( 'set page mode for ', c.id );
            c.set( 'pageMode', value );
          }
       }
@@ -76,6 +93,7 @@ onLoad: >-
 
 listen: >-
   (c,msg,data) => {
+    console.log( msg, data, 'LISTEN', c.id );
     switch( msg ) {
       case "login":
         c.set( 'pageMode', 'default' );
@@ -86,7 +104,7 @@ listen: >-
         // maybe navigate to a new url
         // catch that and have that in the history?
         // so there is no reload
-        window.location = '?pageMode=login-control';
+        c.fun.pageMode( data );
         //c.set( msg, data );
         break;
       case "logout":
@@ -99,7 +117,7 @@ listen: >-
 title: fun example
 
 body:
-  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.set( 'pageMode', 'default' ) } }
+  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.broadcast( 'pageMode', 'default' ); } }
   contents:
     - header:
     - main:

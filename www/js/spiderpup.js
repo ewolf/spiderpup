@@ -170,6 +170,8 @@ window.onload = ev => {
         }
         namespace.components[name] = compileRecipe( recipe, filename, name );
       } );
+    html.body.functions = defaultNamespace.functions;
+    delete defaultNamespace.functions;
     const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
     const bodyComponent = newComponentInstance( bodyRecipe, html.body, pageComponent );
