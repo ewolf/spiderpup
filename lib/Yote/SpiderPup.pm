@@ -7,6 +7,7 @@ use Data::Dumper;
 
 use File::Slurp;
 use CSS::LESSp;
+
 use JSON;
 use YAML;
 
@@ -78,15 +79,15 @@ sub serve_html {
 
 sub encode_fun {
     my ($node, $name, $funs) = @_;
-    if (ref($node) eq 'HASH' && $node->{$name}) {
+    if (ref($node) eq 'HASH' && defined($node->{$name})) {
         my $val = $node->{$name};
         my $fid = @$funs;
-
         # remove accidental trailing ; for function delcarations
         if ($val =~ /;\s*$/) {
             $val =~ s/;\s*$//;
             warn "removing trailing ; from function delcaration";
         }
+
         push @$funs, $val;
         return $fid;
     }
@@ -251,7 +252,8 @@ sub yaml_to_js {
     my $filespaces = {};
 
     my $default_filename = [load_namespace( $root, $filename, $filespaces, $funs )];
-    my $js = "const funs = [\n" . join("", map { chomp $_; "\t$_,\n" } @$funs) . "];\n" .
+
+    my $js = "const funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
         "const filespaces = ".to_json( $filespaces ) . ";\n" .
         "const defaultFilename = ".to_json($default_filename)."[0];\n"; 
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
