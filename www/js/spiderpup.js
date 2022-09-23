@@ -4,7 +4,7 @@ window.onload = ev => {
 }
 
 const init = (spaces,funz,defFilename) => {
-  
+  console.log( spaces, 'SPA' );
   filespaces = spaces;
   funs = funz;
   defaultFilename = defFilename;

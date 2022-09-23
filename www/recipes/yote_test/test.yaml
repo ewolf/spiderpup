@@ -64,6 +64,7 @@ javascript: |
     const actualEl = elPath( path );
     if (! actualEl) {
       fail( `${msg} : html element not found` );
+      return;
     }
     let passes = true;
     // check the expected attrs
@@ -83,15 +84,57 @@ javascript: |
     return passes;
   }
 
+  function el (tag, attrs, contents) {
+    if (Array.isArray( attrs ) ) {
+      contents = attrs;
+      attrs = {};
+    } else {
+      if (typeof attrs !== 'object') {
+        attrs = { textContent: attrs };
+      }
+      contents = contents || [];
+    }
+    const calculations = {};
+    // check for calculations. if the attr is a number
+    Object.keys( attrs ).forEach( attr => {
+      if ( Number.isInteger( attrs[attr] ) ) {
+        calculations[attr] = attrs[attr];
+        delete attrs[attr];
+      } 
+    } );
+    debugger;
+    return { tag, attrs, contents, calculations };
+  }
+
   // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
   function test() {
     reset();
     init( { TEST: 
-            { html: { body: { contents: [ {tag: 'span', attrs: { textContent: "FIRST" } },
-                                          {tag: 'div', attrs: { textContent: "SECOND" } } ] } },
-              components: {},
-            } },
-          [],
+            { html: { body: { contents: [ el( 'span', "FIRST" ),
+                                          el( 'div', "SECOND",
+                                              [
+                                                el( 'foo' ),
+                                                el( 'foo', { functions: { bar: 1 } } ),
+                                              ] )
+                                        ] } },
+              components: {
+                foo: {
+                  functions: {
+                    bar: 0
+                  },
+                  contents: [
+                    el ( 'div', '', [
+                      el ('span', { textContent: 2 } ),
+                    ] ),
+                  ],
+                },
+              },
+            },
+          },
+          [ c => "BAR",
+            c => "BAR2",
+            c => {debugger;return c.fun.foo()},
+          ],
           'TEST'
         );
     checkNode( "body|0 span", { textContent: 'FIRST' }, 'first div text' );
