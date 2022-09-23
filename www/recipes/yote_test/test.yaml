@@ -17,7 +17,7 @@ javascript: |
 
     let node = document.body;
     for (let i=1; i<pathParts.length; i++) {
-      const [ pp, number, tag ] = pathParts[i].split( /^(\d+)[^a-z]*(.*)$/ );
+      let [ pp, number, tag ] = pathParts[i].split( /^(\d+)[^a-z]*(.*)$/ );
       number = parseInt(number);
       const childel = node.children[number];
       if (childel && childel.tagName === tag.toUpperCase()) {
@@ -43,31 +43,60 @@ javascript: |
       console.log( `failed: test '${msg}'. expected '${expected}' and got '${actual}'` );
     }
   }
-  function checkNode( actual, expected_attrs, msg ) {
-    if (! actual) {
-      console.log( `failed: test '${msg}'. html element not found` );
+  function pass (msg) {
+    ran++;
+    passes++;
+    console.log( `passed: test '${msg}'` );
+  }
+  function fail (msg) {
+    ran++;
+    fails++;
+    console.log( `FAILED: test '${msg}'` );
+  }
+  function doneTesting() {
+    if (ran === passes) {
+      console.log( `PASSED ALL ${ran} TESTS` );
+    } else {
+      console.log( `FAILED ${fails} of ${ran} TESTS` );
     }
+  }
+  function checkNode( path, expected_attrs, msg ) {
+    const actualEl = elPath( path );
+    if (! actualEl) {
+      fail( `${msg} : html element not found` );
+    }
+    let passes = true;
     // check the expected attrs
     Object.keys( expected_attrs ).forEach( attr => {
       if (attr === 'textContent') {
-        
+        passes = passes && actualEl.textContent === expected_attrs[attr];
+      } else {
+        passes = passes && actualEl.getAttribute( attr ) === expected_attrs[attr];
       }
     } );
+    if (passes) {
+      pass( msg );
+    } else {
+      fail( msg );
+    }
+
+    return passes;
   }
 
   // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
   function test() {
     reset();
     init( { TEST: 
-            { html: { body: { contents: [ {tag: 'div', attrs: { textContent: "FIRST" } },
+            { html: { body: { contents: [ {tag: 'span', attrs: { textContent: "FIRST" } },
                                           {tag: 'div', attrs: { textContent: "SECOND" } } ] } },
               components: {},
             } },
           [],
           'TEST'
         );
-    // document.body.key = inst.id;
-    //    inst.refresh( document.body );
+    checkNode( "body|0 span", { textContent: 'FIRST' }, 'first div text' );
+    checkNode( "body|1 div", { textContent: 'SECOND' }, 'first div text' );
+    doneTesting();
   }
 
 body:
