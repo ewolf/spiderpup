@@ -475,9 +475,8 @@ components:
       c => {
         yote.apps.test.fetch_yaml()
            .then( txt => {
-              c.set( 'yamlText' );
+              c.set( 'yamlText', txt );
               c.set( 'loaded', true );
-              //c.refresh();
           } );
       }
     contents:
@@ -488,12 +487,20 @@ components:
                 if: c => c.get( 'loaded' ) 
                 on_submit: >-
                   (c,ev) => {
-                    
+                    ev.preventDefault();
+                    c.set( 'loaded', false );
+                    alert(c.el.yaml.value);
+                    yote.apps.test.install_yaml(c.el.yaml.value)
+                      .then( r => { 
+                         c.set( 'loaded', true );
+                         c.refresh();
+                      } )
                   }
                 contents:
                   - h3: Spiderpup Yaml
                   - textarea:
-                      value: c => c.get( 'yamlText' )
+                      handle: yaml
+                      textContent: c => c.get( 'yamlText' )
                       on_keyup: (c,ev) => c.set( 'yamlText', ev.target.value )
                   - button: generate output
             - div:
