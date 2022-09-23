@@ -507,7 +507,6 @@ const newInstance = (node, enclosingInstance) => {
     newEl.key = key;
     newEl.dataset.key = key;
     if (node.handle) {
-      if (node.handle==='forclickholder') { debugger; }
       if (idx !== undefined) {
         if (! Array.isArray( instance.el[node.handle])) {
           const old = instance.el[node.handle];
@@ -533,6 +532,10 @@ const newInstance = (node, enclosingInstance) => {
 
     return newEl;
   }; //_prepElement
+
+  instance.makeConKey = (node) => {
+    
+  };
 
   // method _refreshElement
   instance._refreshElement = ( el, node, idx ) => {
@@ -607,7 +610,7 @@ const newInstance = (node, enclosingInstance) => {
     // corresponding elements
     instance._refreshContents(el, node.contents);
 
-  }  // if this has contents in it
+  } // if this has contents in it
 
   instance._refreshContents = ( el, contents ) => {
     if (contents) {
@@ -629,7 +632,7 @@ const newInstance = (node, enclosingInstance) => {
             conKey = conKey + '_0';
           }
 
-          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el, undefined, 0 );
+          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el, undefined, con.foreach ? 0 : undefined );
           key2el[ conKey ] = conEl;
 
           // if it is branched, determine if it should appear by running the branching
@@ -719,7 +722,8 @@ const newInstance = (node, enclosingInstance) => {
                     forInstance.it[forval] = list[i];
 
                     if (con.handle) {
-                      const comps = instance.comp[con.handle] = instance.comp[con.handle] || [];
+                      const comps = instance.comp[con.handle]
+                            = instance.comp[con.handle] || [];
                       comps.length = list.length;
                       comps[i] = forInstance;
                     }
@@ -759,9 +763,9 @@ const newInstance = (node, enclosingInstance) => {
                 // const intKey2el = makeKey2el(intEl);
                 // const intRoot = con.contents[0];
                 // const intKey = `${instance.id}.${intRoot.id}`;
+                // //if (intKey2el[intKey] === undefined) { debugger }
                 // const child = intKey2el[intKey] || instance._prepElement( intRoot, intKey, intEl );
-                
-                // conInstance._refreshElement( child, intRoot );
+                //conInstance._refreshElement( child, intRoot );
               }
             } else {
               instance._refreshElement( conEl, con );

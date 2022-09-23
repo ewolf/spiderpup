@@ -398,7 +398,18 @@ function test() {
                                       ] ),
                               ] ),
 
-
+                              // 9 element and element handles in foreach
+                              el( 'div', [
+                                el( 'span',
+                                    {
+                                      foreach: 22,
+                                      forval: 'clickfor',
+                                      handle: 'forclickholder',
+                                      textContent: 31
+                                    },
+                                    [
+                                      el( 'h2', { textContent: 31 } ),
+                                    ] ) ] ),
 
                             ] ),
 
@@ -427,9 +438,11 @@ function test() {
                                         textContent: 31
                                       },
                                       [
-                                        node( 'clicky', { handle: 'forclicker', data: { txt: 'shoy'}  } )
+                                        node( 'clicky', { handle: 'forclicker', data: { txt: 'shoy'}  } ),
+                                        el( 'span', { textContent: 'ENDY' } ),
                                       ] ) ] ),
                             ] ),
+
                           ] }, //body
             }, //html
 
@@ -534,10 +547,10 @@ function test() {
           c => `[outmost start ${c.idx.i}]`, // 26
           c => 'compo start ' + c.idx.i, // 27
           
-          c => c.event( 'gotclick' ), //28
-          c => window.misc++, //29
-          c => c.get('txt'), //30
-          c => `txt : ${c.idx.clickfor}`, //30
+          c => c.event( 'gotclick' ), // 28
+          c => window.misc++, // 29
+          c => c.get('txt'), // 30
+          c => `txt : ${c.idx.clickfor}`, // 31
         ], // functions list
 
         'TEST' // default filespace (the one with the body)
@@ -777,6 +790,32 @@ function test() {
   elp = elPath( `body|8 section|${loopdiv} div|1 span|1 span` );
   is (elp.childElementCount, 4, '3 innies + 1 middle marker in in compo loop in compo loop in compo loop innermost' );
   
+  checkNode( `body|8 section|${loopdiv} div|0 span`,
+             { textContent: '[outermost 0]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 0/outer' );
+  checkNode( `body|8 section|${loopdiv} div|0 span|0 span`,
+             { textContent: 'compo start 0', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 0/top-title' );
+
+  elp = elPath(`body|8 section|${loopdiv} div|0 span` );
+
+  checkNode( `body|8 section|${loopdiv} div|0 span|1 span`,
+             { textContent: '[middle 0,0]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 0/0 middle comp' );
+  checkNode( `body|8 section|${loopdiv} div|0 span|2 span`,
+             { textContent: '[middle 0,1]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 0/1 middle comp' );
+  checkNode( `body|8 section|${loopdiv} div|0 span|3 span`,
+             { textContent: '[middle 0,2]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 0/1 middle comp' );
+
+  checkNode( `body|8 section|${loopdiv} div|1 span|2 span`,
+             { textContent: '[middle 1,1]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 1/1 middle comp' );
+  checkNode( `body|8 section|${loopdiv} div|1 span|2 span|0 span`,
+             { textContent: '[innermost 1,1,0 (4 / 2 / 1)]', style: {display:''} }, 
+             'loopy compo in loopy compo in el in loop compo 1/1/0 middle comp' );
+
   elp = elPath( `body|9 section|0 button` );
   is (window.misc,0,'misc starts out 0');
   elp.click();
@@ -785,15 +824,34 @@ function test() {
   elp = elPath( `body|9 section|1 span|0 button` );
   let inst = elp.instance.parent;
   ok (inst.el.clickholder, 'got the element handle' );
+
   is (inst.el.clickholder, elPath( 'body|9 section|1 span' ), 'element handle points to element' );
   ok (inst.comp.clicker, 'got the component handle' );
   is (inst.comp.clicker, elp.instance, 'correct component handle' );
 
   ok (inst.el.forclickholder, 'got a element handle in' );
-  debugger;
   is (inst.el.forclickholder.length, 3, ' handle' );
 
   elp = elPath( `body|9 section|2 div|0 span` );
+
+  loopdiv = 9;
+  elp = elPath( `body|8 section|${loopdiv} div` );
+  is (elp.childElementCount, 3, '3 innies els in els' );
+
+  checkNode( `body|8 section|${loopdiv} div|0 span`, 
+             { textContent: 'txt : 0', style: {display:''} }, 'el in el loop 0' );
+  checkNode( `body|8 section|${loopdiv} div|0 span|0 h2`, 
+             { textContent: 'txt : 0', style: {display:''} }, 'inner el in el loop 0' );
+
+  checkNode( `body|8 section|${loopdiv} div|1 span`, 
+             { textContent: 'txt : 1', style: {display:''} }, 'el in el loop 0' );
+  checkNode( `body|8 section|${loopdiv} div|1 span|0 h2`, 
+             { textContent: 'txt : 1', style: {display:''} }, 'inner el in el loop 0' );
+
+  checkNode( `body|8 section|${loopdiv} div|2 span`, 
+             { textContent: 'txt : 2', style: {display:''} }, 'el in el loop 0' );
+  checkNode( `body|8 section|${loopdiv} div|2 span|0 h2`, 
+             { textContent: 'txt : 2', style: {display:''} }, 'inner el in el loop 0' );
 
   doneTesting();
 
