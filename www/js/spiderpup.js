@@ -72,13 +72,9 @@ window.onload = ev => {
   const defaultNamespace = filespaces[defaultFilename];
   const html = defaultNamespace.html;
 
-  // make state for default namespace (also add that state to the namespace
-  // it has data and functions
-  const nsState = newState( { data: defaultNamespace.data,
-                              functions: defaultNamespace.functions,
-                            }, {} );
-
-
+  const pageComponent = newComponentInstance( { data: defaultNamespace.data,
+                                        functions: defaultNamespace.functions,
+                                      }, {} );
   if (html && html.body) {
     if (html.head) {
       const head = document.head;
@@ -168,10 +164,9 @@ window.onload = ev => {
 
     const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
-    // make state for body
-    const state = newState( bodyRecipe, html.body, nsState );
-    html.body.key = state.id;
-    state.refresh( document.body );
+    const bodyComponent = newComponentInstance( bodyRecipe, html.body, pageComponent );
+    html.body.key = bodyRecipe.id;
+    bodyComponent.refresh( document.body );
 
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
@@ -181,11 +176,11 @@ window.onload = ev => {
 const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
 
 let serial = 1;
-const newState = (recipe,recipeNode,parent) => {
+const newComponentInstance = (recipe,recipeNode,parent) => {
 
   // discover state data and state data generating functions
   // that will be called after the state is set up
-  // newState is also where the preLoad routine should be called
+  // newComponentInstance is also where the preLoad routine should be called
   // after the data is set up.
   //
   //  so:
@@ -244,17 +239,17 @@ const newState = (recipe,recipeNode,parent) => {
 
 
   // get a state object ready before calling the  preLoad to populate the calculated data. this means that functions run after regular data values are placed
-  const state = {
+  const component = {
     id     : serial++,
 
-    desc : `state for recipe '${recipe.name}'`,
+    desc : `component for recipe '${recipe.name}'`,
 
     parent,
 
-    _key2substate: {},
+    _key2subcomponent: {},
 
     calc   : {}, // attribute name -> calculation
-    comp   : {}, // handle -> component state?
+    comp   : {}, // handle -> component component?
     el     : {}, // handle -> element
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
@@ -263,11 +258,11 @@ const newState = (recipe,recipeNode,parent) => {
     recipe,
 
     refresh: function( el, node, key ) {
-      const state = this;
-      const recipe = state.recipe;
-      el = el || state.rootEl;
+      const component = this;
+      const recipe = component.recipe;
+      el = el || component.rootEl;
       node = node || recipe.rootNode;
-      key = key || state.id; // for foreach case
+      key = key || component.id; // for foreach case
 
       const needsInit = el.hasInit ? false : true;
       const isRecipeNode = node.nodeRecipe ? true : false;
@@ -279,17 +274,17 @@ const newState = (recipe,recipeNode,parent) => {
         el.key = key;
         el.dataset.key = key;
 
-        state.rootEl || (state.rootEl = el);
+        component.rootEl || (component.rootEl = el);
 
         // attach element event handlers
         if (! isRecipeNode && node.on) {
           Object.keys( node.on ).forEach( evname => {
             const evfun = function() {
-              const prom = node.on[evname]( state, ...arguments );
+              const prom = node.on[evname]( component, ...arguments );
               // resolve in case it returns undefined or returns a promise
               Promise.resolve( prom )
                 .then( () => {
-                  if ( state.data._check() ) state.refresh();
+                  if ( component.data._check() ) component.refresh();
                 } );
             };
             // element event listeners
@@ -307,9 +302,9 @@ const newState = (recipe,recipeNode,parent) => {
               seen[attr] = seen[attr] || 0;
               if (0 === seen[attr]++) {
                 if (attr === 'textContent') {
-                  el.textContent = calcs[attr](state);
+                  el.textContent = calcs[attr](component);
                 } else {
-                  el.setAttribute( attr, calcs[attr](state) );
+                  el.setAttribute( attr, calcs[attr](component) );
                 }
               }
             }));
@@ -346,36 +341,36 @@ const newState = (recipe,recipeNode,parent) => {
         
         contents
           .forEach( con => {
-            let conKey, conEl, conState;
+            let conKey, conEl, conComponent;
             const conRecipe = con.nodeRecipe;
             if (conRecipe) {
-              // translate conRecipe id and con id to a state lookup
-              const lookup = `${state.id}_${con.id}`;
-              conState = state._key2substate[ lookup ];
-              if ( ! conState ) {
-                conState = newState(conRecipe,con,state);
+              // translate conRecipe id and con id to a component lookup
+              const lookup = `${component.id}_${con.id}`;
+              conComponent = component._key2subcomponent[ lookup ];
+              if ( ! conComponent ) {
+                conComponent = newComponentInstance(conRecipe,con,component);
                 if (con.handle) {
-                  state.comp[con.handle] = conState;
+                  component.comp[con.handle] = conComponent;
                 }
                 con.on && Object.keys( con.on ).forEach( evname => {
                   const evfun = function() {
-                    const prom = con.on[evname]( state, ...arguments );
+                    const prom = con.on[evname]( component, ...arguments );
                     // resolve in case it returns undefined or returns a promise
                     Promise.resolve( prom )
                       .then( () => {
-                        if ( state.data._check() ) state.refresh();
+                        if ( component.data._check() ) component.refresh();
                       } );
                   };
                   // node event listeners
-                  conState.eventListeners[evname] = conState.eventListeners[evname] || [];
-                  conState.eventListeners[evname].push( evfun );
+                  conComponent.eventListeners[evname] = conComponent.eventListeners[evname] || [];
+                  conComponent.eventListeners[evname].push( evfun );
                 } );
 
-                state._key2substate[ lookup ] = conState;
+                component._key2subcomponent[ lookup ] = conComponent;
               }
-              conKey = conState.id;
+              conKey = conComponent.id;
             } else {
-              conKey = `${state.id}_${con.id}`;
+              conKey = `${component.id}_${con.id}`;
             }
             if (con.foreach) {
               conKey = conKey + '_0';
@@ -389,10 +384,10 @@ const newState = (recipe,recipeNode,parent) => {
               if (con.handle) {
                 if (isRecipeNode) {
                   if (conRecipe.rootNode.handle) {
-                    state.el[conRecipe.rootNode.handle] = conEl;
+                    component.el[conRecipe.rootNode.handle] = conEl;
                   }
                 } else {
-                  state.el[con.handle] = conEl;
+                  component.el[con.handle] = conEl;
                 }
               }
               key2el[conKey] = conEl;
@@ -403,13 +398,13 @@ const newState = (recipe,recipeNode,parent) => {
             }
 
             if (con.if) {
-              conditionalDone = lastConditionalWasTrue = con.if( state );
+              conditionalDone = lastConditionalWasTrue = con.if( component );
               lastWasConditional = true;
             } else if (con.elseif) {
               if (conditionalDone) {
                 lastConditionalWasTrue = false;
               } else {
-                conditionalDone = lastConditionalWasTrue = con.elseif( state );
+                conditionalDone = lastConditionalWasTrue = con.elseif( component );
               }
             } else if (con.else) {
               if (conditionalDone) {
@@ -427,22 +422,22 @@ const newState = (recipe,recipeNode,parent) => {
               if (con.foreach) {
                 // remove extras but never the first index
                 const forval = con.forval;
-                const list = con.foreach( state );
-                const upto = state.lastcount[forval];
-                if (state.lastcount[forval] > list.length) {
-                  for (let i=list.length === 0 ? 1 : list.length; i<state.lastcount[forval]; i++) {
+                const list = con.foreach( component );
+                const upto = component.lastcount[forval];
+                if (component.lastcount[forval] > list.length) {
+                  for (let i=list.length === 0 ? 1 : list.length; i<component.lastcount[forval]; i++) {
                     conKey = conKey.replace( /_\d+$/, '_' + i );
                     const itEl = key2el[conKey];
                     itEl && itEl.remove();
                   }
                 }
-                state.lastcount[forval] = list.length;
+                component.lastcount[forval] = list.length;
                 if (list.length === 0) {
                   conEl.style.display = 'none';
                 } else {
                   // make sure each foreach list item is populated
                   // for those that are for components, they each get their
-                  // own state
+                  // own component
                   let lastEl;
                   for (let i=0; i<list.length; i++ ) {
                     conKey = conKey.replace( /_\d+$/, '_' + i );
@@ -455,31 +450,31 @@ const newState = (recipe,recipeNode,parent) => {
                       forEl.dataset.key = conKey;
                       lastEl.after( forEl );
                     }
-                    state.idx[forval] = i;
-                    state.it[forval] = list[i];
+                    component.idx[forval] = i;
+                    component.it[forval] = list[i];
                     lastEl = forEl;
 
                     if (conRecipe) {
-                      let forState = state._key2substate[ conKey ];
-                      if (!forState) {
-                        forState = newState( conRecipe, con, state );
-                        state._key2substate[ conKey ] = forState;
+                      let forComponent = component._key2subcomponent[ conKey ];
+                      if (!forComponent) {
+                        forComponent = newComponentInstance( conRecipe, con, component );
+                        component._key2subcomponent[ conKey ] = forComponent;
                         if (conRecipe && con.handle) {
-                          state.comp[con.handle] = state.comp[con.handle] || [];
-                          state.comp[con.handle][i] = forState;
+                          component.comp[con.handle] = component.comp[con.handle] || [];
+                          component.comp[con.handle][i] = forComponent;
                         }
                       }
-                      forState.refresh( forEl, con );
+                      forComponent.refresh( forEl, con );
                       if (con.contents) {
                         // more contents to hang inside a child of the internal component
                         // though maybe in refresh?
                         const intEl = findInternalContent( conEl );
                         if (intEl) {
-                          forState.refresh( intEl, con.contents );
+                          forComponent.refresh( intEl, con.contents );
                         }
                       }
                     } else {
-                      state.refresh( forEl, con, conKey );
+                      component.refresh( forEl, con, conKey );
                     }
                   }
                 }
@@ -487,26 +482,26 @@ const newState = (recipe,recipeNode,parent) => {
               else if (conRecipe) {
                 // recipe component node that may have extra contents
                 conEl.style.display = null;
-                conState.refresh( conEl, con, conKey );
+                conComponent.refresh( conEl, con, conKey );
                 if (con.contents) {
                   // more contents to hang inside a child of the internal component
                   // though maybe in refresh?
                   const intEl = findInternalContent( conEl );
                   if (intEl) {
-                    conState.refresh( intEl, con.contents );
+                    conComponent.refresh( intEl, con.contents );
                   }
                 }
               } else {
                 // html element node
                 conEl.style.display = null;
-                state.refresh( conEl, con, conKey );
+                component.refresh( conEl, con, conKey );
               }
             } else {
               // hide this
               conEl.style.display = 'none';
               // if a list, remove all but the first
               if (con.foreach) {
-                const upto = state.lastcount[state.forval];
+                const upto = component.lastcount[component.forval];
                 for (let i=1; i<upto; i++) {
                   conKey = conKey.replace( /_\d+$/, '_' + i );
                   key2el[conKey].remove();
@@ -522,56 +517,64 @@ const newState = (recipe,recipeNode,parent) => {
         // has not had its onLoad done. The preLoad may be a promise,
         // so resolve that and then run the onLoad
         recipe.onLoad &&
-          Promise.resolve( state.preLoad )
-                 .then (r =>recipe.onLoad(state) );
+          Promise.resolve( component.preLoad )
+                 .then (r =>recipe.onLoad(component) );
       }
     }, //refresh
-  }; //state
+  }; //component
 
-  state.event = (event,result) => {
-    const listeners = state.eventListeners[event];
+  // find the top level / page level component
+  component.top = parent.top || component;
+
+  // propageMessage
+  
+  // initiateMessage
+  
+
+  component.event = (event,result) => {
+    const listeners = component.eventListeners[event];
     listeners && listeners.forEach( l => l( result ) );
   };
 
-  state.data = {
+  component.data = {
     parent,
     _data: data,
     _check: function() { const changed = this._changed;
                          this._changed = false; return changed; },
     _changed: false,
-    get: function(k,defVal) { if (k in this._data) return dataVal( this._data[k], state );
+    get: function(k,defVal) { if (k in this._data) return dataVal( this._data[k], component );
                               let val = this.parent && this.parent.data.get( k );
                               if (val===undefined && defVal !== undefined) {
                                 val = this._data[k] = defVal;
                               }
-                              return dataVal( val, state );
+                              return dataVal( val, component );
                             },
     set: function(k,v) { this._changed = v !== this._data[k];
                          this._data[k] = v; },
   };
 
   // get defined functions
-  const stateFuns = parent ? {...parent.fun} : {};
+  const componentFuns = parent ? {...parent.fun} : {};
   [recipe,recipeNode]
     .forEach( level => level &&
               level.functions &&
               Object.keys(level.functions).forEach( fun =>
-                stateFuns[fun] = function() { return level.functions[fun]( state, ...arguments ) }
+                componentFuns[fun] = function() { return level.functions[fun]( component, ...arguments ) }
               ) );
 
-  state.fun = stateFuns;
+  component.fun = componentFuns;
 
   
   Object.keys( nodeDataFunConvert )
     .forEach( fld => data[fld] = funs[nodeDataFunConvert[fld]](parent) );
 
   Object.keys( recipeDataFunConvert )
-    .forEach( fld => data[fld] = funs[recipeDataFunConvert[fld]](state) );
+    .forEach( fld => data[fld] = funs[recipeDataFunConvert[fld]](component) );
 
-  recipe.preLoad && (state.preLoad = recipe.preLoad( state ));
+  recipe.preLoad && (component.preLoad = recipe.preLoad( component ));
 
-  return state;
-};
+  return component;
+}; //newComponentInstance
 
 const compileBody = (body, filename, namespace) => {
 
@@ -599,8 +602,13 @@ const compileBody = (body, filename, namespace) => {
 
   return nodeRecipe;
 
-};
+}; //compileBody
 
+// takes a recipe and
+//  * gives it a serialized id
+//  * replaces function indexes with the actual functions
+//  * compiles all child nodes under the recipe
+//  * finds the root node of the recipe
 const compileRecipe = (recipe, filename, recipeName) => {
 
   try {
@@ -624,8 +632,14 @@ const compileRecipe = (recipe, filename, recipeName) => {
     throw new Error( `Error compiling recipe '${recipeName}' in file '${filename}' : ${err}` );
   }
   return recipe;
-};
+}; //compileRecipe
 
+// takes a node which may be an html element or component descriptor
+//  * gives it a serialized id
+//  * replaces function indexes with the actual functions
+//  * marks the node as a component if it is one
+//  * compiles all child nodes under the recipe
+//  * finds the root node of the recipe
 const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recipesEncountered) => {
 
   let lastWasConditional = false;
@@ -676,7 +690,7 @@ const compileRecipeNodes = (root, recipe, filename, recipeName, namespace, recip
 
       return node;
     } );
-};
+}; //compileRecipeNodes
 
 // for a recipe node, place the functions in spots where they are
 // references by function index
@@ -697,7 +711,7 @@ const prepFunctions = (node, filename, recipeName) => {
   } );
 };
 
-
+// used to grab a recipe given a tag. The tag may cross namespaces if any are defined
 const lookupRecipe = (tag,namespace) => {
   let recipe = namespace.components && namespace.components[tag];
   if (!recipe) {
@@ -709,6 +723,9 @@ const lookupRecipe = (tag,namespace) => {
   return recipe;
 }
 
+// given a starting element, return the first of it or
+// its children that are marked as 'internalContent' which means
+// it is a place for a component node to put any content that it has.
 const findInternalContent = (el,recur) => {
   if ( el.internalContent ) return el;
 
