@@ -6,7 +6,6 @@ html:
   body:
     preLoad: >-
       () => yote.fetchApp( 'test' )
-                .then( testapp => { yote.apps = yote.apps || {}; yote.apps.test = testapp; } )
 
     contents:
       - h1: yote test
@@ -73,38 +72,43 @@ components:
         }
 
       login: >
-        (s,ev) => s.data.get('app')
-                        .login( { login: s.el.login.value,
-                                  password: s.el.password.value } )
-                        .then( acct => { debugger; acct; } )
-                        .catch( err => { debugger; err; } )
+        (s,login,password) => s.data.get('app')
+          .login( { login, password } )
+           .then( acct => { s.el.login.value = ''; s.el.password.value = ''; s.data.set( 'login', acct ); } )
+          .catch( err => { alert(err);  } )
+      logout: >-
+        s => s.data.get('app')
+           .logout()
+             .then( msg => { console.log( msg ); s.data.set('login',undefined) } )
+             .catch( err => { console.log( err ); s.data.set('login',undefined) } )
       createAccount: >
         (s,handle,email,password) => s.data.get('app')
            .create_account( { handle, email, password } )
-                     .then( acct => { debugger; acct; s.data.set( 'login', acct ) } )
-                    .catch( err => { debugger; err; } )
+                     .then( acct => { s.el.email.value = ''; s.el.login.value = ''; s.el.password.value = ''; s.data.set( 'login', acct ) } )
+                    .catch( err => alert(err) )
     contents:
       - div:
           - div:
               if: s => s.data.get( 'login' )
-              textContent: s => `welcome ${s.data.get('login').handle}`
-              a:
-                textContent: log out
-                href: #
-                on_click: >-
-                  (s,ev) => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    return s.data.app.logout();
-                  }
+              contents:
+                - span: s => `welcome ${s.data.get('login').handle}`
+                - a:
+                    textContent: log out
+                    href: '#'
+                    on_click: >-
+                      (s,ev) => {
+                        ev.preventDefault();
+                        return s.fun.logout();
+                      }
           - div:
               elseif: s => s.data.get( 'create-account' )
               contents:
                 - form:
-                    on_submit: >
-                      (s,ev) => s.fun.createAccount( s.el.handle.value,
-                                                     s.el.email.value,
-                                                     s.el.password.value )
+                    on_submit: >-
+                      (s,ev) => { ev.preventDefault();
+                         s.fun.createAccount( s.el.handle.value,
+                                              s.el.email.value,
+                                              s.el.password.value ) }
                     style: display: inline-block; border: solid 3px black; padding: .5em;
                     contents:
                       - div:
@@ -139,7 +143,7 @@ components:
               else:
               contents:
                 - form:
-                    on_submit: (s,ev) => s.fun.login( ev )
+                    on_submit: (s,ev) => { debugger; ev.preventDefault(); s.fun.login( s.el.login.value, s.el.password.value ) }
                     style: display: inline-block; border: solid 3px black; padding: .5em;
                     contents:
                       - div:
