@@ -696,7 +696,7 @@ const newInstance = (node, enclosingInstance) => {
                     comps.length = list.length;
                     comps[i] = componentInstance;
 
-                    forInstance._refreshComponent( con, forEl, i, true );
+                    forInstance._refreshComponent( con, forEl, i );
                     if (con.contents) {
                       // more contents to hang inside a child of the internal instance
                       // though maybe in refresh?
@@ -716,7 +716,7 @@ const newInstance = (node, enclosingInstance) => {
             } // end of has foreach
 
             else if (con.isComponent) {
-              conInstance = instance._refreshComponent( con, conEl, undefined, true );
+              conInstance = instance._refreshComponent( con, conEl );
 
               // more contents to hang inside a child of the internal instance
               // though maybe in refresh?
@@ -771,7 +771,7 @@ const newInstance = (node, enclosingInstance) => {
   }; //_refreshElement
 
   // method _refreshComponent
-  instance._refreshComponent = ( node, el, idx, noMoreInit ) => {
+  instance._refreshComponent = ( node, el, idx ) => {
     // the node is a node that represents a component.
     const asRecipe = node.asRecipe;
 
@@ -782,7 +782,7 @@ const newInstance = (node, enclosingInstance) => {
     let componentInstance = instance._key2subinstance[key];
 
     let needsInit = !!!componentInstance;
-    if (noMoreInit && componentInstance) {
+    if (nocomponentInstance) {
       needsInit = componentInstance.noInit;
       componentInstance.noInit = false;
     } else {
