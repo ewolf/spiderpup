@@ -131,6 +131,7 @@ onLoad: >-
     yote.fetchAppTryLogin( c.get( 'appName' ) )
       .then( app => {
         if (app) {
+          alert('54');
           c.broadcast( 'app', app );
           if (app.acct) {
             c.broadcast( 'login', app.acct );
@@ -185,7 +186,7 @@ body:
       } 
     }
   contents:
-    - logins.header:
+    - logins.siteHeader:
         handle: header
     - main:
         - div:

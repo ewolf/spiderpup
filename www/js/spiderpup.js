@@ -1,72 +1,4 @@
-console.warn( "how about defining component events that can be listened to" );
-/*
 
-  body has a definition that corresponds to a body entry without any arguments
-
-  onload
-
-     * html.head title, load css & js
-
-     * find html.body recipe & all recipes in all filespaces
-         - assign id to each recipe
-         - consistency check for if/then/else
-         - map name -> recipe (namespace.recipes map)
-
-     * build top instance for document.body from recipe + body 'request' without args
-         - create state (instance builder may take a parent state)
-         - has body tag for top instance
-         - assign id, state, recipe to instance
-         - assign insertion request tag 'args' ( {} in this case ) to instance (as args)
-         - assign instance to state
-
-         ~ run preLoad (only for top)
-
-         - create instance tree (contents)
-             * iterate over recipe contents
-                 - assign id to instance
-                 - assign top instance to instance
-                 - attach to contents
-
-     * add instance top child to attach point (document.body)
-        - call update instance with body recipe, args
-
-     * update instance( instance/recipe, args )
-         - use seen i think
-         - find all properties/attributes in args (override) calculate,
-                                             instance calculate,
-                                             args attrs,
-                                             instance attrs
-
-         - id of attach point is the id of the instance or 'id_0'
-           it is a foreach
-
-         - map child element array into element key -> element
-         - iterate over instance contents / idx
-            - check if/then/else ( if 'if', check if value.
-                                               if true, proceed with installing instance
-                                              and set lastif=true,lastifvalue=true
-                                              otherwise lastifvalue=false
-                                   if 'elseif', check if lastifvalue=false && elseif true
-                                               if true, proceed with installing instance
-                                               and set lastif=true,lastifvalue=true
-                                              otherwise lastifvalue=false
-                                   if 'else', check if lastifvalue=false
-                                               if true, proceed with installing instance
-                                               and set lastif=false,lastifvalue=false )
-                  * if lastifvalue=false
-                      * if element key in child element map, then remove that child
-                  * elseif child element map[key]
-                      * update child element map[key] with instance, state
-                  * else
-                      * thisel = new element
-                      * if is a recipe, make a new instance and state
-                      * update child element map[key] with instance, state
-            - has foreach/forval? that returns an array
-                - iterate over list items, idx
-                    * set s.idx[forval] = idx
-                    * set s.it[forval] = items[idx]
-                - remove extra elements that may be there from a previous refresh
- */
 window.onload = ev => {
 
   // stores
@@ -115,13 +47,15 @@ window.onload = ev => {
       const namespace = filespaces[filename];
       namespace.type = 'namespace';
       namespace.filename = filename;
-
       // connect namespaces
-      if (namespace.imports) {
-        Object.keys( namespace.imports )
-          .forEach( alias => namespace[alias] = filespaces[namespace[alias]] );
+      if (namespace.namespaces) {
+        Object.keys( namespace.namespaces )
+          .forEach( alias => (namespace.namespaces[alias] = filespaces[namespace.namespaces[alias]]) );
       }
     } );
+
+  const defaultNamespace = filespaces[defaultFilename];
+  const html = defaultNamespace.html;
 
   // now prep the nodes
   Object.keys( filespaces )
@@ -130,16 +64,15 @@ window.onload = ev => {
       prepNode( namespace );
     } );
 
-
-  const defaultNamespace = filespaces[defaultFilename];
-  defaultNamespace.filename = defaultFilename;
-  const html = defaultNamespace.html;
-
-  const namespaceComponent = newComponentInstance( { data: defaultNamespace.data,
-                                                     functions: defaultNamespace.functions,
-                                                     namespace: defaultNamespace,
-                                              }, {} );
+  // instantiate
   if (html && html.body) {
+    console.log( filespaces );
+
+    // now make an instance
+    const bodyInstance = newInstance( html.body );
+    bodyInstance.rootEl = document.body;
+    document.body.key = bodyInstance.id;
+
     if (html.head) {
       const head = document.head;
 
@@ -189,105 +122,119 @@ window.onload = ev => {
       } );
 
     }
+    bodyInstance.refresh( document.body );
 
-    // build a recipe lookup for all recipes across all namespaces/filespaces
-    // this lookup is used to distinguish html tags from recipe tags.
-    // the lookup includes the recipe data structure, the file it is from and its name.
-    // the latter two are for debugging messages.
-    const recipeNames = {};
-    Object.keys( filespaces )
-      .forEach( filename => {
-        const namespace = filespaces[filename];
-        namespace.filename = filename;
-        if (namespace.components) {
-          Object.keys(namespace.components)
-            .forEach( name => (recipeNames[name] = [namespace.components[name], filename, name] ));
-        }
-        if (namespace.functions) {
-          Object.keys( namespace.functions )
-            .forEach( fun => namespace.functions[fun] = funs[namespace.functions[fun]] );
-        }
-      } );
+    // build the body instance and refresh it
+    // may have to update the body element key before the refresh
 
-    // translate the 'namespaces' of each file to a reference to the filespace indicated
-    // for example, the yaml:
-    //
-    // ---
-    // import:
-    //   - bar: examples/more_imports
-    //
-    // will get translated to namespaces.bar = [...namespace referenced by examples/more_imports...]
-    Object.keys( filespaces )
-      .forEach( filename => {
-        const namespace = filespaces[filename];
-        namespace.namespaces &&
-          Object.keys( namespace.namespaces )
-          .forEach ( name => {
-            const filename = namespace.namespaces[name];
-            namespace.namespaces[name] = filespaces[filename];
-          } )
-      } );
 
-    // compile each recipe, translating the data structure into something easier to
-    // deal with
-    Object.values( recipeNames )
-      .forEach( tuple => {
-        const [ recipe, filename, name ] = tuple;
-        const namespace = filespaces[filename];
-        if (name === 'body') {
-          throw new Error( "invalid component recipe name; 'body' is a reserved word" );
-        }
-        namespace.components[name] = compileRecipe( recipe, filename, name );
-      } );
-//    html.body.functions = defaultNamespace.functions;
-//    delete defaultNamespace.functions;
-    const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
-    const bodyComponent = newComponentInstance( bodyRecipe, html.body, namespaceComponent );
-    namespaceComponent._key2subcomponent['body'] = bodyComponent;
-    html.body.key = bodyRecipe.id;
-
-    bodyComponent.refresh( document.body );
-
-    // attach any body listeners
-    if (html.body.on) {
-      Object.keys( html.body.on ).forEach( evname => {
-        const evfun = function() {
-          const prom = html.body.on[evname]( bodyComponent, ...arguments );
-          // resolve in case it returns undefined or returns a promise
-          Promise.resolve( prom )
-            .then( () => {
-              if ( bodyComponent._check() ) bodyComponent.refresh();
-            } );
-        };
-        // element event listeners
-        document.body.addEventListener( evname, evfun );
-      } );
-    }
-
+    // // attach any body listeners
+    // if (html.body.on) {
+    //   Object.keys( html.body.on ).forEach( evname => {
+    //     const evfun = function() {
+    //       const prom = html.body.on[evname]( bodyComponent, ...arguments );
+    //       // resolve in case it returns undefined or returns a promise
+    //       Promise.resolve( prom )
+    //         .then( () => {
+    //           if ( bodyComponent._check() ) bodyComponent.refresh();
+    //         } );
+    //     };
+    //     // element event listeners
+    //     document.body.addEventListener( evname, evfun );
+    //   } );
+    // }
   } else {
     console.warn( `no body defined in '${defaultFilename}'` );
   }
+/*
+  const defaultNamespace = filespaces[defaultFilename];
+  defaultNamespace.filename = defaultFilename;
+  const html = defaultNamespace.html;
+
+  const namespaceComponent = newComponentInstance( { data: defaultNamespace.data,
+                                                     functions: defaultNamespace.functions,
+                                                     namespace: defaultNamespace,
+                                              }, {} );
+*/
+
 }; //onLoad
+
+
+let serial = 1;
 
 const prepNode = (node,namespace) => {
   namespace = namespace || node;
   node.id = serial++;
   attachFunctions( node );
   if (node.type === 'namespace') {
-    node.components && Object.values( node.components )
-      .forEach( comp => {
+    node.components && Object.keys( node.components )
+      .forEach( recipeName => {
+        const comp = node.components[recipeName];
+        if (recipeName === 'body') {
+          throw new Error( `may not use the name 'body' for components in file ${namespace.filename}` );
+        }
         comp.type = 'recipe';
+        comp.namespace = namespace;
+        comp.name = recipeName;
+        comp.inRecipe = comp; // self referential
+        comp.asRecipe = comp; // self referential
+        if (comp.contents.length !== 1) {
+          throw new Error( `recipe must contain exactly one root element for '${recipeName}' in '${namespace.filename}'` );
+        }
+        comp.rootNode = comp.contents[0];
+        comp.rootNode.isRoot = true;
         prepNode( comp, namespace );
       } );
-    if (node.body) {
+    if (node.html && node.html.body) {
+      node = node.html.body;
+      node.namespace = namespace;
       node.type = 'recipe';
-      prepNode( node.body, namespace );
+      node.name = 'body';
+      const rootNode = { tag: 'body',
+                         type: 'element',
+                         isRoot: true,
+                         contents: node.contents };
+      node.rootNode = rootNode;
+      node.contents = [rootNode];
+      node.inRecipe = node; // self referential
+      node.asRecipe = node; // self referential
+      prepNode( node, namespace );
     }
   }
   else if (node.contents) {
+
+    // check integrity of if/elseif/else
+    let lastWasIf = false;
+
     node.contents.forEach( con => {
-      
+      const tag = con.tag;
+      const tagParts = tag.split( '.');
+      con.inRecipe = node.inRecipe;
+
+      if ( [con.else, con.elseif, con.if].filter( x => x !== undefined ).length > 1 ) {
+        throw new Error( `may not have more than one of if,elseif,else in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
+      }
+
+      if (!lastWasIf && (con.else || con.elseif)) {
+        throw new Error( `else and elseif must be preceeded by if or elseif : in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
+      } else {
+        lastWasIf = !!(con.elseif || con.if);
+      }
+
+      if (tagParts.length == 2) {
+        con.type = 'component';
+        const importedNamespace = namespace.namespaces[tagParts[0]];
+        con.asRecipe = importedNamespace.components[tagParts[1]];
+      } else if (namespace.components[tag]) {
+        con.type = 'component';
+        con.asRecipe = namespace.components[tag];
+      } else {
+        con.type = 'element';
+      }
+      if (con.type === 'component' && con.isRoot) {
+        throw new Error( `recipe root node must be an html element for '${con.inRecipe.name}' in '${con.inRecipe.namespace.filename}'` );
+      }
       prepNode( con, namespace );
     } );
   }
@@ -300,15 +247,502 @@ const attachFunctions = node => {
       node[fun] !== undefined && ( node[fun] = funs[node[fun]] ) );
 
   [ 'calculate', 'on', 'functions' ]
-    .forEach( funHash =>
-      Object.keys( funHash )
-        .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) )
-    );
+    .forEach( hashName => {
+      const funHash = node[hashName];
+      if  (funHash) {
+        Object.keys( funHash )
+          .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) );
+      }
+    } );
 }; //attachFunctions
 
 const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
 
-let serial = 1;
+const newInstance = (node, enclosingInstance) => {
+
+  // populate instance with the fields:
+  //
+  //   node it is created from
+  //   parent (enclosingInstance)
+  //
+  //   type (desciption of this instance)
+  //
+  //   data -> data values
+  //   fun -> functions
+  //   handles for html elements
+  //   handles for component instances
+  //
+  //   broadcastListener function to hear broadcasts
+  //   eventListeners to hear events of component instances
+  //
+  //   _key2subinstance - stores all component instances
+  //                     direction attached to this one
+  //
+  //   idx/it/lastcount - temporary variables for foreach
+  //
+  //
+  // and the methods
+  //
+  //   preLoad - method defined in recipe / enclosing instance
+  //
+  //   get( key, defaultVal ) get the data by the field
+  //                          transversing parent instances
+  //   set( key, values ) set the data in this instance
+  //   _check - returns true if data has changed. used
+  //            to determine if a refresh is neede
+  //   broadcast( tag, message) -> broadcasts a message to
+  //                               all listeners in document
+  //   event( event, result) -> sends an instance event
+  //                            to its eventListeners
+  //   refresh( el, node, key ) -> refreshes this instance
+  //         and all its decendents. creates and removes
+  //         els as needed
+  //
+  //
+
+
+  const inRecipe = node.inRecipe;
+  const asRecipe = node.asRecipe;
+  const inNamespace = inRecipe.namespace;
+  const asNamespace = asRecipe.namespace;
+
+  const instance = {
+    id: serial++,
+
+    node,
+    parent: enclosingInstance,
+
+    type: `instance of ${asRecipe.name} from ${asNamespace.filename}`,
+
+    _key2subinstance: {},
+
+    comp   : {}, // handle -> component component?
+    el     : {}, // handle -> element
+    idx    : {}, // iterator name -> iterator index
+    it     : {}, // iterator name -> iterator value
+    lastcount: {}, // iterator name -> last list count
+    eventListeners: {}, // event name -> listeners
+    broadcastListener: (asRecipe.listen || enclosingInstance.listen),
+  };
+
+
+  // level of functions
+  //    namespace ( asRecipe namespace )
+  //    recipe    ( asRecipe )
+  //    node itself ( the one embedded )
+
+
+  // level of data
+  //    namespace ( asRecipe namespace )
+  //    recipe    ( asRecipe )
+  //    enclosingInstance
+  //    node itself ( the one embedded )
+
+  const data = instance._data = {};
+
+  // INSTALL DATA ----------------------
+
+  // populate data from the namespace and recipe
+  [asNamespace,asRecipe,enclosingInstance,node].forEach( level =>
+    level && level.data &&
+      Object.keys(level.data).forEach( arg => {
+        let val = level.data[arg];
+        if (typeof val === 'string') {
+          const x = val.substr( 0, 1 );
+          const checkVal = val.substr( 1 );
+          if (x === 'i') { // int
+            val = Number.parseInt( checkVal );
+          } else if (x === 'f') { // float
+            val = Number.parseFloat( checkVal );
+          } else if (x === 'c') { // code/function
+            recipeDataFunConvert[arg] = Number.parseInt(checkVal);
+          } else if (x === 's') {
+            val = checkVal;
+          }
+        }
+        data[arg] = val;
+      } ) );
+
+  instance.get = function(k,defVal) {
+    if (k in this._data) return dataVal( this._data[k], instance );
+    let val = this.parent && this.parent.get( k );
+    if (val === undefined && defVal !== undefined) {
+      val = this._data[k] = defVal;
+    }
+    // data can be a value or a function. if a function, run it to
+    // get the data
+    return dataVal( val, instance );
+  };
+
+  instance.set = function(k,v) {
+    this._changed = this._changed || v !== this._data[k];
+    this._data[k] = v;
+  };
+
+  instance._check = function() {
+    const changed = this._changed;
+    this._changed = false;
+    return changed;
+  };
+
+
+  // INSTALL FUNCTIONS ----------------------
+  const instanceFuns = {...asNamespace.functions};
+  instance.fun = instanceFuns;
+
+  asRecipe.functions &&
+    Object.keys(asRecipe.functions).forEach( fun =>
+      instanceFuns[fun] = function() { return asRecipe.functions[fun]( instance, ...arguments ) }
+    );
+
+  if (enclosingInstance && enclosingInstance.fun) {
+    Object.keys( enclosingInstance.fun )
+      .forEach( fun =>
+        (instanceFuns[fun] = enclosingInstance.fun[fun]) );
+  }
+
+  node.functions &&
+    Object.keys(node.functions).forEach( fun =>
+      instanceFuns[fun] = function() { return node.functions[fun]( instance, ...arguments ) }
+    );
+
+
+
+  // SET UP LISTENERS -----------------
+
+  // this sends a component event from its instance to its parent
+  instance.event = (event,result) => {
+    const listeners = instance.eventListeners[event];
+    listeners && listeners.forEach( l => l( result ) );
+  };
+
+  // propagateMessage
+  instance._propagateBroadcast = (tag,msg) => {
+    // checks to see if this node has listeners for the message
+    instance.broadcastListener && instance.broadcastListener(instance,tag,msg);
+
+    // propagates here and each child with the given message
+    Object.values( instance._key2subinstance ).forEach( c => c._propagateBroadcast(tag,msg) );
+  };
+
+
+  // the body instance is the ultimate top level instance
+  instance.top = (enclosingInstance && enclosingInstance.top)
+      || instance;
+
+  // called in the recipe to broadcast a message
+  instance.broadcast = (tag,msg) => {
+    instance.top._propagateBroadcast(tag,msg);
+    instance.top.refresh();
+  };
+
+  instance._refreshElement = ( el, node, key ) => {
+    console.log( el, node, `REFRESH EL ${key}` );
+    const needsInit = !!!el.hasInit;
+    if (needsInit) {
+      el.hasInit = true;
+      el.key = key;
+      el.dataset.key = key;
+      instance.rootEl || (instance.rootEl = el);
+
+      // attach element event handlers
+      if (node.on) {
+        Object.keys( node.on ).forEach( evname => {
+          const evfun = function() {
+            const prom = node.on[evname]( instance, ...arguments );
+            // resolve in case it returns undefined or returns a promise
+            Promise.resolve( prom )
+              .then( () => {
+                if ( instance._check() ) instance.refresh();
+              } );
+          };
+          // element event listeners
+          el.addEventListener( evname, evfun );
+        } );
+      }
+    } // needs init block 1
+
+    // update calculated element attrs
+    const seen = {};
+
+    // set attributes from the element node
+    // and if a root, update set attributes from its component node
+    [node.calculations, node.isRoot && instance.node.calculations ]
+    .forEach( calcs => 
+      calcs && Object.keys(calcs)
+        .forEach( attr => {
+          seen[attr] = seen[attr] || 0;
+          if (0 === seen[attr]++) {
+            if (attr.match( /^(textContent|innerHTML)$/)) {
+              el[attr] = calcs[attr](instance);
+            } else {
+              el.setAttribute( attr, calcs[attr](instance) );
+            }
+          }
+        }));
+
+    // update element attrs and textContent assigned with constants
+    [ node.attrs, node.isRoot && instance.node.attrs ]
+      .forEach( attrs =>
+        attrs && Object.keys(attrs)
+          .forEach( attr => {
+            seen[attr] = seen[attr] || 0;
+            if (0 === seen[attr]++) {
+              if (attr === 'textContent') {
+                el.textContent = attrs[attr];
+              } else if (attr === 'innerHTML') {
+                el.innerHTML = attrs[attr];
+              } else {
+                el.setAttribute( attr, attrs[attr] );
+              }
+            }
+          }));
+
+    // get a census of key --> element for child elements of this element.
+    // then build the nodes as needed
+    const key2el = {};
+    Array.from( el.children )
+      .forEach( el => el.key && ( key2el[el.key] = el ) );
+
+    // now fill in the contents. first make sure that the contents have
+    // corresponding elements
+    const isRecipeRoot = node.type === 'component';
+//console.warn('isRecipeRoot ? asRecipe.rootNode.contents : node.contents;');
+    const contents = node.contents;
+
+    if (contents) {
+      let lastWasConditional = false,
+          conditionalDone = false,
+          lastConditionalWasTrue = false;
+
+      contents
+        .forEach( con => {
+          let conKey, conEl, conInstance;
+          const conIsComponent = con.type === 'component';
+          const asRecipe = con.asRecipe;
+          if (conIsComponent) {
+
+            // translate asRecipe id and con id to a instance lookup
+            const lookup = `${instance.id}.${con.id}`;
+            conInstance = instance._key2subinstance[ lookup ];
+            if ( ! conInstance ) {
+              conInstance = newInstance(con,instance);
+              if (con.handle) {
+                instance.comp[con.handle] = conInstance;
+              }
+
+              // install component event listeners.
+              con.on && Object.keys( con.on ).forEach( evname => {
+                const evfun = function() {
+                  const prom = con.on[evname]( instance, ...arguments );
+                  // resolve in case it returns undefined or returns a promise
+                  Promise.resolve( prom )
+                    .then( () => {
+                      if ( instance._check() ) instance.refresh();
+                    } );
+                };
+                // node event listeners
+                conInstance.eventListeners[evname] = conInstance.eventListeners[evname] || [];
+                conInstance.eventListeners[evname].push( evfun );
+              } );
+
+              instance._key2subinstance[ lookup ] = conInstance;
+            }
+            conKey = conInstance.id;
+          } else {
+            conKey = `${instance.id}.${con.id}`;
+          }
+          if (con.foreach) {
+            conKey = conKey + '_0';
+          }
+
+          conEl = key2el[ conKey ];
+          if (!conEl) {
+            conEl = document.createElement( conIsComponent ? con.asRecipe.rootNode.tag : con.tag );
+            conInstance && (conInstance.rootEl = conEl);
+            conEl.key = conKey;
+            conEl.dataset.key = conKey;
+            if (con.handle) {
+              if (isRecipeRoot && asRecipe) {
+                if (asRecipe.rootNode.handle) {
+                  instance.el[asRecipe.rootNode.handle] = conEl;
+                }
+              } else {
+                instance.el[con.handle] = conEl;
+              }
+            }
+            key2el[conKey] = conEl;
+            // ok to change style display, if it will be displayed, the properties will be reset
+            // on refresh
+            conEl.style.display = 'none';
+            el.append( conEl );
+          }
+
+          if (con.if) {
+            conditionalDone = lastConditionalWasTrue = con.if( instance );
+            lastWasConditional = true;
+          } else if (con.elseif) {
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+            } else {
+              conditionalDone = lastConditionalWasTrue = con.elseif( instance );
+            }
+          } else if (con.else) {
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+            } else {
+              lastConditionalWasTrue = true;
+            }
+          } else {
+            lastWasConditional = false;
+          }
+
+          if (lastWasConditional === false || lastConditionalWasTrue) {
+            // this element should be visible and populated
+
+            if (con.foreach) {
+              // remove extras but never the first index
+              const forval = con.forval;
+              const list = con.foreach( instance );
+              const upto = instance.lastcount[forval];
+              if (instance.lastcount[forval] > list.length) {
+                for (let i=list.length === 0 ? 1 : list.length; i<instance.lastcount[forval]; i++) {
+                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  const itEl = key2el[conKey];
+                  itEl && itEl.remove();
+                }
+              }
+              instance.lastcount[forval] = list.length;
+              if (list.length === 0) {
+                conEl.style.display = 'none';
+              } else {
+                // make sure each foreach list item is populated
+                // for those that are for instances, they each get their
+                // own instance
+                let lastEl;
+                for (let i=0; i<list.length; i++ ) {
+                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  let forEl = key2el[conKey];
+                  if (forEl) {
+                    conEl.style.display = null;
+                  } else {
+                    forEl = document.createElement( conIsComponent ? asRecipe.rootNode.tag : con.tag );
+                    forEl.key = conKey;
+                    forEl.dataset.key = conKey;
+                    lastEl.after( forEl );
+                  }
+                  instance.idx[forval] = i;
+                  instance.it[forval] = list[i];
+                  lastEl = forEl;
+
+                  if (asRecipe) {
+                    let forInstance = instance._key2subinstance[ conKey ];
+                    if (!forInstance) {
+                      forInstance = newInstance( asRecipe, con, instance );
+                      forInstance.rootEl = forEl;
+                      instance._key2subinstance[ conKey ] = forInstance;
+                      if (asRecipe && con.handle) {
+                        instance.comp[con.handle] = instance.comp[con.handle] || [];
+                        instance.comp[con.handle][i] = forInstance;
+                      }
+                    }
+                    forInstance.refresh( forEl, con );
+                    if (con.contents) {
+                      // more contents to hang inside a child of the internal instance
+                      // though maybe in refresh?
+                      const intEl = findInternalContent( conEl );
+                      if (intEl) {
+                        forInstance.refresh( intEl, con.contents );
+                      }
+                    }
+                  } else {
+                    instance.refresh( forEl, con, conKey );
+                  }
+                }
+              }
+            } // end of foreach
+            else if (conIsComponent) {
+              // recipe instance node that may have extra contents
+              conEl.style.display = null;
+              conInstance._refreshComponent( conEl, con, conKey );
+              if (con.contents) {
+                // more contents to hang inside a child of the internal instance
+                // though maybe in refresh?
+                const intEl = findInternalContent( conEl );
+                if (intEl) {
+                  conInstance._refreshElement( intEl, con.contents );
+                }
+              }
+            } else {
+              // element node
+              conEl.style.display = null;
+              instance._refreshElement( conEl, con, conKey );
+            }
+          } else {
+            // hide this
+            conEl.style.display = 'none';
+            // if a list, remove all but the first
+            if (con.foreach) {
+              const upto = instance.lastcount[instance.forval];
+              for (let i=1; i<upto; i++) {
+                conKey = conKey.replace( /_\d+$/, '_' + i );
+                key2el[conKey].remove();
+              }
+            }
+
+          }
+        } );
+    } // if this has contents in it
+
+  }; //_refreshElement
+
+
+  instance._refreshComponent = ( el, node, key ) => {
+    console.log( el, node, `REFRESH COMPONENT ${key}` );
+    // node in this case is of type 'component' so it
+    // is going to look up its recipe then find the root
+    // node of that to refresh
+    let componentInstance = instance._key2subinstance[key];
+    const needsInit = !!!componentInstance;
+    if (! componentInstance ) {
+      componentInstance = newInstance(node, instance);
+      // needs an element to attach
+      const rootEl = document.createElement( node.asRecipe.rootNode.tag );
+      const rootKey = `${componentInstance.id}.${node.id}`;
+      componentInstance.rootEl = rootEl;
+    }
+
+    componentInstance.refresh();
+    if (needsInit) {
+      debugger;
+      // indicates that this is the root node for a component that
+      // has not had its onLoad done. The preLoad may be a promise,
+      // so resolve that and then run the onLoad
+      Promise.resolve( instance.preLoad )
+        .then (() => node.asRecipe.onLoad( instance ) );
+    }
+
+  }; //_componentRefresh
+
+  instance.refresh = () => {
+    // refreshses a component, like the body for example
+    const recipe = asRecipe;
+    const el = instance.rootEl;
+    const rootNode = recipe.rootNode;
+
+    // root node may not be a component
+    instance._refreshElement( el, rootNode, `${instance.id}.${rootNode.id}` );
+  }; //refresh
+
+  asRecipe.preLoad && (instance.preLoad = asRecipe.preLoad(instance));
+
+  return instance;
+
+
+}; //newInstance
+
+/*
+
 const newComponentInstance = (recipe,recipeNode,parent) => {
 
   // discover state data and state data generating functions
@@ -901,3 +1335,344 @@ const findInternalContent = (el,recur) => {
     return el;
   }
 };
+*/
+/*
+
+  body has a definition that corresponds to a body entry without any arguments
+
+  onload
+
+     * html.head title, load css & js
+
+     * find html.body recipe & all recipes in all filespaces
+         - assign id to each recipe
+         - consistency check for if/then/else
+         - map name -> recipe (namespace.recipes map)
+
+     * build top instance for document.body from recipe + body 'request' without args
+         - create state (instance builder may take a parent state)
+         - has body tag for top instance
+         - assign id, state, recipe to instance
+         - assign insertion request tag 'args' ( {} in this case ) to instance (as args)
+         - assign instance to state
+
+         ~ run preLoad (only for top)
+
+         - create instance tree (contents)
+             * iterate over recipe contents
+                 - assign id to instance
+                 - assign top instance to instance
+                 - attach to contents
+
+     * add instance top child to attach point (document.body)
+        - call update instance with body recipe, args
+
+     * update instance( instance/recipe, args )
+         - use seen i think
+         - find all properties/attributes in args (override) calculate,
+                                             instance calculate,
+                                             args attrs,
+                                             instance attrs
+
+         - id of attach point is the id of the instance or 'id_0'
+           it is a foreach
+
+         - map child element array into element key -> element
+         - iterate over instance contents / idx
+            - check if/then/else ( if 'if', check if value.
+                                               if true, proceed with installing instance
+                                              and set lastif=true,lastifvalue=true
+                                              otherwise lastifvalue=false
+                                   if 'elseif', check if lastifvalue=false && elseif true
+                                               if true, proceed with installing instance
+                                               and set lastif=true,lastifvalue=true
+                                              otherwise lastifvalue=false
+                                   if 'else', check if lastifvalue=false
+                                               if true, proceed with installing instance
+                                               and set lastif=false,lastifvalue=false )
+                  * if lastifvalue=false
+                      * if element key in child element map, then remove that child
+                  * elseif child element map[key]
+                      * update child element map[key] with instance, state
+                  * else
+                      * thisel = new element
+                      * if is a recipe, make a new instance and state
+                      * update child element map[key] with instance, state
+            - has foreach/forval? that returns an array
+                - iterate over list items, idx
+                    * set s.idx[forval] = idx
+                    * set s.it[forval] = items[idx]
+                - remove extra elements that may be there from a previous refresh
+ */
+
+/*
+  // ah, the big one. should have flavors
+  // for element refresh or for instance refresh
+  instance.old_refresh = ( el, node, key ) => {
+
+    const inRecipe = instance.inRecipe;
+
+    el = el || instance.rootEl;
+    node = node || recipe.rootNode;
+    key = key || instance.id; // for foreach case
+
+    const needsInit = el.hasInit ? false : true;
+    const isRecipeRoot = node.isRoot;
+
+    if (needsInit) {
+      // element has not been given a key, so not initied
+      el.hasInit = true;
+
+      el.key = key;
+      el.dataset.key = key;
+
+      instance.rootEl || (instance.rootEl = el);
+
+      // attach element event handlers
+      if (! isRecipeRoot && node.on) {
+        Object.keys( node.on ).forEach( evname => {
+          const evfun = function() {
+            const prom = node.on[evname]( instance, ...arguments );
+            // resolve in case it returns undefined or returns a promise
+            Promise.resolve( prom )
+              .then( () => {
+                if ( instance._check() ) instance.refresh();
+              } );
+          };
+          // element event listeners
+          el.addEventListener( evname, evfun );
+        } );
+      }
+    }
+
+    // update calculated element attrs
+    const seen = { id: 1 };
+    [ node.calculate, asRecipe.calculate ]
+      .forEach( calcs =>
+        calcs && Object.keys(calcs)
+          .forEach( attr => {
+            seen[attr] = seen[attr] || 0;
+            if (0 === seen[attr]++) {
+              if (attr.match( /^(textContent|innerHTML)$/)) {
+                el[attr] = calcs[attr](instance);
+              } else {
+                el.setAttribute( attr, calcs[attr](instance) );
+              }
+            }
+          }));
+
+    // update element attrs and textContent assigned with constants
+    [ node.attrs, node.nodeRecipe && asRecipe.rootNode.attrs ]
+      .forEach( attrs =>
+        attrs && Object.keys(attrs)
+          .forEach( attr => {
+            seen[attr] = seen[attr] || 0;
+            if (0 === seen[attr]++) {
+              if (attr === 'textContent') {
+                el.textContent = attrs[attr];
+              } else if (attr === 'innerHTML') {
+                el.innerHTML = attrs[attr];
+              } else {
+                el.setAttribute( attr, attrs[attr] );
+              }
+            }
+          }));
+
+    // get a census of key --> element for child elements of this element.
+    // then build the nodes as needed
+    const key2el = {};
+    Array.from( el.children )
+      .forEach( el => el.key && ( key2el[el.key] = el ) );
+
+    // now fill in the contents. first make sure that the contents have
+    // corresponding elements
+    const contents = isRecipeRoot ? asRecipe.rootNode.contents : node.contents;
+
+    if (contents) {
+      let lastWasConditional = false,
+          conditionalDone = false,
+          lastConditionalWasTrue = false;
+
+      contents
+        .forEach( con => {
+          let conKey, conEl, conInstance;
+          const asRecipe = con.nodeRecipe;
+          if (asRecipe) {
+            // translate asRecipe id and con id to a instance lookup
+            const lookup = `${instance.id}_${con.id}`;
+            conInstance = instance._key2subinstance[ lookup ];
+            if ( ! conInstance ) {
+              conInstance = newInstance(asRecipe,con,instance);
+              if (con.handle) {
+                instance.comp[con.handle] = conInstance;
+              }
+              con.on && Object.keys( con.on ).forEach( evname => {
+                const evfun = function() {
+                  const prom = con.on[evname]( instance, ...arguments );
+                  // resolve in case it returns undefined or returns a promise
+                  Promise.resolve( prom )
+                    .then( () => {
+                      if ( instance._check() ) instance.refresh();
+                    } );
+                };
+                // node event listeners
+                conInstance.eventListeners[evname] = conInstance.eventListeners[evname] || [];
+                conInstance.eventListeners[evname].push( evfun );
+              } );
+
+              instance._key2subinstance[ lookup ] = conInstance;
+            }
+            conKey = conInstance.id;
+          } else {
+            conKey = `${instance.id}_${con.id}`;
+          }
+          if (con.foreach) {
+            conKey = conKey + '_0';
+          }
+
+          conEl = key2el[ conKey ];
+          if (!conEl) {
+            conEl = document.createElement( asRecipe ? asRecipe.rootNode.tag : con.tag );
+            conEl.key = conKey;
+            conEl.dataset.key = conKey;
+            if (con.handle) {
+              if (isRecipeRoot && asRecipe) {
+                if (asRecipe.rootNode.handle) {
+                  instance.el[asRecipe.rootNode.handle] = conEl;
+                }
+              } else {
+                instance.el[con.handle] = conEl;
+              }
+            }
+            key2el[conKey] = conEl;
+            // ok to change style display, if it will be displayed, the properties will be reset
+            // on refresh
+            conEl.style.display = 'none';
+            el.append( conEl );
+          }
+
+          if (con.if) {
+            conditionalDone = lastConditionalWasTrue = con.if( instance );
+            lastWasConditional = true;
+          } else if (con.elseif) {
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+            } else {
+              conditionalDone = lastConditionalWasTrue = con.elseif( instance );
+            }
+          } else if (con.else) {
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+            } else {
+              lastConditionalWasTrue = true;
+            }
+          } else {
+            lastWasConditional = false;
+          }
+
+          if (lastWasConditional === false || lastConditionalWasTrue) {
+            // this element should be visible and populated
+
+            if (con.foreach) {
+              // remove extras but never the first index
+              const forval = con.forval;
+              const list = con.foreach( instance );
+              const upto = instance.lastcount[forval];
+              if (instance.lastcount[forval] > list.length) {
+                for (let i=list.length === 0 ? 1 : list.length; i<instance.lastcount[forval]; i++) {
+                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  const itEl = key2el[conKey];
+                  itEl && itEl.remove();
+                }
+              }
+              instance.lastcount[forval] = list.length;
+              if (list.length === 0) {
+                conEl.style.display = 'none';
+              } else {
+                // make sure each foreach list item is populated
+                // for those that are for instances, they each get their
+                // own instance
+                let lastEl;
+                for (let i=0; i<list.length; i++ ) {
+                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  let forEl = key2el[conKey];
+                  if (forEl) {
+                    conEl.style.display = null;
+                  } else {
+                    forEl = document.createElement( asRecipe ? asRecipe.rootNode.tag : con.tag );
+                    forEl.key = conKey;
+                    forEl.dataset.key = conKey;
+                    lastEl.after( forEl );
+                  }
+                  instance.idx[forval] = i;
+                  instance.it[forval] = list[i];
+                  lastEl = forEl;
+
+                  if (asRecipe) {
+                    let forInstance = instance._key2subinstance[ conKey ];
+                    if (!forInstance) {
+                      forInstance = newInstance( asRecipe, con, instance );
+                      instance._key2subinstance[ conKey ] = forInstance;
+                      if (asRecipe && con.handle) {
+                        instance.comp[con.handle] = instance.comp[con.handle] || [];
+                        instance.comp[con.handle][i] = forInstance;
+                      }
+                    }
+                    forInstance.refresh( forEl, con );
+                    if (con.contents) {
+                      // more contents to hang inside a child of the internal instance
+                      // though maybe in refresh?
+                      const intEl = findInternalContent( conEl );
+                      if (intEl) {
+                        forInstance.refresh( intEl, con.contents );
+                      }
+                    }
+                  } else {
+                    instance.refresh( forEl, con, conKey );
+                  }
+                }
+              }
+            } // end of foreach
+            else if (asRecipe) {
+              // recipe instance node that may have extra contents
+              conEl.style.display = null;
+              conInstance.refresh( conEl, con, conKey );
+              if (con.contents) {
+                // more contents to hang inside a child of the internal instance
+                // though maybe in refresh?
+                const intEl = findInternalContent( conEl );
+                if (intEl) {
+                  conInstance.refresh( intEl, con.contents );
+                }
+              }
+            } else {
+              // html element node
+              conEl.style.display = null;
+              instance.refresh( conEl, con, conKey );
+            }
+          } else {
+            // hide this
+            conEl.style.display = 'none';
+            // if a list, remove all but the first
+            if (con.foreach) {
+              const upto = instance.lastcount[instance.forval];
+              for (let i=1; i<upto; i++) {
+                conKey = conKey.replace( /_\d+$/, '_' + i );
+                key2el[conKey].remove();
+              }
+            }
+
+          }
+        } );
+    } // if contents
+
+    if (needsInit && isRecipeRoot) {
+      // indicates that this is a recipe (instance) node that
+      // has not had its onLoad done. The preLoad may be a promise,
+      // so resolve that and then run the onLoad
+      asRecipe.onLoad &&
+        Promise.resolve( instance.preLoad )
+        .then (r =>asRecipe.onLoad(instance) );
+    }
+  }; //refresh
+*/
