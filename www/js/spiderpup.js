@@ -484,7 +484,6 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                           component.comp[con.handle][i] = forComponent;
                         }
                       }
-                      if (forEl.tagName === 'SECTION') { debugger; }
                       forComponent.refresh( forEl, con );
                       if (con.contents) {
                         // more contents to hang inside a child of the internal component
@@ -582,7 +581,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
   };
 
   component.set = function(k,v) { 
-    this._changed = v !== this._data[k];
+    this._changed = this._changed || v !== this._data[k];
     this._data[k] = v; 
   };
 

@@ -22,8 +22,15 @@ style: >-
     }
     main {
        margin-top: 2em;
-       .login-control {
-          margin: auto;
+       display: flex;
+       > div {
+          margin: 0 auto;
+       }
+       form {
+         margin-block-end: 0;
+         a {
+           text-align: center;
+         }
        }
     }
   }
@@ -91,31 +98,31 @@ body:
   contents:
     - header:
     - main:
-      - h1: c => c.get( 'pageMode' )
+        - div:
+            - h1: c => c.get( 'pageMode' )
 
-      - loginControl:
-          if: c => c.get( 'pageMode' ) === 'logging-in'
-      - div:
-          if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'logging-in'
-          textContent: logged in stuff
-      - div:
-          if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'logging-in'
-          contents:
-            - form:
-                on_submit: >-
-                  (c,ev) => { ev.preventDefault();
+            - loginControl:
+                if: c => c.get( 'pageMode' ) === 'logging-in'
+            - div:
+                if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'logging-in'
+                textContent: logged in stuff
+            - div:
+                if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'logging-in'
+                contents:
+                  - form:
+                      on_submit: >-
+                        (c,ev) => { ev.preventDefault();
                               yote.apps.test.echo( c.el.something.value )
                                  .then( r => alert( 'hello world ' + r ) ); }
-                contents:
-                  - input:
-                      placeholder: say something
-                      handle: something
-                      required: true
-                  - button: click me
-      - div:
-          if: c => ! c.get('app')
-          textContent: app not yet loaded
-
+                      contents:
+                        - input:
+                            placeholder: say something
+                            handle: something
+                            required: true
+                        - button: click me
+            - div:
+                if: c => ! c.get('app')
+                textContent: app not yet loaded
 
 components:
   header:
@@ -251,7 +258,6 @@ components:
 
     contents:
       - section:
-          class: login-control
           style: display: inline-block; border: solid 3px black; padding: .5em;
           contents:
             - div:
