@@ -135,7 +135,6 @@ sub encode_functions_and_attrs {
     if ($node_data->{on}) {
         $node->{on} = encode_fun_hash( $node_data->{on}, $funs );
     }
-
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
         if ($field =~ /^(functions)$/) {
@@ -149,6 +148,9 @@ sub encode_functions_and_attrs {
         }
         elsif ($field =~ /^on_(.*)/) {
             $node->{on}{$1} = encode_fun( $node_data, $field, $funs );
+        }
+        elsif ($field =~ /^listen$/) {
+            $node->{listen} = encode_fun( $node_data, $field, $funs );
         }
         elsif ($field =~ /^(data|forval|handle|internalContent)$/) {
             if ($field eq 'data') {

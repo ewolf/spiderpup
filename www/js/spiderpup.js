@@ -73,8 +73,8 @@ window.onload = ev => {
   const html = defaultNamespace.html;
 
   const pageComponent = newComponentInstance( { data: defaultNamespace.data,
-                                        functions: defaultNamespace.functions,
-                                      }, {} );
+                                                functions: defaultNamespace.functions,
+                                              }, {} );
   if (html && html.body) {
     if (html.head) {
       const head = document.head;
@@ -165,6 +165,7 @@ window.onload = ev => {
     const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
     const bodyComponent = newComponentInstance( bodyRecipe, html.body, pageComponent );
+    pageComponent._key2subcomponent['body'] = bodyComponent;
     html.body.key = bodyRecipe.id;
     bodyComponent.refresh( document.body );
 
@@ -198,7 +199,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
   const nodeDataFunConvert = {};
 
   // populate data
-  recipe && recipe.data && 
+  recipe.data && 
     Object.keys(recipe.data).forEach( arg => {
       let val = recipe.data[arg];
       if (typeof val === 'string') {
@@ -218,7 +219,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     } );
 
 
-  recipeNode && recipeNode.data && 
+  recipeNode.data && 
     Object.keys(recipeNode.data).forEach( arg => {
       let val = recipeNode.data[arg];
       if (typeof val === 'string') {
@@ -245,7 +246,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     desc : `component for recipe '${recipe.name}'`,
 
     parent,
-
+    
     _key2subcomponent: {},
 
     calc   : {}, // attribute name -> calculation
@@ -259,6 +260,9 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
 
     refresh: function( el, node, key ) {
       const component = this;
+      if (!component.parent) { // the root
+        return component._key2subcomponent.body.refresh(document.body);
+      }
       const recipe = component.recipe;
       el = el || component.rootEl;
       node = node || recipe.rootNode;
@@ -521,16 +525,30 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
                  .then (r =>recipe.onLoad(component) );
       }
     }, //refresh
+
+
+    broadcastListener: (recipe.listen || recipeNode.listen),
+
   }; //component
 
-  // find the top level / page level component
-  component.top = parent.top || component;
+  component.top = (parent && parent.top) || component;
 
-  // propageMessage
-  
-  // initiateMessage
-  
+  // called in the recipe to broadcast a message
+  component.broadcast = (tag,msg) => {
+    component.top.propagateBroadcast(tag,msg);
+    component.top.refresh();
+  }
 
+  // propagateMessage
+  component.propagateBroadcast = (tag,msg) => {
+    // checks to see if this node has listeners for the message
+    component.broadcastListener && component.broadcastListener(component,tag,msg);
+
+    // propagates here and each child with the given message
+    Object.values( component._key2subcomponent ).forEach( c => c.propagateBroadcast(tag,msg) );
+  };
+
+  // this sends a component event, called in the recipe
   component.event = (event,result) => {
     const listeners = component.eventListeners[event];
     listeners && listeners.forEach( l => l( result ) );
@@ -583,7 +601,7 @@ const compileBody = (body, filename, namespace) => {
 
   const nodeRecipe = {};
   body.nodeRecipe = body.recipe = nodeRecipe;
-  [ 'data', 'functions', 'preLoad', 'onLoad' ]
+  [ 'data', 'functions', 'preLoad', 'onLoad', 'listen' ]
     .forEach( bp => {
       const val = body[bp];
       if (val) {
@@ -597,9 +615,7 @@ const compileBody = (body, filename, namespace) => {
                             contents: body.contents } ];
 
   namespace.components.body = nodeRecipe;
-
   compileRecipe( nodeRecipe, filename, 'body' );
-
   return nodeRecipe;
 
 }; //compileBody
@@ -700,10 +716,7 @@ const prepFunctions = (node, filename, recipeName) => {
   const calcs = node.calculate = node.calculate || {};
   Object.keys( node ).forEach( key => {
     const val = node[key];
-    const m = key.match( /^on_(.*)/ );
-    if (m) {
-      on[ m[1] ] = funs[ val ];
-    } else if (key.match( /^((pre|on)Load|if|elseif|foreach)$/ ) ) {
+    if (key.match( /^((pre|on)Load|if|elseif|foreach|listen)$/ ) ) {
       node[key] = funs[ val ];
     } else if (key.match( /^(calculate|on|functions)$/ ) ) {
       Object.keys( val ).forEach( fld => val[fld] = funs[val[fld]]);

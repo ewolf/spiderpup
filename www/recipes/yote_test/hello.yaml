@@ -4,111 +4,146 @@ html:
   head:
     title: yote test
   body:
-    preLoad: >-
-      () => yote.fetchApp( 'test' )
-
+    listen: >-
+      (c,msg,data) => {
+        if (msg === 'login') {
+           c.data.set( 'login', data );
+        }
+        else if (msg === 'logout') {
+           c.data.set( 'login', undefined );
+        }
+        else if (msg === 'app') {
+           c.data.set( 'app', data );
+        }
+      }
     contents:
       - h1: yote test
-      - form:
-          on_submit: (s,ev) => { ev.preventDefault(); yote.apps.test.echo( s.el.something.value ).then( r => alert( 'hello world ' + r ) ); }
-          contents:
-            - input:
-                placeholder: say something
-                handle: something
-                required: true
-            - button: click me
-
       - div: hi there
       - loginControl:
           handle: loginControl
-    onLoad: >-
-      s => s.comp.loginControl.fun.setApp( yote.apps.test )
+          data:
+            appName: test
+      - div:
+          if: c => c.data.get( 'login' )
+          textContent: logged in stuff
+      - div:
+          elseif: c => c.data.get( 'app' )
+          content:
+            - form:
+                on_submit: (c,ev) => { ev.preventDefault(); yote.apps.test.echo( c.el.something.value ).then( r => alert( 'hello world ' + r ) ); }
+              contents:
+                - input:
+                    placeholder: say something
+                    handle: something
+                    required: true
+                - button: click me
+      - div:
+          else:
+          textContent: app not yet loaded
       
 
 components:
   loginControl:
-    preLoad: >
-      (s,ev) => {
-        s.data.set( 'app', yote.apps[s.data.get('app')] );
-      }
+    onLoad: >-
+      c => { 
+        yote.fetchAppTryLogin( c.data.get( 'appName' ) )
+          .then( app => {
+             if (app) {
+               c.broadcast( 'app', app );
+               if (app.acct) {
+                 c.broadcast( 'login', app.acct );
+               }
+             }
+          }) }
     functions:
-      setApp: (s,app) => s.data.set( 'app', app )
-      app: s => s.data.get( 'app' )
+      app: c => c.data.get( 'app' )
       check: >
-        (s,ev) => {
-          if (!s.el.login.value) {
-             s.el.login.style['background-color'] = 'pink';
+        (c,ev) => {
+          if (!c.el.login.value) {
+             c.el.login.style['background-color'] = 'pink';
           } else {
-             delete s.el.login.style['background-color'];
-             // s.el.login.style['background-color'] = 'green';
+             delete c.el.login.style['background-color'];
+             // c.el.login.style['background-color'] = 'green';
           }
-          if (!s.el.password.value) {
-             s.el.password.style['background-color'] = 'pink';
+          if (!c.el.password.value) {
+             c.el.password.style['background-color'] = 'pink';
           } else {
-             delete s.el.password.style['background-color'];
-             // s.el.password.style['background-color'] = 'green';
+             delete c.el.password.style['background-color'];
+             // c.el.password.style['background-color'] = 'green';
           }
         }
+
       checkCreate: >
-        (s,ev) => {
-          if (!s.el.handle.value) {
-             s.el.handle.style['background-color'] = 'pink';
+        (c,ev) => {
+          if (!c.el.handle.value) {
+             c.el.handle.style['background-color'] = 'pink';
           } else {
-             delete s.el.handle.style['background-color'];
-             // s.el.handle.style['background-color'] = 'green';
+             delete c.el.handle.style['background-color'];
+             // c.el.handle.style['background-color'] = 'green';
           }
-          if (!s.el.email.value) {
-             s.el.email.style['background-color'] = 'pink';
+          if (!c.el.email.value) {
+             c.el.email.style['background-color'] = 'pink';
           } else {
-             delete s.el.email.style['background-color'];
-             // s.el.email.style['background-color'] = 'green';
+             delete c.el.email.style['background-color'];
+             // c.el.email.style['background-color'] = 'green';
           }
-          if (!s.el.password.value) {
-             s.el.password.style['background-color'] = 'pink';
+          if (!c.el.password.value) {
+             c.el.password.style['background-color'] = 'pink';
           } else {
-             delete s.el.password.style['background-color'];
-             // s.el.password.style['background-color'] = 'green';
+             delete c.el.password.style['background-color'];
+             // c.el.password.style['background-color'] = 'green';
           }
         }
 
       login: >
-        (s,login,password) => s.data.get('app')
+        (c,login,password) => c.data.get('app')
           .login( { login, password } )
-           .then( acct => { s.el.login.value = ''; s.el.password.value = ''; s.data.set( 'login', acct ); } )
-          .catch( err => { alert(err);  } )
+           .then( acct => { c.el.login.value = ''; 
+                            c.el.password.value = ''; 
+                            c.data.set( 'login', acct );
+                            c.broadcast( 'login', acct );
+                          })
+           .catch( err => { alert(err); } )
       logout: >-
-        s => s.data.get('app')
-           .logout()
-             .then( msg => { console.log( msg ); s.data.set('login',undefined) } )
-             .catch( err => { console.log( err ); s.data.set('login',undefined) } )
+        c => yote.logout( c.data.get('appName') )
+             .then( msg => { c.data.set('login',undefined); c.broadcast( 'logout' ) } )
+             .catch( err => { c.data.set('login',undefined); c.broadcast( 'logout' ) } )
       createAccount: >
-        (s,handle,email,password) => s.data.get('app')
+        (c,handle,email,password) => app()
            .create_account( { handle, email, password } )
-                     .then( acct => { s.el.email.value = ''; s.el.login.value = ''; s.el.password.value = ''; s.data.set( 'login', acct ) } )
+                     .then( acct => { c.el.email.value = ''; 
+                                      c.el.login.value = ''; 
+                                      c.el.password.value = ''; 
+                                      c.data.set( 'login', acct );
+                                      c.broadcast( 'login', acct );
+                                     } )
                     .catch( err => alert(err) )
+                    
     contents:
       - div:
           - div:
-              if: s => s.data.get( 'login' )
+              # logged in / logout
+              if: c => c.data.get( 'login' )
               contents:
-                - span: s => `welcome ${s.data.get('login').handle}`
+                - span: c => `welcome ${c.data.get('login').handle}`
                 - a:
                     textContent: log out
                     href: '#'
                     on_click: >-
-                      (s,ev) => {
+                      (c,ev) => {
                         ev.preventDefault();
-                        return s.fun.logout();
+                        return c.fun.logout();
                       }
           - div:
-              elseif: s => s.data.get( 'create-account' )
+              # create account
+              elseif: c => c.data.get( 'create-account' )
               contents:
                 - form:
                     on_submit: >-
-                      (s,ev) => { ev.preventDefault();
-                         s.fun.createAccount( s.el.handle.value,
-                                              s.el.email.value,
-                                              s.el.password.value ) }
+                      (c,ev) => { ev.preventDefault();
+                         c.fun.createAccount( c.el.handle.value,
+                                              c.el.email.value,
+                                              c.el.password.value ) }
                     style: display: inline-block; border: solid 3px black; padding: .5em;
                     contents:
                       - div:
@@ -120,30 +155,31 @@ components:
                                 type: text
                                 style: margin: 3px auto
                                 required: true
-                                on_keyup: (s,ev) => s.fun.checkCreate(ev)
+                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
                             - input:
                                 handle: email
                                 placeholder: email
                                 type: text
                                 style: margin: 3px auto
                                 required: true
-                                on_keyup: (s,ev) => s.fun.checkCreate(ev)
+                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
                             - input:
                                 handle: password
                                 style: margin: 3px auto
                                 type: password
                                 placeholder: password
                                 required: true
-                                on_keyup: (s,ev) => s.fun.checkCreate(ev)
+                                on_keyup: (c,ev) => c.fun.checkCreate(ev)
                             - button:
                                 style: margin: 3px auto
                                 type: submit
                                 textContent: Create Account
           - div:
-              else:
+              # login
+              elseif: c => c.data.get( 'app' )
               contents:
                 - form:
-                    on_submit: (s,ev) => { debugger; ev.preventDefault(); s.fun.login( s.el.login.value, s.el.password.value ) }
+                    on_submit: (c,ev) => { ev.preventDefault(); c.fun.login( c.el.login.value, c.el.password.value ) }
                     style: display: inline-block; border: solid 3px black; padding: .5em;
                     contents:
                       - div:
@@ -155,19 +191,19 @@ components:
                                 type: text
                                 style: margin: 3px auto
                                 required: true
-                                on_keyup: (s,ev) => s.fun.check(ev)
+                                on_keyup: (c,ev) => c.fun.check(ev)
                             - input:
                                 handle: password
                                 style: margin: 3px auto
                                 type: password
                                 placeholder: password
                                 required: true
-                                on_keyup: (s,ev) => s.fun.check(ev)
+                                on_keyup: (c,ev) => c.fun.check(ev)
                             - button:
                                 style: margin: 3px auto
                                 type: submit
                                 textContent: Log In
                             - a:
                                 href: '#'
-                                on_click: (s,ev) => s.data.set('create-account','1')
+                                on_click: (c,ev) => c.data.set('create-account','1')
                                 textContent: 'create account'
