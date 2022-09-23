@@ -1,13 +1,73 @@
 ---
 
 javascript: |
+
+  function reset() {
+    // empty and clear attributes
+    document.body.innerHTML = '';
+  }
+
+  function elPath(string) {
+    const pathParts = string.toLowerCase().split( '|' );
+    
+    if (pathParts.length === 0 || pathParts[0] !== 'body') {
+      console.warn( "elPath path must start with body. that's just how it is" );
+      return undefined;
+    }
+
+    let node = document.body;
+    for (let i=1; i<pathParts.length; i++) {
+      const [ pp, number, tag ] = pathParts[i].split( /^(\d+)[^a-z]*(.*)$/ );
+      number = parseInt(number);
+      const childel = node.children[number];
+      if (childel && childel.tagName === tag.toUpperCase()) {
+        node = childel;
+      } else {
+        return undefined;
+      }
+    }
+
+    return node;
+  } //elPath
+
+  let ran = 0;
+  let passes = 0;
+  let fails = 0;
+
+  function is( actual, expected, msg ) {
+    if (actual === expected) {
+      passes++;
+      console.log( `passed: test '${msg}'` );
+    } else {
+      fails++;
+      console.log( `failed: test '${msg}'. expected '${expected}' and got '${actual}'` );
+    }
+  }
+  function checkNode( actual, expected_attrs, msg ) {
+    if (! actual) {
+      console.log( `failed: test '${msg}'. html element not found` );
+    }
+    // check the expected attrs
+    Object.keys( expected_attrs ).forEach( attr => {
+      if (attr === 'textContent') {
+        
+      }
+    } );
+  }
+
   // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
   function test() {
-    const node = prepBodyNode( { attrs: {textContent: "BEEP"} }, filespaces[defaultFilename] );
-    const inst = newInstance( node );
-    inst.rootEl = document.body;
-    document.body.key = inst.id;
-    inst.refresh( document.body );
+    reset();
+    init( { TEST: 
+            { html: { body: { contents: [ {tag: 'div', attrs: { textContent: "FIRST" } },
+                                          {tag: 'div', attrs: { textContent: "SECOND" } } ] } },
+              components: {},
+            } },
+          [],
+          'TEST'
+        );
+    // document.body.key = inst.id;
+    //    inst.refresh( document.body );
   }
 
 body:
