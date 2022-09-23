@@ -348,6 +348,7 @@ const newInstance = (node, enclosingInstance) => {
 
     node,
     parent: enclosingInstance,
+    needsInit: true,
 
     type: `instance of ${asRecipe.name} from ${asNamespace.filename}`,
 
@@ -433,6 +434,10 @@ const newInstance = (node, enclosingInstance) => {
     return changed;
   };
 
+
+
+
+
   // INSTALL FUNCTIONS ----------------------
 
   // functions are installed in this order: namespace, recipe, enclosing instance and node
@@ -466,7 +471,11 @@ const newInstance = (node, enclosingInstance) => {
     );
 
 
+
+
+
   // SET UP LISTENERS -----------------
+
 
   // this sends a component event from its instance to its parent
   instance.event = (event,result) => {
@@ -837,23 +846,24 @@ const newInstance = (node, enclosingInstance) => {
 
   }; //_refreshComponent
 
-  // method refresh
+  // method refresh the instance
   instance.refresh = () => {
+
     // refreshses a component, like the body for example
     const recipe = asRecipe;
     const el = instance.rootEl;
     const rootNode = recipe.rootNode;
 
-    const needsInit = !!!el.hasInit;
-
     instance._refreshElement( el, rootNode );
     
-    if (needsInit && asRecipe.onLoad && asRecipe.name === 'body') {
+    if (instance.needsInit) {
       // indicates that this is the root node for a component that
       // has not had its onLoad done. The preLoad may be a promise,
       // so resolve that and then run the onLoad
+      instance.needsInit = false;
       Promise.resolve( instance.preLoad )
         .then (() => asRecipe.onLoad( instance ) );
+      
     }
   }; //refresh
 
