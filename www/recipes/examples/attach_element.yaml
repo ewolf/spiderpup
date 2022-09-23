@@ -1,17 +1,14 @@
 ---
-html:
-  body:
-    - h1: hello handles
-    - div:
-        - input:
-            type: text
-            attach-el: textfield
-            on:
-              change: s => s.refresh()
-        - button:
-            textContent: click
-            on:
-              click: s => s.refresh()
-        - div:
-            calculate:
-              textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+
+body:
+  - h1: hello handles
+  - div:
+      - input:
+          type: text
+          handle: textfield
+          on_change: c => c.refresh()
+      - button:
+          textContent: click
+          on_click: c => c.refresh()
+      - div:
+          textContent: c => c.el.textfield.value ? `you typed "${c.el.textfield.value}"` : ''

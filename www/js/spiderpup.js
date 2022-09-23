@@ -69,7 +69,7 @@ window.onload = ev => {
     console.log( filespaces );
 
     // now make an instance
-    const bodyInstance = newInstance( html.body );
+    const bodyInstance = newInstance( html.body, html.body.id );
     bodyInstance.rootEl = document.body;
     document.body.key = bodyInstance.id;
 
@@ -193,6 +193,7 @@ const prepNode = (node,namespace) => {
       node.name = 'body';
       const rootNode = { tag: 'body',
                          type: 'element',
+                         id: serial++,
                          isRoot: true,
                          contents: node.contents };
       node.rootNode = rootNode;
@@ -210,6 +211,7 @@ const prepNode = (node,namespace) => {
     node.contents.forEach( con => {
       const tag = con.tag;
       const tagParts = tag.split( '.');
+
       con.inRecipe = node.inRecipe;
 
       if ( [con.else, con.elseif, con.if].filter( x => x !== undefined ).length > 1 ) {
@@ -258,7 +260,7 @@ const attachFunctions = node => {
 
 const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
 
-const newInstance = (node, enclosingInstance) => {
+const newInstance = (node, key, enclosingInstance) => {
 
   // populate instance with the fields:
   //
@@ -305,9 +307,11 @@ const newInstance = (node, enclosingInstance) => {
   const asRecipe = node.asRecipe;
   const inNamespace = inRecipe.namespace;
   const asNamespace = asRecipe.namespace;
+  console.log( 'making instance of ' + asRecipe.name + ' ' + (serial+1) );
 
   const instance = {
     id: serial++,
+    key,
 
     node,
     parent: enclosingInstance,
@@ -437,7 +441,6 @@ const newInstance = (node, enclosingInstance) => {
   };
 
   instance._refreshElement = ( el, node, key ) => {
-    console.log( el, node, `REFRESH EL ${key}` );
     const needsInit = !!!el.hasInit;
     if (needsInit) {
       el.hasInit = true;
@@ -507,7 +510,6 @@ const newInstance = (node, enclosingInstance) => {
     // now fill in the contents. first make sure that the contents have
     // corresponding elements
     const isRecipeRoot = node.type === 'component';
-//console.warn('isRecipeRoot ? asRecipe.rootNode.contents : node.contents;');
     const contents = node.contents;
 
     if (contents) {
@@ -523,10 +525,12 @@ const newInstance = (node, enclosingInstance) => {
           if (conIsComponent) {
 
             // translate asRecipe id and con id to a instance lookup
-            const lookup = `${instance.id}.${con.id}`;
+            lookup = `${instance.id}.${con.id}`;
             conInstance = instance._key2subinstance[ lookup ];
             if ( ! conInstance ) {
-              conInstance = newInstance(con,instance);
+              console.log( "MAKING " + con.asRecipe.name + " >" + lookup );
+              instance._key2subinstance[ lookup ] = conInstance = newInstance(con,lookup,instance);
+              
               if (con.handle) {
                 instance.comp[con.handle] = conInstance;
               }
@@ -546,9 +550,9 @@ const newInstance = (node, enclosingInstance) => {
                 conInstance.eventListeners[evname].push( evfun );
               } );
 
-              instance._key2subinstance[ lookup ] = conInstance;
             }
-            conKey = `${conInstance.id}.${conInstance.node.asRecipe.rootNode.id}`;
+//            conKey = `${conInstance.id}.${conInstance.node.asRecipe.rootNode.id}`;
+            conKey = lookup;
           } else {
             conKey = `${instance.id}.${con.id}`;
           }
@@ -638,6 +642,8 @@ const newInstance = (node, enclosingInstance) => {
                   if (asRecipe) {
                     let forInstance = instance._key2subinstance[ conKey ];
                     if (!forInstance) {
+                      console.log( "! FORI" );
+                      alert("fix here");
                       forInstance = newInstance( asRecipe, con, instance );
                       forInstance.rootEl = forEl;
                       instance._key2subinstance[ conKey ] = forInstance;
@@ -698,7 +704,6 @@ const newInstance = (node, enclosingInstance) => {
 
 
   instance._refreshComponent = ( el, node, key ) => {
-    console.log( el, node, `REFRESH COMPONENT ${key}` );
 
     // node in this case is of type 'component' so it
     // is going to look up its recipe then find the root
@@ -731,7 +736,9 @@ const newInstance = (node, enclosingInstance) => {
     const el = instance.rootEl;
     const rootNode = recipe.rootNode;
 
-    instance._refreshElement( el, rootNode, `${instance.id}.${rootNode.id}` );
+    console.log( instance, recipe, el, rootNode,`REFRESH ${instance.key}` );
+
+    instance._refreshElement( el, rootNode, instance.key );
   }; //refresh
 
   asRecipe.preLoad && (instance.preLoad = asRecipe.preLoad(instance));
