@@ -120,7 +120,7 @@ data:
 onLoad: >-
   c => {
     // listen to page change event
-    c.namespace.logins.functions.tease();
+    //c.namespace.logins.functions.tease();
     addEventListener( 'popstate', ev => {
       c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
       c.refresh();
@@ -131,7 +131,6 @@ onLoad: >-
     yote.fetchAppTryLogin( c.get( 'appName' ) )
       .then( app => {
         if (app) {
-          alert('54');
           c.broadcast( 'app', app );
           if (app.acct) {
             c.broadcast( 'login', app.acct );

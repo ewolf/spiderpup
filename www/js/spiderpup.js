@@ -451,6 +451,12 @@ const newInstance = (node, enclosingInstance) => {
       instanceFuns[fun] = function() { return node.functions[fun]( instance, ...arguments ) }
     );
 
+  // set up all functions to take this instance as their first argument
+  Object.keys( instanceFuns )
+    .forEach( funName => {
+      const oldFun = instanceFuns[funName];
+      instanceFuns[funName] = function() { oldFun( instance, ...arguments ) };
+    } );
 
   // SET UP LISTENERS -----------------
 
@@ -602,17 +608,21 @@ const newInstance = (node, enclosingInstance) => {
           if (con.if) {
             conditionalDone = lastConditionalWasTrue = con.if( instance );
             lastWasConditional = true;
+            conEl.dataset.ifCondition = conditionalDone;
           } else if (con.elseif) {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
             } else {
               conditionalDone = lastConditionalWasTrue = con.elseif( instance );
+              conEl.dataset.elseIfCondition = conditionalDone;
             }
           } else if (con.else) {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
+              conEl.dataset['else'] = false;
             } else {
               lastConditionalWasTrue = true;
+              conEl.dataset['else'] = true;
             }
           } else {
             lastWasConditional = false;
@@ -650,7 +660,7 @@ const newInstance = (node, enclosingInstance) => {
 
                   let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el ) : instance._prepElement( con, conKey, lastEl, 'after' ) );
                   // hide this element for now
-                  forEl.style.display = null;
+                  forEl.style.display = 'none';
                   
                   // set the iteration temporary variables
                   instance.idx[forval] = i;
@@ -664,6 +674,11 @@ const newInstance = (node, enclosingInstance) => {
                       forInstance.rootEl = forEl;
                       instance._key2subinstance[ conKey ] = forInstance;
                     }
+
+                    const comps = instance.comp[con.handle] = instance.comp[con.handle] || [];
+                    comps.length = list.length;
+                    comps[i] = componentInstance;
+
                     forInstance._refreshComponent( con, forEl, i );
                     if (con.contents) {
                       // more contents to hang inside a child of the internal instance
@@ -701,6 +716,25 @@ const newInstance = (node, enclosingInstance) => {
               instance._refreshElement( conEl, con );
             }
           } else {
+            // if if is a component, if it has a handle, it should have an instance, hidden or not. 
+            if (con.isComponent && con.handle && ! instance.comp[con.handle]) {
+              let newinst;
+              if (con.foreach) {
+                instance.comp[con.handle] = instance.comp[con.handle] || [];
+                newinst
+                  = instance.comp[con.handle][0]
+                  = instance._key2subinstance[ conKey ]
+                  = newInstance( con, instance );
+                newinst.rootEl = conEl;
+              } else {
+                newinst 
+                  = instance.comp[con.handle]
+                  = instance._key2subinstance[ conKey ]
+                  = newInstance( con, instance );
+              }
+              newinst.rootEl = conEl;
+            }
+
             // hide this element
             conEl.style.display = 'none';
             // if a list, remove all but the first
@@ -754,16 +788,16 @@ const newInstance = (node, enclosingInstance) => {
         componentInstance.eventListeners[evname] = componentInstance.eventListeners[evname] || [];
         componentInstance.eventListeners[evname].push( evfun );
       } );
-    }
-
-    if (node.handle) {
-      if (idx !== undefined) {
-        instance.comp[node.handle] = instance.comp[node.handle] || [];
-        instance.comp[node.handle][idx] = componentInstance;
-      } else {
-        instance.comp[node.handle] = componentInstance;
+      if (node.handle) {
+        if (idx !== undefined) {
+          instance.comp[node.handle] = instance.comp[node.handle] || [];
+          instance.comp[node.handle][idx] = componentInstance;
+        } else {
+          instance.comp[node.handle] = componentInstance;
+        }
       }
     }
+
 
     componentInstance.refresh();
 
