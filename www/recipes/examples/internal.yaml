@@ -1,6 +1,10 @@
 ---
 
-style: span { margin: 5px }
+css: >-
+  span { 
+    border: solid 1px black;
+    margin: 5px;
+  }
 
 body:
   - with-specified-internal:

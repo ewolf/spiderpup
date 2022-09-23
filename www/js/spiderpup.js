@@ -317,8 +317,15 @@ const findInternalContent = (el,recur) => {
   if (!recur) {
     return el;
   }
+
 };
 
+const makeKey2el = el => {
+  const key2el = {};
+  Array.from( el.children )
+      .forEach( el => el.key && ( key2el[el.key] = el ) );
+  return key2el;
+}
 
 // node - root node of creating recipe
 const newInstance = (node, enclosingInstance) => {
@@ -473,6 +480,8 @@ const newInstance = (node, enclosingInstance) => {
     instance.top.refresh();
   };
 
+  
+
   // method _prepElement
   instance._prepElement = ( node, key, attachToEl, attachAfter ) => {
     const tag = node.isComponent ? node.asRecipe.rootNode.tag : node.tag;
@@ -561,10 +570,7 @@ const newInstance = (node, enclosingInstance) => {
           }));
 
     // get a census of key --> element for child elements of this element.
-    const key2el = {};
-    Array.from( el.children )
-      .forEach( el => el.key && ( key2el[el.key] = el ) );
-
+    const key2el = makeKey2el(el);
 
     // make this element visible
     el.style.display = null;
@@ -664,9 +670,12 @@ const newInstance = (node, enclosingInstance) => {
                       // more contents to hang inside a child of the internal instance
                       // though maybe in refresh?
                       const intEl = findInternalContent( conEl );
-                      if (intEl) {
-                        forInstance.refresh( intEl, con.contents );
-                      }
+                      const intKey2el = makeKey2el(intEl);
+                      const intRoot = con.contents[0];
+                      const intKey = `${instance.id}.${intRoot.id}_${i}`;
+                      const child = intKey2el[intKey] || forInstance._prepElement( intRoot, intKey, intEl );
+                
+                      forInstance._refreshElement( child, intRoot );
                     }
                   } else {
                     instance.refresh( forEl, con, conKey );
@@ -682,9 +691,12 @@ const newInstance = (node, enclosingInstance) => {
               // though maybe in refresh?
               if (con.contents && con.contents.length === 1) {
                 const intEl = findInternalContent( conEl );
-                if (intEl) {
-                  conInstance._refreshElement( intEl, con.contents[0] );
-                }
+                const intKey2el = makeKey2el(intEl);
+                const intRoot = con.contents[0];
+                const intKey = `${instance.id}.${intRoot.id}`;
+                const child = intKey2el[intKey] || instance._prepElement( intRoot, intKey, intEl );
+                
+                conInstance._refreshElement( child, intRoot );
               }
             } else {
               instance._refreshElement( conEl, con );
