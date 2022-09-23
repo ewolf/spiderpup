@@ -582,9 +582,6 @@ const newInstance = (node, enclosingInstance) => {
             }
           }));
 
-    // get a census of key --> element for child elements of this element.
-    const key2el = makeKey2el(el);
-
     // make this element visible
     if (!el.noshow) {
       el.style.display = null;
@@ -592,9 +589,15 @@ const newInstance = (node, enclosingInstance) => {
 
     // now fill in the contents. first make sure that the contents have
     // corresponding elements
-    const contents = node.contents;
+    instance._refreshContents(el, node.contents);
 
+  } // if this has contents in it
+
+  instance._refreshContents = ( el, contents ) => {
     if (contents) {
+      // get a census of key --> element for child elements of this element.
+      const key2el = makeKey2el(el);
+
       let lastWasConditional = false,
           conditionalDone = false,
           lastConditionalWasTrue = false;
