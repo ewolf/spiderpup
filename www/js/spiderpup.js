@@ -591,7 +591,7 @@ const newInstance = (node, enclosingInstance) => {
     // corresponding elements
     instance._refreshContents(el, node.contents);
 
-  } // if this has contents in it
+  }  // if this has contents in it
 
   instance._refreshContents = ( el, contents ) => {
     if (contents) {
