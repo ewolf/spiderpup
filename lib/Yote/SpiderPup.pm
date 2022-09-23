@@ -330,7 +330,9 @@ sub load_namespace {
 
         if ($body) {
 
-            $namespace->{html}{head}{title} = $yaml->{title};
+            if ($yaml->{title}) {
+                $namespace->{html}{head}{title} = $yaml->{title};
+            }
 
             for my $thing (qw( css javascript )) {
                 if (ref $yaml->{include}{$thing} eq 'ARRAY') {

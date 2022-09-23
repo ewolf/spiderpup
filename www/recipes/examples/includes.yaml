@@ -6,5 +6,5 @@ import:
 body:
   - foo.myform:
       functions:
-        foo: () => alert('include.yaml foo')
+        foo: () => alert('include.yaml foo overrides impy')
 
