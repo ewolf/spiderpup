@@ -322,7 +322,7 @@ const newInstance = (node, enclosingInstance) => {
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
     eventListeners: {}, // event name -> listeners
-    broadcastListener: (asRecipe.listen || enclosingInstance.listen),
+    broadcastListener: (asRecipe.listen || (enclosingInstance && enclosingInstance.listen)),
   };
 
 
@@ -467,7 +467,7 @@ const newInstance = (node, enclosingInstance) => {
 
     // set attributes from the element node
     // and if a root, update set attributes from its component node
-    [node.calculations, node.isRoot && instance.node.calculations ]
+    [node.calculate, node.isRoot && instance.node.calculate ]
     .forEach( calcs => 
       calcs && Object.keys(calcs)
         .forEach( attr => {
@@ -548,7 +548,7 @@ const newInstance = (node, enclosingInstance) => {
 
               instance._key2subinstance[ lookup ] = conInstance;
             }
-            conKey = conInstance.id;
+            conKey = `${conInstance.id}.${conInstance.node.asRecipe.rootNode.id}`;
           } else {
             conKey = `${instance.id}.${con.id}`;
           }
@@ -699,6 +699,7 @@ const newInstance = (node, enclosingInstance) => {
 
   instance._refreshComponent = ( el, node, key ) => {
     console.log( el, node, `REFRESH COMPONENT ${key}` );
+
     // node in this case is of type 'component' so it
     // is going to look up its recipe then find the root
     // node of that to refresh
@@ -706,15 +707,15 @@ const newInstance = (node, enclosingInstance) => {
     const needsInit = !!!componentInstance;
     if (! componentInstance ) {
       componentInstance = newInstance(node, instance);
+      instance._key2subinstance[key] = componentInstance;
       // needs an element to attach
       const rootEl = document.createElement( node.asRecipe.rootNode.tag );
+      el.append( rootEl );
       const rootKey = `${componentInstance.id}.${node.id}`;
       componentInstance.rootEl = rootEl;
     }
-
     componentInstance.refresh();
-    if (needsInit) {
-      debugger;
+    if (needsInit && node.asRecipe.onLoad) {
       // indicates that this is the root node for a component that
       // has not had its onLoad done. The preLoad may be a promise,
       // so resolve that and then run the onLoad
@@ -730,7 +731,6 @@ const newInstance = (node, enclosingInstance) => {
     const el = instance.rootEl;
     const rootNode = recipe.rootNode;
 
-    // root node may not be a component
     instance._refreshElement( el, rootNode, `${instance.id}.${rootNode.id}` );
   }; //refresh
 
