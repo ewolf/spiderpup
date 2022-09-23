@@ -242,8 +242,8 @@ javascript: |
     checkNode( "body|1 div|1 div|0 span", { textContent: 'BAR2' }, 'bar override' );
 
     checkNode( "body|1 div|2 div|0 span", { textContent: 'BAR3' }, 'third bar' );
-    checkNode( "body|1 div|2 div|0 span", { textContent: 'a span' }, 'third bar with listed contents 1' );
-    checkNode( "body|1 div|2 div|1 span", { textContent: 'with stuff' }, 'third bar with listed contents 1' );
+    checkNode( "body|1 div|2 div|1 span", { textContent: 'a span' }, 'third bar with listed contents 1' );
+    checkNode( "body|1 div|2 div|2 span", { textContent: 'with stuff' }, 'third bar with listed contents 1' );
 
     checkNode( "body|1 div|3 div|0 span", { textContent: 'BAR' }, 'fourth bar' );
     checkNode( "body|1 div|3 div|1 ul|0 li", { textContent: 'I am' }, 'fourth bar with more content 1' );

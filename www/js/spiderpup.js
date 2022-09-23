@@ -706,14 +706,15 @@ const newInstance = (node, enclosingInstance) => {
 
               // more contents to hang inside a child of the internal instance
               // though maybe in refresh?
-              if (con.contents && con.contents.length === 1) {
+              if (con.contents) {
                 const intEl = findInternalContent( conEl );
-                const intKey2el = makeKey2el(intEl);
-                const intRoot = con.contents[0];
-                const intKey = `${instance.id}.${intRoot.id}`;
-                const child = intKey2el[intKey] || instance._prepElement( intRoot, intKey, intEl );
+                instance._refreshContents( intEl, con.contents );
+                // const intKey2el = makeKey2el(intEl);
+                // const intRoot = con.contents[0];
+                // const intKey = `${instance.id}.${intRoot.id}`;
+                // const child = intKey2el[intKey] || instance._prepElement( intRoot, intKey, intEl );
                 
-                conInstance._refreshElement( child, intRoot );
+                // conInstance._refreshElement( child, intRoot );
               }
             } else {
               instance._refreshElement( conEl, con );
