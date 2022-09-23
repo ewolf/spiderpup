@@ -137,7 +137,10 @@ body:
           }
       data:
         red: 100
-        number:  [ 4, 12, 82, 5, 0 ]
+        number:  [ 4, 12, 82, 5, 0, 9 ]
+        table: 
+          - [ 6, lump, niffer, sven, carbon, appendix ]
+          - [ 15, hella, thinker, pander, aroba, appendix ]
         toggled: false
         title: check this out, i'm newest
 
