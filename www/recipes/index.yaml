@@ -88,7 +88,7 @@ css: >-
 title: spiderpup example page
 
 onLoad: >-
-  c => setTimeout( () => { c.set('deltime',3); c.refresh() }, 30000 )
+  c => setTimeout( () => { c.set('deltime',3); c.refresh() }, 3000 )
 
 data:
   treat: yes

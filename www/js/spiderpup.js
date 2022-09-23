@@ -616,7 +616,7 @@ const newInstance = (node, enclosingInstance) => {
           // if it is branched, determine if it should appear by running the branching
           // check functions
           if (con.if) {
-            conditionalDone = lastConditionalWasTrue = con.if( instance._key2subinstance[ conKey ] || instance );
+            conditionalDone = lastConditionalWasTrue = con.if( instance );
             lastWasConditional = true;
             conEl.dataset.ifCondition = conditionalDone;
             conEl.noshow = !conditionalDone;
@@ -624,7 +624,7 @@ const newInstance = (node, enclosingInstance) => {
             if (conditionalDone) {
               lastConditionalWasTrue = false;
             } else {
-              conditionalDone = lastConditionalWasTrue = con.elseif( instance._key2subinstance[ conKey ] || instance );
+              conditionalDone = lastConditionalWasTrue = con.elseif( instance );
               conEl.dataset.elseIfCondition = conditionalDone;
               conEl.noshow = !conditionalDone;
             }
