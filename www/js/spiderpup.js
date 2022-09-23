@@ -498,7 +498,7 @@ const newInstance = (node, enclosingInstance) => {
   
 
   // method _prepElement
-  instance._prepElement = ( node, key, attachToEl, attachAfter ) => {
+  instance._prepElement = ( node, key, attachToEl, attachAfter, idx ) => {
     const tag = node.isComponent ? node.asRecipe.rootNode.tag : node.tag;
     const newEl = document.createElement( tag );
     if (node.internalContent) {
@@ -507,7 +507,16 @@ const newInstance = (node, enclosingInstance) => {
     newEl.key = key;
     newEl.dataset.key = key;
     if (node.handle) {
-      instance.el[node.handle] = newEl;
+      if (idx !== undefined) {
+        if (! Array.isArray( instance.el[node.handle])) {
+          const old = instance.el[node.handle];
+          instance.el[node.handle] = [];
+          old && (instance.el[node.handle][0] = old);
+        }
+        instance.el[node.handle][idx] = newEl;
+      } else {
+        instance.el[node.handle] = newEl;
+      }
     }
     if (attachAfter) {
       attachToEl.after( newEl );
@@ -679,7 +688,7 @@ const newInstance = (node, enclosingInstance) => {
                 for (let i=0; i<list.length; i++ ) {
                   conKey = conKey.replace( /_\d+$/, '_' + i );
 
-                  let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el ) : instance._prepElement( con, conKey, lastEl, 'after' ) );
+                  let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el, undefined, i ) : instance._prepElement( con, conKey, lastEl, 'after', i ) );
                   // hide this element for now
                   forEl.style.display = 'none';
                   
@@ -712,7 +721,18 @@ const newInstance = (node, enclosingInstance) => {
                     instance._refreshComponent( con, forEl, i );
                   }
                   else {
-                    instance._refreshElement( forEl, con, conKey );
+                    if (con.handle) {
+
+                      if (! Array.isArray( instance.el[con.handle])) {
+                        const old = instance.el[con.handle];
+                        instance.el[con.handle] = [];
+                        old && (instance.el[con.handle][0] = old);
+                      }
+                      const els = instance.el[con.handle];
+                      els.length = list.length;
+                      els[i] = forEl;
+                    }
+                    instance._refreshElement( forEl, con );
                   }
                 } //foreach list item
 

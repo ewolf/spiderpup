@@ -185,7 +185,7 @@ function el(tag, attrs, contents) {
   const elNode = { tag, attrs, contents, calculate, on };
   
   attrNames.forEach( attr => {
-    if (attr.match(/^(if|elseif|else|foreach|forval|data|handle)$/)) {
+    if (attr.match(/^(if|elseif|else|foreach|forval|data|handle|debug)$/)) {
       elNode[attr] = attrs[attr];
       delete attrs[attr];
     }
@@ -416,16 +416,17 @@ function test() {
                                   ] ),
 
                               // element and component handles in foreach
-                              el( 'div', 
+                              el( 'div', [
                                   el( 'span',
                                       {
                                         foreach: 22,
                                         forval: 'clickfor',
                                         handle: 'forclickholder',
+                                        debug:  true,
                                       },
                                       [
-                                        node( 'clicky', { handle: 'forclicker' } )
-                                      ] ) ),
+                                        node( 'clicky', { handle: 'forclicker', debug: true } )
+                                      ] ) ] ),
                             ] ),
                           ] }, //body
             }, //html
@@ -787,7 +788,8 @@ function test() {
   ok (inst.el.forclickholder, 'got a element handle in' );
   debugger;
   is (inst.el.forclickholder.length, 3, ' handle' );
-  elp = elPath( `body|9 section|1 div|0 span` );
+
+  elp = elPath( `body|9 section|2 div|0 span` );
 
   doneTesting();
 
