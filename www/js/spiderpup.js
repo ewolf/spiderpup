@@ -782,7 +782,7 @@ const newInstance = (node, enclosingInstance) => {
     let componentInstance = instance._key2subinstance[key];
 
     let needsInit = !!!componentInstance;
-    if (nocomponentInstance) {
+    if (componentInstance) {
       needsInit = componentInstance.noInit;
       componentInstance.noInit = false;
     } else {
