@@ -108,6 +108,7 @@ functions:
       if ( c.get( 'pageMode' ) !== mode ) {
         history.pushState( { pageMode: mode }, undefined, mode === 'default' ? '/yote_test/hello.html' : `?pageMode=${mode}` );
         c.set( 'pageMode', mode );
+        c.refresh();
       }
     }
   greetings: (body,ev) => alert( `hello there from ${ev.target}` )
@@ -118,7 +119,8 @@ data:
 
 onLoad: >-
   c => {
-    // set up the listener
+    // listen to page change event
+    c.namespace.logins.functions.tease();
     addEventListener( 'popstate', ev => {
       c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
       c.refresh();
@@ -136,6 +138,8 @@ onLoad: >-
         }
       });
       
+      // connect the widgets together
+      //c.comp.header.fun.attach( c.comp.loginBodyWidget );
       // try to look at the url. maybe it wants login?
       const usp = new URLSearchParams( window.location.search );
       for (const [key, value] of usp) {
@@ -173,14 +177,22 @@ listen: >-
 title: fun example
 
 body:
-  on_keyup: (c,ev) => { if (ev.key === 'Escape') { c.broadcast( 'keyup', 'Escape'); c.broadcast( 'pageMode', 'default' ); } }
+  on_keyup: >-
+    (c,ev) => { 
+       if (ev.key === 'Escape') { 
+          c.broadcast( 'keyup', 'Escape');
+          c.broadcast( 'pageMode', 'default' );
+      } 
+    }
   contents:
-    - header:
+    - logins.header:
+        handle: header
     - main:
         - div:
             - h1: c => c.get( 'pageMode' )
 
-            - loginControl:
+            - logins.loginBodyWidget:
+                handle: loginBodyWidget
                 if: c => c.get( 'pageMode' ) === 'login-control'
             - div:
                 if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'login-control'
@@ -218,14 +230,6 @@ body:
                 textContent: app not yet loaded
 
 components:
-  header:
-    - header:
-        - div:
-          - div:
-              textContent: LOGO
-              class: button
-              on_click: (c,e) => c.broadcast( 'pageMode', 'default' )
-          - logins.loginWidget:
 
   counter:
     data:

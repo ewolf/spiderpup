@@ -138,6 +138,10 @@ window.onload = ev => {
           Object.keys(namespace.components)
             .forEach( name => (recipeNames[name] = [namespace.components[name], filename, name] ));
         }
+        if (namespace.functions) {
+          Object.keys( namespace.functions )
+            .forEach( fun => namespace.functions[fun] = funs[namespace.functions[fun]] );
+        }
       } );
 
     // translate the 'namespaces' of each file to a reference to the filespace indicated
@@ -273,6 +277,8 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
     desc : `component for recipe '${recipe.name}'`,
 
     parent,
+
+    namespace: recipe.namespace && recipe.namespace.namespaces,
     
     _key2subcomponent: {},
 
