@@ -27,9 +27,24 @@ style: >-
     .login-widget {
         ul {
             position: absolute;
+            right: 4px;
+            padding: 10px;
+            border: solid blue 3px;
+            margin: 0;
+            background-color: #dfd;
         }
         li {
+            list-style-type: none;
             cursor: pointer;
+        }
+        li:hover {
+            background-color: #aca;
+        }
+        li.divider {
+            height: 1px;
+            margin: 0.25rem 0;
+            padding: 0;
+            background-color: #dbdbdb;
         }
     }
 
@@ -97,10 +112,11 @@ onLoad: >-
 
 listen: >-
   (c,msg,data) => {
-    debugger;
     switch( msg ) {
       case "login":
-        c.set( 'pageMode', 'default' );
+        c.set( msg, data );
+        c.fun.pageMode( 'default' );
+        break;
       case "app":
         c.set( msg, data );
         break;
@@ -112,6 +128,7 @@ listen: >-
         //c.set( msg, data );
         break;
       case "logout":
+        console.log( c.id, 'logout' );
         c.set( 'login', undefined );
         c.fun.pageMode( 'default' );
         break;
@@ -165,7 +182,6 @@ components:
     functions:
       logout_done: >-
         c => {
-          c.set('login',undefined);
           c.set('show-menu',undefined);
           c.broadcast( 'logout' );
         }
@@ -175,7 +191,7 @@ components:
              .catch( err => c.fun.logout_done() )
     listen: >-
       (c,key,msg) => {
-        if (key === 'keyup' && msg === 'Escape' ) {
+        if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
           c.set( 'show-menu', false );
         }
       }
@@ -189,7 +205,14 @@ components:
                 contents:
                   - button:
                       type: button
-                      on_click: (c,e) => c.set( 'show-menu', !!!c.get('show-menu') )
+                      on_click: >-
+                         (c,e) => {
+                           const show = !!!c.get('show-menu');
+                           c.set( 'show-menu', show );
+                           if (show) {
+                           
+                           }
+                         }
                       contents:
                         - span:
                             innerHTML: () => 'avatar &#8964';
@@ -203,13 +226,16 @@ components:
                       # maybee catch the pageMode change?
                       on_click: (c,e) => c.broadcast( 'pageMode', 'login-control' )
             - ul:
+                handle: menu
                 if: c => c.get( 'show-menu' )
                 contents:
                   - li: identity
-                  - li: page break
+                  - li: 
+                      class: divider
                   - li: set status
                   - li: edit profile
-                  - li: page break
+                  - li:
+                      class: divider
                   - li:
                       textContent: log out
                       on_click: c => c.fun.logout()
@@ -337,7 +363,11 @@ components:
                 else:
                 contents:
                   - form:
-                      on_submit: (c,ev) => { ev.preventDefault(); c.fun.login( c.el.login.value, c.el.loginPassword.value ) }
+                      on_submit: >-
+                       (c,ev) => { 
+                         ev.preventDefault(); 
+                         c.fun.login( c.el.login.value, c.el.loginPassword.value )
+                       }
                       contents:
                         - div:
                             style: display:flex; flex-direction: column

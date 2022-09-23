@@ -417,7 +417,7 @@ const newComponentInstance = (recipe,recipeNode,parent) => {
               conEl.key = conKey;
               conEl.dataset.key = conKey;
               if (con.handle) {
-                if (isRecipeNode) {
+                if (isRecipeNode && conRecipe) {
                   if (conRecipe.rootNode.handle) {
                     component.el[conRecipe.rootNode.handle] = conEl;
                   }
