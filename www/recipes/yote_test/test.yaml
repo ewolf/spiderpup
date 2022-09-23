@@ -65,7 +65,6 @@ javascript: |
       if (childel && childel.tagName === tag.toUpperCase()) {
         node = childel;
       } else {
-        debugger;
         return undefined;
       }
     }
@@ -187,8 +186,9 @@ javascript: |
                                               [
                                                 node( 'foo' ),
                                                 node( 'foo', { functions: { bar: 1 } } ),
-                                                node( 'foo', [ el( 'span', 'a span' ),
-                                                               el( 'span', 'with stuff' ) ] ),
+                                                node( 'foo', { functions: { bar: 3 } },
+                                                      [ el( 'span', 'a span' ),
+                                                        el( 'span', 'with stuff' ) ] ),
                                                 node( 'foo', [ el( 'ul', 
                                                                    [el( 'li', 'I am' ),
                                                                     el( 'li', 'going' ),
@@ -229,7 +229,8 @@ javascript: |
 
           [ c => "BAR",
             c => "BAR2",
-            c => c.fun.bar()
+            c => c.fun.bar(),
+            c => "BAR3",
           ], // functions list
 
           'TEST' // default filespace (the one with the body)
@@ -239,6 +240,10 @@ javascript: |
     checkNode( "body|1 div", { textContent: 'SECOND' }, 'second div text' );
     checkNode( "body|1 div|0 div|0 span", { textContent: 'BAR' }, 'first bar' );
     checkNode( "body|1 div|1 div|0 span", { textContent: 'BAR2' }, 'bar override' );
+
+    checkNode( "body|1 div|2 div|0 span", { textContent: 'BAR3' }, 'third bar' );
+    checkNode( "body|1 div|2 div|0 span", { textContent: 'a span' }, 'third bar with listed contents 1' );
+    checkNode( "body|1 div|2 div|1 span", { textContent: 'with stuff' }, 'third bar with listed contents 1' );
 
     checkNode( "body|1 div|3 div|0 span", { textContent: 'BAR' }, 'fourth bar' );
     checkNode( "body|1 div|3 div|1 ul|0 li", { textContent: 'I am' }, 'fourth bar with more content 1' );
