@@ -1,0 +1,11 @@
+---
+
+body:
+  - foo:
+
+
+components:
+  foo:
+    - button:
+        textContent: c => `${c.get('clicks',0)} clicks`,
+        on_click: c => c.set('clicks',1 + c.get('clicks'))
