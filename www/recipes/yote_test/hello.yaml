@@ -6,7 +6,7 @@ html:
   body:
     preLoad: >-
       () => yote.fetchApp( 'test' )
-           .then( testapp => { yote.apps = yote.apps || {}; yote.apps.test = testapp; } )
+                .then( testapp => { yote.apps = yote.apps || {}; yote.apps.test = testapp; } )
 
     contents:
       - h1: yote test
@@ -21,17 +21,20 @@ html:
 
       - div: hi there
       - loginControl:
-          data:
-            app: test
+          handle: loginControl
+    onLoad: >-
+      s => s.comp.loginControl.fun.setApp( yote.apps.test )
+      
 
 components:
   loginControl:
     preLoad: >
       (s,ev) => {
-        debugger;
         s.data.set( 'app', yote.apps[s.data.get('app')] );
       }
     functions:
+      setApp: (s,app) => s.data.set( 'app', app )
+      app: s => s.data.get( 'app' )
       check: >
         (s,ev) => {
           if (!s.el.login.value) {

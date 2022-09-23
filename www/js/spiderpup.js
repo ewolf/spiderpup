@@ -160,10 +160,13 @@ window.onload = ev => {
       .forEach( tuple => {
         const [ recipe, filename, name ] = tuple;
         const namespace = filespaces[filename];
+        if (name === 'body') {
+          throw new Error( "invalid component recipe name; 'body' is a reserved word" );
+        }
         namespace.components[name] = compileRecipe( recipe, filename, name );
       } );
 
-    const bodyRecipe = compileBody( html.body, defaultFilename );
+    const bodyRecipe = compileBody( html.body, defaultFilename, defaultNamespace );
 
     // make state for body
     const state = newState( bodyRecipe, html.body, nsState );
@@ -193,7 +196,7 @@ const newState = (recipe,recipeNode,parent) => {
   //             manipulation
   //
   //  and after data is refreshed for the first time,
-  //     call postLoad passing it the data
+  //     call onLoad passing it the data
   //
   const data = {};
   const recipeDataFunConvert = {};
@@ -515,9 +518,12 @@ const newState = (recipe,recipeNode,parent) => {
       } // if contents
 
       if (needsInit && isRecipeNode) {
-        // should be placed on the page an all now, so
-        // run onLoad which is outside in
-        recipe.onLoad && recipe.onLoad( state );
+        // indicates that this is a recipe (component) node that 
+        // has not had its onLoad done. The preLoad may be a promise,
+        // so resolve that and then run the onLoad
+        recipe.onLoad &&
+          Promise.resolve( state.preLoad )
+                 .then (r =>recipe.onLoad(state) );
       }
     }, //refresh
   }; //state
@@ -562,19 +568,19 @@ const newState = (recipe,recipeNode,parent) => {
   Object.keys( recipeDataFunConvert )
     .forEach( fld => data[fld] = funs[recipeDataFunConvert[fld]](state) );
 
-  recipe.preLoad && recipe.preLoad( state );
+  recipe.preLoad && (state.preLoad = recipe.preLoad( state ));
 
   return state;
 };
 
-const compileBody = (body, filename) => {
+const compileBody = (body, filename, namespace) => {
 
   // gotta compile the recipe and rewrite the body.
   // the body should have no contents after this is done? 
 
   const nodeRecipe = {};
   body.nodeRecipe = body.recipe = nodeRecipe;
-  [ 'data', 'functions', 'preLoad', 'postLoad' ]
+  [ 'data', 'functions', 'preLoad', 'onLoad' ]
     .forEach( bp => {
       const val = body[bp];
       if (val) {
@@ -586,6 +592,8 @@ const compileBody = (body, filename) => {
   nodeRecipe.contents = [ { tag: 'body', 
                             attrs: body.attrs,
                             contents: body.contents } ];
+
+  namespace.components.body = nodeRecipe;
 
   compileRecipe( nodeRecipe, filename, 'body' );
 
