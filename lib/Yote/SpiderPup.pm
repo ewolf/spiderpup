@@ -347,11 +347,6 @@ sub load_namespace {
                 $namespace->{html}{head}{style} = join( '', @css );
             }
 
-            if ($yaml->{style}) {
-                my @css = CSS::LESSp->parse( $yaml->{style} );
-                $namespace->{html}{head}{style} = join( '', @css );
-            }
-
             if ($yaml->{javascript}) {
                 $namespace->{html}{head}{script} = $yaml->{javascript};
             }
