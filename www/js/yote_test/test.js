@@ -34,15 +34,13 @@
      foreach elements in foreach elements
      foreach components in foreach elements
      foreach components in foreach components in foreach components
+     nodes with internal content that has foreach
      test element handlers
      test component handlers
-
-   todo
      test handles for elements
      test handles for components
 
-     nodes with internal content that has foreach
-     nodes with internal content that has if/then and foreach
+   todo
 
      test handles for elements in loops
      test handles for components in loops
@@ -92,14 +90,19 @@ let ran = 0;
 let passes = 0;
 let fails = 0;
 
-function is( actual, expected, msg ) {
-  ran++;
-  if (actual === expected) {
-    passes++;
-    console.log( `passed: test '${msg}'` );
+function ok( bool, msg ) {
+  if (bool) {
+    pass( msg );
   } else {
-    fails++;
-    console.log( `failed: test '${msg}'. expected '${expected}' and got '${actual}'` );
+    fail( msg );
+  }
+}
+
+function is( actual, expected, msg ) {
+  if (actual === expected) {
+    pass( msg );
+  } else {
+    fail( `${msg}'. expected '${expected}' and got '${actual}` );
   }
 }
 function pass (msg) {
@@ -182,7 +185,7 @@ function el(tag, attrs, contents) {
   const elNode = { tag, attrs, contents, calculate, on };
   
   attrNames.forEach( attr => {
-    if (attr.match(/^(if|elseif|else|foreach|forval|data)$/)) {
+    if (attr.match(/^(if|elseif|else|foreach|forval|data|handle)$/)) {
       elNode[attr] = attrs[attr];
       delete attrs[attr];
     }
@@ -217,7 +220,7 @@ function node(tag, args, contents) {
     if (m) {
       n.on[m[1]] = args[fld];
     }
-    else if (fld.match(/^(if|elseif|else|foreach|forval|debug)/)) {
+    else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
       n[fld] = args[fld];
     }
     // else if(fld.match(/^(functions|data)$/)) {
@@ -404,8 +407,25 @@ function test() {
                               } ),
                             
                               // element and component handles
-                              
-                              
+                              el( 'span', 
+                                  {
+                                    handle: 'clickholder',
+                                  },
+                                  [
+                                    node( 'clicky', { handle: 'clicker' } )
+                                  ] ),
+
+                              // element and component handles in foreach
+                              el( 'div', 
+                                  el( 'span',
+                                      {
+                                        foreach: 22,
+                                        forval: 'clickfor',
+                                        handle: 'forclickholder',
+                                      },
+                                      [
+                                        node( 'clicky', { handle: 'forclicker' } )
+                                      ] ) ),
                             ] ),
                           ] }, //body
             }, //html
@@ -756,6 +776,18 @@ function test() {
   is (window.misc,0,'misc starts out 0');
   elp.click();
   is (window.misc,1,'misc now 1');
+
+  elp = elPath( `body|9 section|1 span|0 button` );
+  let inst = elp.instance.parent;
+  ok (inst.el.clickholder, 'got the element handle' );
+  is (inst.el.clickholder, elPath( 'body|9 section|1 span' ), 'element handle points to element' );
+  ok (inst.comp.clicker, 'got the component handle' );
+  is (inst.comp.clicker, elp.instance, 'correct component handle' );
+
+  ok (inst.el.forclickholder, 'got a element handle in' );
+  debugger;
+  is (inst.el.forclickholder.length, 3, ' handle' );
+  elp = elPath( `body|9 section|1 div|0 span` );
 
   doneTesting();
 
