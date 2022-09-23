@@ -67,18 +67,25 @@ javascript: |
       return;
     }
     let passes = true;
+    let failmsg = '';
     // check the expected attrs
     Object.keys( expected_attrs ).forEach( attr => {
       if (attr === 'textContent') {
-        passes = passes && actualEl.textContent === expected_attrs[attr];
+        passes = passes && (actualEl.childNodes[0] && actualEl.childNodes[0].textContent) === expected_attrs[attr];
+        if (!passes) {
+          failmsg = `expected text '${expected_attrs[attr]}' and got '${actualEl.innerText}'`;
+        }
       } else {
         passes = passes && actualEl.getAttribute( attr ) === expected_attrs[attr];
+        if (!passes) {
+          failmsg = `expected for attribute ${attr} : '${expected_attrs[attr]}' and got '${actualEl.getAttribute(attr)}'`;
+        }
       }
     } );
     if (passes) {
       pass( msg );
     } else {
-      fail( msg );
+      fail( msg + ' ' + failmsg );
     }
 
     return passes;
@@ -92,29 +99,34 @@ javascript: |
       if (typeof attrs !== 'object') {
         attrs = { textContent: attrs };
       }
-      contents = contents || [];
     }
-    const calculations = {};
+    contents = contents || [];
+    const calculate = {};
     // check for calculations. if the attr is a number
-    Object.keys( attrs ).forEach( attr => {
+    const attrNames = Object.keys( attrs );
+    attrNames.forEach( attr => {
       if ( Number.isInteger( attrs[attr] ) ) {
-        calculations[attr] = attrs[attr];
+        calculate[attr] = attrs[attr];
         delete attrs[attr];
       } 
     } );
-    debugger;
-    return { tag, attrs, contents, calculations };
+    return { tag, attrs, contents, calculate };
+  }
+
+  function node(tag, args) {
+    return { tag, functions:(args&&args.functions) || {}, data: (args&&args.data) || {} };
   }
 
   // so we want to grab some json and compile it and stuff as a namespace, then attach it to the body
   function test() {
     reset();
-    init( { TEST: 
+    const def = 
+        { TEST: 
             { html: { body: { contents: [ el( 'span', "FIRST" ),
                                           el( 'div', "SECOND",
                                               [
-                                                el( 'foo' ),
-                                                el( 'foo', { functions: { bar: 1 } } ),
+                                                node( 'foo' ),
+                                                node( 'foo', { functions: { bar: 1 } } ),
                                               ] )
                                         ] } },
               components: {
@@ -130,15 +142,19 @@ javascript: |
                 },
               },
             },
-          },
+          };
+
+    init( def,
           [ c => "BAR",
             c => "BAR2",
-            c => {debugger;return c.fun.foo()},
+            c => c.fun.bar()
           ],
           'TEST'
         );
     checkNode( "body|0 span", { textContent: 'FIRST' }, 'first div text' );
-    checkNode( "body|1 div", { textContent: 'SECOND' }, 'first div text' );
+    checkNode( "body|1 div", { textContent: 'SECOND' }, 'second div text' );
+    checkNode( "body|1 div|0 div|0 span", { textContent: 'BAR' }, 'first bar' );
+    checkNode( "body|1 div|1 div|0 span", { textContent: 'BAR2' }, 'bar override' );
     doneTesting();
   }
 
