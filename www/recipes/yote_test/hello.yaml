@@ -64,11 +64,11 @@ components:
              delete s.el.email.style['background-color'];
              // s.el.email.style['background-color'] = 'green';
           }
-          if (!s.el.createpassword.value) {
-             s.el.createpassword.style['background-color'] = 'pink';
+          if (!s.el.password.value) {
+             s.el.password.style['background-color'] = 'pink';
           } else {
-             delete s.el.createpassword.style['background-color'];
-             // s.el.createpassword.style['background-color'] = 'green';
+             delete s.el.password.style['background-color'];
+             // s.el.password.style['background-color'] = 'green';
           }
         }
 
@@ -79,12 +79,10 @@ components:
                         .then( acct => { debugger; acct; } )
                         .catch( err => { debugger; err; } )
       createAccount: >
-        (s,ev) => s.data.get('app')
-                        .create_account( { handle: s.el.handle.value,
-                                           email: s.el.email.value,
-                                           password: s.el.createpassword.value } )
-                        .then( acct => { debugger; acct; } )
-                        .catch( err => { debugger; err; } )
+        (s,handle,email,password) => s.data.get('app')
+           .create_account( { handle, email, password } )
+                     .then( acct => { debugger; acct; s.data.set( 'login', acct ) } )
+                    .catch( err => { debugger; err; } )
     contents:
       - div:
           - div:
@@ -104,17 +102,9 @@ components:
               contents:
                 - form:
                     on_submit: >
-                      (s,ev) => {
-                         debugger;
-                         s.data.get( 'app' )
-                           .create_login( { login: s.el.login.value,
-                                            email: s.el.email.value,
-                                            password: s.el.createpassword.value } )
-                            .then( acct => {
-                              debugger;
-                              s.data.set( 'login', acct );
-                            } );
-                      }
+                      (s,ev) => s.fun.createAccount( s.el.handle.value,
+                                                     s.el.email.value,
+                                                     s.el.password.value )
                     style: display: inline-block; border: solid 3px black; padding: .5em;
                     contents:
                       - div:
@@ -135,7 +125,7 @@ components:
                                 required: true
                                 on_keyup: (s,ev) => s.fun.checkCreate(ev)
                             - input:
-                                handle: createpassword
+                                handle: password
                                 style: margin: 3px auto
                                 type: password
                                 placeholder: password
