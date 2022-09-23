@@ -32,11 +32,16 @@ style: >-
            text-align: center;
          }
        }
+       .login-widget {
+         li {
+           cursor: pointer;
+         }
+       }
     }
   }
 
 javascript: >-
-  console.log('loaded');
+  console.log('loaded garf');
 
 
 data:
@@ -81,7 +86,7 @@ listen: >-
         // maybe navigate to a new url
         // catch that and have that in the history?
         // so there is no reload
-        window.location = '?pageMode=logging-in';
+        window.location = '?pageMode=login-control';
         //c.set( msg, data );
         break;
       case "logout":
@@ -102,12 +107,12 @@ body:
             - h1: c => c.get( 'pageMode' )
 
             - loginControl:
-                if: c => c.get( 'pageMode' ) === 'logging-in'
+                if: c => c.get( 'pageMode' ) === 'login-control'
             - div:
-                if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'logging-in'
+                if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'login-control'
                 textContent: logged in stuff
             - div:
-                if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'logging-in'
+                if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'login-control'
                 contents:
                   - form:
                       on_submit: >-
@@ -151,35 +156,37 @@ components:
       }
     contents:
       - div:
-          - div:
-              # logged in / logout
-              if: c => c.get( 'login' )
-              contents:
-                - button:
-                    type: button
-                    on_click: (c,e) => c.set( 'show-menu', !!!c.get('show-menu') )
-                    contents:
-                      - span: <avatar> downarrow
-          - div:
-              # button to open login / create thingo
-              elseif: c => c.get( 'app' )
-              contents:
-                - button:
-                    type: button
-                    textContent: log in
-                    # maybee catch the pageMode change?
-                    on_click: (c,e) => c.broadcast( 'pageMode', 'logging-in' )
-          - ul:
-              if: c => c.get( 'show-menu' )
-              contents:
-                - li: identity
-                - li: page break
-                - li: set status
-                - li: edit profile
-                - li: page break
-                - li:
-                    textContent: log out
-                    on_click: c => c.fun.logout()
+          class: login-widget
+          contents:
+            - div:
+                # logged in / logout
+                if: c => c.get( 'login' )
+                contents:
+                  - button:
+                      type: button
+                      on_click: (c,e) => c.set( 'show-menu', !!!c.get('show-menu') )
+                      contents:
+                        - span: <avatar> downarrow
+            - div:
+                # button to open login / create thingo
+                elseif: c => c.get( 'app' )
+                contents:
+                  - button:
+                      type: button
+                      textContent: log in
+                      # maybee catch the pageMode change?
+                      on_click: (c,e) => c.broadcast( 'pageMode', 'login-control' )
+            - ul:
+                if: c => c.get( 'show-menu' )
+                contents:
+                  - li: identity
+                  - li: page break
+                  - li: set status
+                  - li: edit profile
+                  - li: page break
+                  - li:
+                      textContent: log out
+                      on_click: c => c.fun.logout()
 
   loginControl:
     functions:

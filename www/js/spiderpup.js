@@ -94,6 +94,15 @@ window.onload = ev => {
         head.appendChild( stylel );
       }
 
+      // explicit javascript
+      let script = html.head.script
+      if (script) {
+        const scriptel = document.createElement( 'script' );
+        scriptel.setAttribute( 'type', 'text/javascript' );
+        scriptel.appendChild(document.createTextNode(script));
+        head.appendChild( scriptel );
+      }
+
       // css files
       const css = html.head.css;
       const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];

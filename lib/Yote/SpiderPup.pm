@@ -341,7 +341,9 @@ sub load_namespace {
                 $namespace->{html}{head}{style} = join( '', @css );
             }
 
-
+            if ($yaml->{javascript}) {
+                $namespace->{html}{head}{script} = $yaml->{javascript};
+            }
         }
     }
     return $yaml_file;
