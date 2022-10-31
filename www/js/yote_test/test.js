@@ -1274,6 +1274,7 @@ const testHandles = () => {
       } ),
 
       node ( 'fluff', {
+        id: 'tempfluff',
         handle: 'fluff',
         if: 13, //check_toggle
       } ),
@@ -1397,7 +1398,7 @@ const testHandles = () => {
                   [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
                 ] ],
               [ 'div', 'woof' ],
-              [ 'span', 'FLUFF undefined / undefined' ],
+              [ 'span', { textContent: 'FLUFF undefined / undefined', id: 'tempfluff' } ],
             ],
            );
   // test the multihandles
@@ -1408,13 +1409,18 @@ const testHandles = () => {
                                       .map( key => key.replace (/^[^:]+:/, '' ) ),
              [ 'i=0,j=0', 'i=0,j=1', 'i=1,j=0', 'i=1,j=1', 'i=2,j=0', 'i=2,j=1' ], 'loopsSpan right keys' );
 
-  is ( bodyInstance.el.switchy, document.getElementById( 'switchy' ), 'handle works' );
+  is ( bodyInstance.el.switchy, document.getElementById( 'switchy' ), 'element handle works' );
+  
+  let fluffInst = document.getElementById( 'tempfluff' ).instance;
+  is (fluffInst.type, 'instance of fluff from TEST', 'fluff instance' );
+  is ( bodyInstance.comp.fluff, fluffInst , 'component handle works' );
 
   bodyInstance.fun.toggle();
 
   bodyInstance.refresh();
 
-  is ( bodyInstance.el.switchy, undefined, 'handle is gone when ifd out' );
+  is ( bodyInstance.el.switchy, undefined, 'el handle is gone when ifd out' );
+  is ( bodyInstance.comp.fluff, undefined, 'component handle is gone when ifd out' );
 
   confirmEl('test-handles',
             'body',
