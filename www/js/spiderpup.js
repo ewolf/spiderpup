@@ -262,7 +262,7 @@ const dataVal = (v,s) => typeof v === 'function' ? v(s) : v;
   //   _key2subinstance - stores all component instances
   //                     direction attached to this one
   //
-  //   idx/it/lastcount - temporary variables for foreach
+  //   idx/it - temporary variables for foreach
   //
   //
   // and the methods
@@ -348,7 +348,6 @@ const newInstance = (node, enclosingInstance) => {
     _loop_level: 0,
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
-    lastcount: {}, // iterator name -> last list count
 
     // listeners
     eventListeners: {}, // event name -> listeners
@@ -686,20 +685,20 @@ const newInstance = (node, enclosingInstance) => {
               // remove extras but never the first index
               const forval = con.forval;
               const list = con.foreach( instance );
-              const upto = instance.lastcount[forval] || 0;
+              const upto = el.lastcount || 0;
               instance._loop_level++;
               
               if (con.debug) { debugger; }
 
               // remove any that are more than the list count
               if (upto > list.length) {
-                for (let i=list.length === 0 ? 1 : list.length; i<instance.lastcount[forval]; i++) {
+                for (let i=list.length === 0 ? 1 : list.length; i<upto; i++) {
                   conKey = instance.makeElKey( con, i );
                   const itEl = key2el[conKey];
                   itEl && itEl.remove();
                 }
               }
-              instance.lastcount[forval] = list.length;
+              el.lastcount = list.length;
 
               if (list.length === 0) {
                 // nothing to display, so hide the zero indexed foreach
@@ -814,7 +813,7 @@ const newInstance = (node, enclosingInstance) => {
 
             // if a list, remove all but the first
             if (con.foreach) {
-              const upto = instance.lastcount[instance.forval] || 0;
+              const upto = el.lastcount || 0;
               for (let i=1; i<upto; i++) {
                 conKey = instance.makeElKey( con, i );
                 key2el[conKey].remove();
