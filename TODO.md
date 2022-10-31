@@ -1,6 +1,7 @@
 Current things to do:
 
-* test internal content with foreach
+* deicde on how to serialize handles for foreach
+  thinking that they should simply be serialized
 
 * decide if dynamic component should be a thing
    (am thinking not)

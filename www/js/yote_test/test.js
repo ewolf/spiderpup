@@ -32,29 +32,30 @@
      fail if else is given
 
      foreach with looping elements in looping elements
-
-
-   todo
      foreach with looping components that have looping internal content and loops
        in their own content
      foreach with looping components in looping components
      foreach with looping components in looping elements
      foreach with looping elements in looping components 
 
-     test element handlers
-     test component handlers
-     test handles for elements
+   todo
+
      test handles for components
+     test handles for elements
+
+     test component handlers
+     test element handlers
 
      test broadcast
 
 
      foreach with if/elseif/else elements
      foreach with if/elseif/else components
-     foreach with internal content
+     foreach'd component with internal content
      foreach elements in foreach elements
      foreach components in foreach elements
      foreach components in foreach components in foreach components
+
      nodes with internal content that has foreach
 
      test components in elements in loops
@@ -68,7 +69,6 @@
      test css styles
      test less styles
      test javascript in seperate modules
-
 
 
      add more todo
@@ -719,7 +719,7 @@ function testNamespace() {
 
 } //testNamespace
 
-function testLoop() {
+function testComponentHandles() {
   reset();
   body( [
     el( 'table', 
@@ -741,6 +741,171 @@ function testLoop() {
     el ('section', [
       node( 'multilooper', { foreach: 10, forval: 'ML' }, 
             [
+              el( 'span', { foreach: 1, forval: 'IS', textContent: 11 } ),
+            ] ),
+    ] ),
+
+  ] ); //body
+
+  def_namespace( {
+    data: { blat: 'i1', number: 'i50' },
+
+    components: {
+      looper: {
+        data: {
+          mult: 'i3',
+        },
+        contents: [ 
+          el ('div', { textContent: 8 } ),
+        ],
+      }, //looper component
+
+      multilooper: {
+        contents: [ 
+          el ('div', [
+            el ( 'span', 'upper' ),
+            el ( 'div', { internalContent: true } ),
+            el ( 'span', 'middle' ),
+            node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+            el ( 'span', 'lower' ),
+            el ( 'ul', [ el ( 'li', { textContent: 7, foreach: 1, forval: 'I' } ) ] ),
+            el ( 'span', 'lowest' ),
+          ] ),
+        ],
+      }, //multilooper component
+    }
+  } ); //def_namespace
+  
+  def_funs( [
+    c => [ "A", "B", "C" ], //0
+    c => [ "D", "E" ],      //1
+    c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`, // 2
+    c => [ 'F', 'G', 'H' ], //3
+    c => `[i ${c.idx.i}/${c.it.i}]`, //4
+    c => `[j ${c.idx.j}/${c.it.j}]`, //5
+    c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, //6
+    c => `(${c.it.I}/${c.idx.I})`, //7
+    c => `NUM <${c.get("number")}>`, //8
+    c => c.get('mult') * c.idx.I, //9
+    c => [ 'Z' ],                 //10
+    c => c.it.IS,                 //11
+  ] );
+
+  go();
+
+  confirmEl( 'test-loop',
+             'body',
+             [
+               [ 'table', 
+                 [
+                   [ 'tr', [
+                     [ 'td', { textContent: '[row 0/A, col 0/D]' } ],
+                     [ 'td', { textContent: '[row 0/A, col 1/E]' } ],
+                   ] ],
+                   [ 'tr', [
+                     [ 'td', { textContent: '[row 1/B, col 0/D]' } ],
+                     [ 'td', { textContent: '[row 1/B, col 1/E]' } ],
+                   ] ],
+                   [ 'tr', [
+                     [ 'td', { textContent: '[row 2/C, col 0/D]' } ],
+                     [ 'td', { textContent: '[row 2/C, col 1/E]' } ],
+                   ] ],
+                 ]
+               ],
+
+               [ 'main', 
+                 [
+                   [ 'section', { textContent: '[i 0/A]' }, [
+                     [ 'div', { textContent: '[j 0/D]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 0/D] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 0/D] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 0/D] / [i 0/A]' } ],
+                     ]],
+                     [ 'div', { textContent: '[j 1/E]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 1/E] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 1/E] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 1/E] / [i 0/A]' } ],
+                     ]],
+                   ]],
+                   [ 'section', { textContent: '[i 1/B]' }, [
+                     [ 'div', { textContent: '[j 0/D]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 0/D] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 0/D] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 0/D] / [i 1/B]' } ],
+                     ]],
+                     [ 'div', { textContent: '[j 1/E]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 1/E] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 1/E] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 1/E] / [i 1/B]' } ],
+                     ]],
+                   ]],
+                   [ 'section', { textContent: '[i 2/C]' }, [
+                     [ 'div', { textContent: '[j 0/D]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 0/D] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 0/D] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 0/D] / [i 2/C]' } ],
+                     ]],
+                     [ 'div', { textContent: '[j 1/E]' }, [
+                       [ 'span', { textContent: '[k 0/F] / [j 1/E] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 1/G] / [j 1/E] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 2/H] / [j 1/E] / [i 2/C]' } ],
+                     ]],
+                   ]],
+                 ]
+                 ], //main 
+               
+               [ 'section', [ //looper component
+                 [ 'div', { textContent: 'NUM <0>' } ],
+                 [ 'div', { textContent: 'NUM <3>' } ],
+                 [ 'div', { textContent: 'NUM <6>' } ],
+               ]],
+
+               [ 'section', //multilooper component
+                 [ 'div', [
+                   [ 'span', 'upper' ],
+                   [ 'div', [
+                     [ 'span', 'D' ],
+                     [ 'span', 'E' ],
+                   ]],
+                   [ 'span', 'middle' ],
+                   [ 'div', { textContent: 'NUM <0>' } ],
+                   [ 'div', { textContent: 'NUM <3>' } ],
+                   [ 'div', { textContent: 'NUM <6>' } ],
+                   [ 'span', 'lower' ],
+                   [ 'ul', [
+                     [ 'li', '(D/0)' ],
+                     [ 'li', '(E/1)' ],
+                   ] ],
+                   [ 'span', 'lowest' ],
+                   ] ],
+                 ],
+             ] //body
+           );
+
+} //testComponentHandles() {
+
+function testLoop() {
+  reset();
+  body( [
+    el( 'table', 
+        [ el( 'tr', { foreach: 0, forval: 'row' },
+              [ el( 'td', { forval: 'col', 
+                            foreach: 1,
+                            textContent: 2,
+                          } ) ] ) ] ),
+    el( 'main',
+        [ el( 'section', { foreach: 0, forval: 'i', textContent: 4 },
+              [ el( 'div', { foreach: 1, forval: 'j', textContent: 5 },
+                [ el( 'span', { foreach: 3, forval: 'k', textContent: 6 } ) ],
+                  ) ] )] ),
+
+    el ('section', [
+      node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+    ] ),
+
+    el ('section', [
+      node( 'multilooper', { foreach: 10, forval: 'ML' }, 
+            [ // loop with component with internal loop
               el( 'span', { foreach: 1, forval: 'IS', textContent: 11 } ),
             ] ),
     ] ),
