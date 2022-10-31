@@ -43,19 +43,18 @@
      test component function
      test body/namespace function
 
-   todo
      test preLoad
      test onLoad
-     test handles for elements
-     test handles for elements in loops in loops
-     test handles for components
-     test handles for components in loops in loops
 
+     test handles for elements
+     test handles for components
      test component handlers
      test element handlers
-
      test broadcast
 
+   todo
+     test handles for elements in loops in loops
+     test handles for components in loops in loops
 
      foreach with if/elseif/else elements
      foreach with if/elseif/else components
@@ -1135,12 +1134,22 @@ const testHandles = () => {
       node( 'stuff', { handle: 'stuff', 
                        on_stuffEvent: 6,
                      } ),
+      //handles in loops
+      el( 'section', { foreach: 8, forval: 'i' },
+          [
+            el( 'div', { foreach: 9, forval: 'j' },
+                [
+                  node( 'fluff', { handle: 'loopyFLuff', data: { name: 'c11' } } ),
+                  el( 'span', { handle: 'loopySpan', textContent: 10 } ),
+                ] )
+          ] ),
     ],
   );
 
   def_namespace( {
     listen: 2,
     
+    preLoad: 7,
     onLoad: 3,
 
     functions: {
@@ -1156,9 +1165,15 @@ const testHandles = () => {
         },
         contents: [ el( 'span', 'stuff' ) ],
       },
-    }
-  } );
 
+      fluff: {
+        data : { name: 'sfluff' },
+        contents: [ el( 'span', { textContent: 11 } ) ],
+      },
+
+    },
+  } );
+  
   // onload happens, which
   //   * pushes ['BUTTON']
   // and clicks the button which makes a broadcast which is
@@ -1203,12 +1218,51 @@ const testHandles = () => {
     (c,evt) => { // 6 stuffEvent
       calls.push( c.type + " got event from stuff" );
     },
+    (c,evt) => { // 7 preload
+      return new Promise( (res,rej) => {
+        setTimeout( () => {
+          calls.push( "PRELOAD" );
+          res(); }, 100 );
+      } );
+    },
+    c => ["A","B","C"], // 8 foreach
+    c => ["D","E"], // 9 foreach
+    c => `${c.it.i}${c.it.j}`, // 10 textContent
+    c => `FLUFF ${c.it.i} / ${c.it.j}`, // 11 fluf text
   ] );
 
   let bodyInstance = go();
+
+  confirmEl('test-handles',
+            'body',
+            [
+              [ 'button', 'click me' ],
+              [ 'span', 'stuff' ],
+              [ 'section', 
+                [
+                  [ 'div', [ [ 'span', 'FLUFF A / D' ], [ 'span', 'AD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF A / E' ], [ 'span', 'AE' ] ] ], ] ],
+              [ 'section', 
+                [
+                  
+                  [ 'div', [ [ 'span', 'FLUFF B / D' ], [ 'span', 'BD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF B / E' ], [ 'span', 'BE' ] ] ],
+                ] ],
+              [ 'section', 
+                [
+                  
+                  [ 'div', [ [ 'span', 'FLUFF C / D' ], [ 'span', 'CD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
+                ] ],
+            ],
+           );
+  // test the multihandles
+  
+
   return Promise.resolve( bodyInstance.loadPromise )
     .then( () => { 
-      is_deeply( calls, [ 'BUTTON', 
+      is_deeply( calls, [ 'PRELOAD',
+                          'BUTTON', 
                           'body hears hi there',
                           'stuff hears hi there',
                           'instance of body from TEST got event from stuff',
