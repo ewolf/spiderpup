@@ -533,8 +533,18 @@ const newInstance = (node, enclosingInstance) => {
     return newEl;
   }; //_prepElement
 
-  instance.makeConKey = (node) => {
-    
+  instance.makeElKey = (node) => {
+    let base = `${instance.id}.${node.id}`;
+    const indexes = {...instance.idx};
+    if (node.foreach) {
+      indexes[node.forval] = indexes[node.forval] || 0;
+    }
+    base += Object
+      .keys(indexes)
+      .sort()
+      .map( k => `${k}=${indexes[k]}` )
+      .join(',');
+    return base;
   };
 
   // method _refreshElement
@@ -620,17 +630,14 @@ const newInstance = (node, enclosingInstance) => {
       let lastWasConditional = false,
           conditionalDone = false,
           lastConditionalWasTrue = false;
-
+      debugger;
       contents
         .forEach( con => {
           let conEl, conInstance;
-          let conKey = `${instance.id}.${con.id}`;
+          
+          let conKey = instance.makeElKey( con );
 
           const asRecipe = con.asRecipe;
-
-          if (con.foreach) {
-            conKey = conKey + '_0';
-          }
 
           conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el, undefined, con.foreach ? 0 : undefined );
           key2el[ conKey ] = conEl;
@@ -816,10 +823,9 @@ const newInstance = (node, enclosingInstance) => {
     // it will be anchored in the document at its root element
     // which has the key of instance id of which it is embedded
     // in, and node id for the root node for this element
-    let key = `${instance.id}.${node.id}`;
-    if (idx !== undefined) {
-      key = key + '_' + idx;
-    }
+    
+    let key = instance.makeElKey( node );
+
     let componentInstance = instance._key2subinstance[key];
 
     let needsInit = !!!componentInstance;
