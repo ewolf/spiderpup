@@ -345,6 +345,7 @@ const newInstance = (node, enclosingInstance) => {
     el     : {}, // handle -> element
 
     // foreach temporary vars
+    _loop_level: 0,
     idx    : {}, // iterator name -> iterator index
     it     : {}, // iterator name -> iterator value
     lastcount: {}, // iterator name -> last list count
@@ -497,7 +498,7 @@ const newInstance = (node, enclosingInstance) => {
   
 
   // method _prepElement
-  instance._prepElement = ( node, key, attachToEl, attachAfter, idx ) => {
+  instance._prepElement = ( node, key, attachToEl, attachAfter ) => {
     const tag = node.isComponent ? node.asRecipe.rootNode.tag : node.tag;
     const newEl = document.createElement( tag );
     if (node.internalContent) {
@@ -506,7 +507,7 @@ const newInstance = (node, enclosingInstance) => {
     newEl.key = key;
     newEl.dataset.key = key;
     if (node.handle) {
-      if (idx !== undefined) {
+      if (instance._loop_level > 0) {
         if (! Array.isArray( instance.el[node.handle])) {
           const old = instance.el[node.handle];
           instance.el[node.handle] = [];
@@ -515,7 +516,8 @@ const newInstance = (node, enclosingInstance) => {
             old.dataset.handle = `${node.handle} [0]`;
           }
         }
-        instance.el[node.handle][idx] = newEl;
+        const idx = instance.el[node.handle].length;
+        instance.el[node.handle].push( newEl );
         newEl.dataset.handle = `${node.handle} [${idx}]`;
       } else {
         instance.el[node.handle] = newEl;
@@ -645,7 +647,7 @@ const newInstance = (node, enclosingInstance) => {
 
           const asRecipe = con.asRecipe;
 
-          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el, undefined, con.foreach ? 0 : undefined );
+          conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el );
           key2el[ conKey ] = conEl;
 
           // if it is branched, determine if it should appear by running the branching
@@ -685,6 +687,7 @@ const newInstance = (node, enclosingInstance) => {
               const forval = con.forval;
               const list = con.foreach( instance );
               const upto = instance.lastcount[forval] || 0;
+              instance._loop_level++;
               
               if (con.debug) { debugger; }
 
@@ -714,7 +717,7 @@ const newInstance = (node, enclosingInstance) => {
 
                   conKey = instance.makeElKey( con );
 
-                  let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el, undefined, i ) : instance._prepElement( con, conKey, lastEl, 'after', i ) );
+                  let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el, undefined, i ) : instance._prepElement( con, conKey, lastEl, 'after' ) );
                   // hide this element for now
                   forEl.style.display = 'none';
                   
@@ -742,11 +745,11 @@ const newInstance = (node, enclosingInstance) => {
                       comps[i] = forInstance;
                     }
 
-                    instance._refreshComponent( con, forEl, i );
-                  }
-                  else {
+                    instance._refreshComponent( con, forEl );
+                  } 
+                  else {  //is elemeent
                     if (con.handle) {
-
+                      
                       if (! Array.isArray( instance.el[con.handle])) {
                         instance.el[con.handle] = [];
                       }
@@ -762,6 +765,7 @@ const newInstance = (node, enclosingInstance) => {
                 instance.idx[forval] = undefined;
                 instance.it[forval] = undefined;
                 forInstances.forEach( fi => { fi.it[forval] = undefined; fi.idx[forval] = undefined } );
+                instance._loop_level--;
               }
             } // end of has foreach
 
@@ -823,7 +827,7 @@ const newInstance = (node, enclosingInstance) => {
   }; //_refreshElement
 
   // method _refreshComponent
-  instance._refreshComponent = ( node, el, idx ) => {
+  instance._refreshComponent = ( node, el ) => {
     // the node is a node that represents a component.
     const asRecipe = node.asRecipe;
 
@@ -868,9 +872,9 @@ const newInstance = (node, enclosingInstance) => {
         componentInstance.eventListeners[evname].push( evfun );
       } );
       if (node.handle) {
-        if (idx !== undefined) {
+        if (instance._loop_level > 0 ) {
           instance.comp[node.handle] = instance.comp[node.handle] || [];
-          instance.comp[node.handle][idx] = componentInstance;
+          instance.comp[node.handle].push( componentInstance );
         } else {
           instance.comp[node.handle] = componentInstance;
         }

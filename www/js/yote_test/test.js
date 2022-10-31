@@ -52,9 +52,10 @@
      test element handlers
      test broadcast
 
+     test handles for elements in loops 
+     test handles for components in loops
+
    todo
-     test handles for elements in loops in loops
-     test handles for components in loops in loops
 
      foreach with if/elseif/else elements
      foreach with if/elseif/else components
@@ -62,16 +63,11 @@
      foreach elements in foreach elements
      foreach components in foreach elements
      foreach components in foreach components in foreach components
-
      nodes with internal content that has foreach
 
      test components in elements in loops
 
      update list size, refresh and get correct number of items
-
-
-     test handles for elements in loops
-     test handles for components in loops
 
      test css styles
      test less styles
@@ -1258,8 +1254,11 @@ const testHandles = () => {
            );
   // test the multihandles
   is( bodyInstance.comp.loopyFluff.length, 6, '6 loopy fluffs' ) ;
-  bodyInstance.comp.loopySpan;
-  debugger;
+  is( bodyInstance.el.loopySpan.length, 6, '6 loopy spans' ) ;  
+  is_deeply( bodyInstance.comp.loopyFluff.map( bi => bi.type ), bodyInstance.comp.loopyFluff.map( () => 'instance of fluff from TEST' ), 'loopyFluff is componentns' );
+  is_deeply( bodyInstance.el.loopySpan.map( span => span.dataset.key )
+                                      .map( key => key.replace (/^[^:]+:/, '' ) ),
+             [ 'i=0,j=0', 'i=0,j=1', 'i=1,j=0', 'i=1,j=1', 'i=2,j=0', 'i=2,j=1' ], 'loopsSpan right keys' );
 
   return Promise.resolve( bodyInstance.loadPromise )
     .then( () => { 
@@ -1271,12 +1270,195 @@ const testHandles = () => {
                         ], 'correct calls' );
     } );
 
-}
+} //testHandles
+
+const testMoreLoop = () => {
+  // set up a loop who's function returns data. confirm. change the data, refresh
+  // confirm that the loop has changed. give it less, then more
+  reset();
+  body(
+    [
+      el( 'section', { foreach: 0, forval: 'i' }, 
+          [
+            el( 'div', { foreach: 1, forval: 'j' },
+                [
+                  el( 'span', { foreach: 2, forval: 'k', textContent: 3 } ),
+                ] ) 
+          ] )
+    ]
+  );
+  def_namespace( {
+    data: {
+      a1: ["A","B","C","D"],
+      a2: ["E","F"],
+      a3: ["G","H","I"],
+    },
+  } );
+
+  def_funs( [
+    c => c.get( 'a1' ), //0
+    c => c.get( 'a2' ), //1
+    c => c.get( 'a3' ), //2
+    c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, //3
+  ] );
+
+  let bodyInstance = go();
+
+  confirmEl( 'test-more-loop',
+             'body',
+             [
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 0/E] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 0/E] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 0/E] / [i 0/A]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 1/F] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 1/F] / [i 0/A]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 1/F] / [i 0/A]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 0/E] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 0/E] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 0/E] / [i 1/B]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 1/F] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 1/F] / [i 1/B]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 1/F] / [i 1/B]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 0/E] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 0/E] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 0/E] / [i 2/C]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 1/F] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 1/F] / [i 2/C]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 1/F] / [i 2/C]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 0/E] / [i 3/D]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 0/E] / [i 3/D]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 0/E] / [i 3/D]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/G] / [j 1/F] / [i 3/D]' } ],
+                       [ 'span', { textContent: '[k 1/H] / [j 1/F] / [i 3/D]' } ],
+                       [ 'span', { textContent: '[k 2/I] / [j 1/F] / [i 3/D]' } ],
+                     ]
+                   ],
+                 ] ],
+             ], // body
+  );
+
+  bodyInstance.set( 'a3', ["J"] );
+  bodyInstance.set( 'a1', ["K","L","M","N","O"] );
+  bodyInstance.refresh();
+
+  confirmEl( 'test-more-loop',
+             'body',
+             [
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 0/E] / [i 0/K]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 1/F] / [i 0/K]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 0/E] / [i 1/L]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 1/F] / [i 1/L]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 0/E] / [i 2/M]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 1/F] / [i 2/M]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 0/E] / [i 3/N]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 1/F] / [i 3/N]' } ],
+                     ]
+                   ],
+                 ] ],
+               [ 'section', 
+                 [
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 0/E] / [i 4/O]' } ],
+                     ]
+                   ],
+                   [ 'div', 
+                     [
+                       [ 'span', { textContent: '[k 0/J] / [j 1/F] / [i 4/O]' } ],
+                     ]
+                   ],
+                 ] ],
+             ], // body
+  );  
+} //testMoreLoop
 
 test( 
-  testIfs,
-  testBasic,
-  testNamespace,
-  testLoop,
-  testHandles,
+  // testIfs,
+  // testBasic,
+  // testNamespace,
+  // testLoop,
+  //testHandles,
+  testMoreLoop,
 );
