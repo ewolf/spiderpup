@@ -1139,7 +1139,7 @@ const testHandles = () => {
           [
             el( 'div', { foreach: 9, forval: 'j' },
                 [
-                  node( 'fluff', { handle: 'loopyFLuff', data: { name: 'c11' } } ),
+                  node( 'fluff', { handle: 'loopyFluff', data: { name: 'c11' } } ),
                   el( 'span', { handle: 'loopySpan', textContent: 10 } ),
                 ] )
           ] ),
@@ -1257,7 +1257,9 @@ const testHandles = () => {
             ],
            );
   // test the multihandles
-  
+  is( bodyInstance.comp.loopyFluff.length, 6, '6 loopy fluffs' ) ;
+  bodyInstance.comp.loopySpan;
+  debugger;
 
   return Promise.resolve( bodyInstance.loadPromise )
     .then( () => { 
