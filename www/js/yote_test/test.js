@@ -35,7 +35,8 @@
 
 
    todo
-
+     foreach with looping components that have looping internal content and loops
+       in their own content
      foreach with looping components in looping components
      foreach with looping components in looping elements
      foreach with looping elements in looping components 
@@ -737,6 +738,13 @@ function testLoop() {
       node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
     ] ),
 
+    el ('section', [
+      node( 'multilooper', { foreach: 10, forval: 'ML' }, 
+            [
+              el( 'span', { foreach: 1, forval: 'IS', textContent: 11 } ),
+            ] ),
+    ] ),
+
   ] ); //body
 
   def_namespace( {
@@ -751,6 +759,20 @@ function testLoop() {
           el ('div', { textContent: 8 } ),
         ],
       }, //looper component
+
+      multilooper: {
+        contents: [ 
+          el ('div', [
+            el ( 'span', 'upper' ),
+            el ( 'div', { internalContent: true } ),
+            el ( 'span', 'middle' ),
+            node( 'looper', { foreach: 0, forval: 'I', data: { number: 'c9' } } ),
+            el ( 'span', 'lower' ),
+            el ( 'ul', [ el ( 'li', { textContent: 7, foreach: 1, forval: 'I' } ) ] ),
+            el ( 'span', 'lowest' ),
+          ] ),
+        ],
+      }, //multilooper component
     }
   } ); //def_namespace
   
@@ -765,6 +787,8 @@ function testLoop() {
     c => `(${c.it.I}/${c.idx.I})`, //7
     c => `NUM <${c.get("number")}>`, //8
     c => c.get('mult') * c.idx.I, //9
+    c => [ 'Z' ],                 //10
+    c => c.it.IS,                 //11
   ] );
 
   go();
@@ -835,6 +859,26 @@ function testLoop() {
                  [ 'div', { textContent: 'NUM <3>' } ],
                  [ 'div', { textContent: 'NUM <6>' } ],
                ]],
+
+               [ 'section', //multilooper component
+                 [ 'div', [
+                   [ 'span', 'upper' ],
+                   [ 'div', [
+                     [ 'span', 'D' ],
+                     [ 'span', 'E' ],
+                   ]],
+                   [ 'span', 'middle' ],
+                   [ 'div', { textContent: 'NUM <0>' } ],
+                   [ 'div', { textContent: 'NUM <3>' } ],
+                   [ 'div', { textContent: 'NUM <6>' } ],
+                   [ 'span', 'lower' ],
+                   [ 'ul', [
+                     [ 'li', '(D/0)' ],
+                     [ 'li', '(E/1)' ],
+                   ] ],
+                   [ 'span', 'lowest' ],
+                   ] ],
+                 ],
              ] //body
            );
              

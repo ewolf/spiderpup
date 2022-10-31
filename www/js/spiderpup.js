@@ -552,7 +552,7 @@ const newInstance = (node, enclosingInstance) => {
         .join(',');
     }
     return base;
-  };
+  }; //instance.makeElKey
 
   // method _refreshElement
   instance._refreshElement = ( el, node, idx ) => {
