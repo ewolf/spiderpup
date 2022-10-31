@@ -816,7 +816,7 @@ const newInstance = (node, enclosingInstance) => {
               const upto = el.lastcount || 0;
               for (let i=1; i<upto; i++) {
                 conKey = instance.makeElKey( con, i );
-                key2el[conKey].remove();
+                key2el[conKey] && key2el[conKey].remove();
               }
             }
           }

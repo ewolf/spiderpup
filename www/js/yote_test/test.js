@@ -37,6 +37,13 @@
      foreach with looping components in looping components
      foreach with looping components in looping elements
      foreach with looping elements in looping components 
+     foreach'd component with internal content
+     foreach with if/elseif/else elements
+     foreach with if/elseif/else components
+     foreaches with same looping var at same level
+     foreach elements in foreach elements
+     foreach components in foreach elements
+     nodes with internal content that has foreach
 
      test title
 
@@ -55,24 +62,13 @@
      test handles for elements in loops 
      test handles for components in loops
 
-   todo
-
-     foreach with if/elseif/else elements
-     foreach with if/elseif/else components
-     foreach'd component with internal content
-     foreach elements in foreach elements
-     foreach components in foreach elements
-     foreach components in foreach components in foreach components
-     nodes with internal content that has foreach
-
-     test components in elements in loops
-
      update list size, refresh and get correct number of items
+
+   todo
 
      test css styles
      test less styles
      test javascript in seperate modules
-
 
      add more todo
 
@@ -1454,11 +1450,102 @@ const testMoreLoop = () => {
   );  
 } //testMoreLoop
 
-test( 
-  // testIfs,
-  // testBasic,
-  // testNamespace,
-  // testLoop,
-  //testHandles,
-  testMoreLoop,
+const testIfLoop = () => {
+  // set up a loop who's function returns data. confirm. change the data, refresh
+  // confirm that the loop has changed. give it less, then more
+  reset();
+  body(
+    [
+      el( 'span', { foreach: 0, 
+                    forval: 'i', 
+                    textContent: 1, 
+                    if: 2 } ), 
+      el( 'div', { foreach: 0, 
+                   forval: 'i', 
+                   textContent: 1, 
+                   if: 3 } ), 
+      node( 'fluff', { foreach: 0, 
+                      forval: 'j', 
+                      if: 2 } ), 
+      node( 'fluff', { foreach: 0, 
+                      forval: 'j', 
+                      if: 3 } ), 
+    ]
+  );
+  def_namespace( {
+
+    data: {
+      doita: true,
+      doitb: false,
+    },
+    
+    functions: {
+      flip: 4,
+    },
+
+    components: {
+
+      fluff: {
+        contents: [ el( 'section', { textContent: 5 } ) ],
+      },
+      
+    }
+  } );
+
+  def_funs( [
+    c => ["E","F"], //0
+    c => `[i ${c.idx.i}/${c.it.i}]`, //1
+    c => c.get('doita'), //2
+    c => c.get('doitb'), //3
+    c => {  //4
+      c.set('doita',!c.get('doita'));
+      c.set('doitb',!c.get('doitb'));
+    }, 
+    c => `[j ${c.idx.j}/${c.it.j}]`, //5
+  ] );
+
+  let bodyInstance = go();
+
+  confirmEl( 'test-if-loop',
+             'body',
+             [
+               [ 'span', { style: {display:''}, textContent: '[i 0/E]' } ],
+               [ 'span', { style: {display:''}, textContent: '[i 1/F]' } ],
+               [ 'div',  { style: {display:'none'}, textContent: undefined } ],
+               [ 'section', { style: {display:''}, textContent: '[j 0/E]' } ],
+               [ 'section', { style: {display:''}, textContent: '[j 1/F]' } ],
+               [ 'section',  { style: {display:'none'}, textContent: undefined } ],
+               
+             ], // body
+  );
+
+  bodyInstance.fun.flip();
+  bodyInstance.refresh();
+
+  confirmEl( 'test-if-loop',
+             'body',
+             [
+               [ 'span',  { style: {display:'none'}, textContent: '[i 0/E]' } ],
+               [ 'div', { style: {display:''}, textContent: '[i 0/E]' } ],
+               [ 'div', { style: {display:''}, textContent: '[i 1/F]' } ],
+               [ 'section',  { style: {display:'none'}, textContent: '[j 0/E]' } ],
+               [ 'section', { style: {display:''}, textContent: '[j 0/E]' } ],
+               [ 'section', { style: {display:''}, textContent: '[j 1/F]' } ],
+               
+             ], // body
+  );
+
+
+} //testIfLoop
+
+
+
+test( /*
+  testIfs,
+  testBasic,
+  testNamespace,
+  testLoop,
+  testHandles,
+  testMoreLoop,*/
+  testIfLoop,
 );
