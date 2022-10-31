@@ -198,13 +198,13 @@ const prepNode = (node,namespace) => {
       con.inRecipe = node.isComponent ? node.asRecipe: node.inRecipe;
 
       if ( [con.else, con.elseif, con.if].filter( x => x !== undefined ).length > 1 ) {
-        throw new Error( `may not have more than one of if,elseif,else in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
+        throw new Error( `may not have more than one of if,elseif,else in a row in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
       }
 
-      if (!lastWasIf && (con.else || con.elseif)) {
+      if (!lastWasIf && (con.else !== undefined || con.elseif !== undefined)) {
         throw new Error( `else and elseif must be preceeded by if or elseif : in file ${namespace.filename} and recipe ${con.inRecipe.name}` );
       } else {
-        lastWasIf = !!(con.elseif || con.if);
+        lastWasIf = !!(con.elseif !== undefined || con.if !== undefined);
       }
 
       if (tagParts.length == 2) {
@@ -533,17 +533,24 @@ const newInstance = (node, enclosingInstance) => {
     return newEl;
   }; //_prepElement
 
-  instance.makeElKey = (node) => {
+  instance.makeElKey = (node,override) => {
     let base = `${instance.id}.${node.id}`;
     const indexes = {...instance.idx};
     if (node.foreach) {
       indexes[node.forval] = indexes[node.forval] || 0;
     }
-    base += Object
-      .keys(indexes)
-      .sort()
-      .map( k => `${k}=${indexes[k]}` )
-      .join(',');
+    if (override !== undefined) {
+      indexes[node.forval] = override;
+    }
+    const indexesToUse = Object
+          .keys(indexes)
+          .sort()
+          .filter( k => indexes[k] !== undefined );
+    if (indexesToUse.length > 0) {
+      base += ':' + indexesToUse
+        .map( k => `${k}=${indexes[k]}` )
+        .join(',');
+    }
     return base;
   };
 
@@ -630,7 +637,7 @@ const newInstance = (node, enclosingInstance) => {
       let lastWasConditional = false,
           conditionalDone = false,
           lastConditionalWasTrue = false;
-      debugger;
+
       contents
         .forEach( con => {
           let conEl, conInstance;
@@ -678,14 +685,14 @@ const newInstance = (node, enclosingInstance) => {
               // remove extras but never the first index
               const forval = con.forval;
               const list = con.foreach( instance );
-              const upto = instance.lastcount[forval];
+              const upto = instance.lastcount[forval] || 0;
               
               if (con.debug) { debugger; }
 
               // remove any that are more than the list count
-              if (instance.lastcount[forval] > list.length) {
+              if (upto > list.length) {
                 for (let i=list.length === 0 ? 1 : list.length; i<instance.lastcount[forval]; i++) {
-                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  conKey = instance.makeElKey( con, i );
                   const itEl = key2el[conKey];
                   itEl && itEl.remove();
                 }
@@ -702,15 +709,16 @@ const newInstance = (node, enclosingInstance) => {
                 let lastEl;
                 const forInstances = [];
                 for (let i=0; i<list.length; i++ ) {
-                  conKey = conKey.replace( /_\d+$/, '_' + i );
+                  // set the iteration temporary variables
+                  instance.idx[forval] = i;
+                  instance.it[forval] = list[i];
+
+                  conKey = instance.makeElKey( con );
 
                   let forEl = key2el[conKey] || ( i == 0 ? instance._prepElement( con, conKey, el, undefined, i ) : instance._prepElement( con, conKey, lastEl, 'after', i ) );
                   // hide this element for now
                   forEl.style.display = 'none';
                   
-                  // set the iteration temporary variables
-                  instance.idx[forval] = i;
-                  instance.it[forval] = list[i];
                   lastEl = forEl;
 
                   if (con.isComponent) {
@@ -803,9 +811,9 @@ const newInstance = (node, enclosingInstance) => {
 
             // if a list, remove all but the first
             if (con.foreach) {
-              const upto = instance.lastcount[instance.forval];
+              const upto = instance.lastcount[instance.forval] || 0;
               for (let i=1; i<upto; i++) {
-                conKey = conKey.replace( /_\d+$/, '_' + i );
+                conKey = instance.makeElKey( con, i );
                 key2el[conKey].remove();
               }
             }
