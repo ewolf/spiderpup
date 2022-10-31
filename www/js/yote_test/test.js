@@ -550,7 +550,7 @@ const testIfs = () => {
       el ('section', [ // if/elseif/elseif/elseif/else
         node( 'stuff', { if: 3 } ),
         node( 'stuff', { elseif: 4 } ),
-        node( 'stuff', { elseif: 5, debug: true } ),
+        node( 'stuff', { elseif: 5 } ),
         node( 'stuff', { elseif: 6 } ),
         node( 'stuff', { else: true } ),
       ] ),
@@ -1265,12 +1265,17 @@ const testHandles = () => {
                 ] )
           ] ),
 
-      // handles in ifs
+      // handles in if els
       el ( 'div', {
         textContent: 'woof',
         handle: 'switchy',
         id: 'switchy',
         if: 13, //check_toggle 
+      } ),
+
+      node ( 'fluff', {
+        handle: 'fluff',
+        if: 13, //check_toggle
       } ),
 
     ],
@@ -1392,6 +1397,7 @@ const testHandles = () => {
                   [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
                 ] ],
               [ 'div', 'woof' ],
+              [ 'span', 'FLUFF undefined / undefined' ],
             ],
            );
   // test the multihandles
@@ -1432,6 +1438,7 @@ const testHandles = () => {
                   [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
                 ] ],
               [ 'div', { textContent: 'woof', style: { display: 'none' }} ],
+              [ 'span', { textContent: 'FLUFF undefined / undefined', style: { display: 'none' }} ],
             ],
            );
 
