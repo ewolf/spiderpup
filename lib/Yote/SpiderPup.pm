@@ -242,21 +242,61 @@ sub transform_data {
     }
 }
 
+sub make_error {
+    my $filename = shift;
+    my $err = "$@";
+    return q~let funs = []; let defaultFilename = 'ERROR'; let filespaces = ~
+             . to_json( { ERROR => {
+                 components => {},
+                 data => {},
+                 functions => {},
+                 namespaces => {},
+                 html => {
+                     body => {
+                         contents => [
+                             {
+                                 tag => 'h3',
+                                 attrs => {
+                                     textContent => "Error in file $filename",
+                                 },
+                             },
+                             {
+                                 tag => 'div',
+                                 contents => [
+                                     { tag => 'p',
+                                       attrs => { textContent => $err }
+                                     }
+                                     ]
+                             }
+                             ]
+                     },
+                 },
+                          } } ) .';';
+}
+
 #
 # 
 #
 sub yaml_to_js {
     my ($yaml_root_directory,$filename) = @_;
+    print STDERR "($yaml_root_directory,$filename)\n";
     $root_directory = $yaml_root_directory;
 
     my $funs       = [];
     my $filespaces = {};
 
-    my $default_filename = [load_namespace( $filename, $filespaces, $funs )];
-
-    my $js = "let funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
-        "let filespaces = ".to_json( $filespaces ) . ";\n" .
-        "let defaultFilename = ".to_json($default_filename)."[0];\n"; 
+    my $js = '';
+    eval {
+        my $default_filename = [load_namespace( $filename, $filespaces, $funs )];
+print STDERR "OOOOOO\n";
+        $js = "let funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
+            "let filespaces = ".to_json( $filespaces ) . ";\n" .
+            "let defaultFilename = ".to_json($default_filename)."[0];\n"; 
+    };
+    if ($@) {
+        print STDERR ")GOT ERROR $@\n";
+        $js = make_error($filename);
+    }
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
     print STDERR Data::Dumper->Dump([$js,"JS"]);
     return $js;
@@ -269,8 +309,9 @@ sub load_namespace {
     return $yaml_file if $filespaces->{$yaml_file};
 
     if (-e $yaml_file) {
+        print STDERR "LOADING> $yaml_file\n";
         my $yaml = YAML::LoadFile( $yaml_file );
-
+        print STDERR "LOADED> $yaml_file\n";
         my $namespace = { 
             namespaces => {},
         };
@@ -393,6 +434,11 @@ sub prepare_handlers {
     my ($pkg, $spider_root, $mojo_app, $use_yote) = @_;
 
     $root_directory = $spider_root;
+
+    for my $sdir (qw( log img res css recipes)) {
+        my $dir = "$root_directory/$sdir";
+        -d $dir or mkdir $dir;
+    }
 
     $yote = $use_yote;
 

@@ -1,297 +1,111 @@
 ---
 
-#
-# PROJECT SPIDERPUP : Build web pages and web apps using yaml and css.
-#
-# OVERVIEW
-#
-#  This YAML file provides a description of how a web page is to be filled.
-#  The server translates this file into javascript data structures. A javascript
-#  routine reads in those data structures and attaches html elements to the body
-#  of a page. It also attaches event handlers to those elements as specified in the
-#  YAML file to make a reactive page.
-#
-# PROCESS : What the server does when a request is made.
-#
-#   When requests are made to index.html the server outputs a skeleton page
-#   containing an empty body.
-#   The page's head contains two references to javascript :
-#      * /_/index - returns two data structures that represent this YAML
-#      * /js/spiderpup.js - the machinery that converst the data structures to
-#                      html elements and populates the body
-#
-#   The page's head also contains a link to /css/index.css which is a normal css
-#   file.
-#
-# REACTIVE PAGES: HTML elements are automatically updated on state changes.
-#
-#   Pages are built from modules called 'components' which are instructions on
-#   how to build html elements.
-#
-#   Components may contain other components and must have exactly one root element.
-#
-#   Each instance of a component gets its own state. A state object is associated
-#   with that instance. The state variable of the enclosing component is stored in
-#   the 'parent' field of the component instance's state.
-#
-#   Element attributes may be calculated. Those calculation functions are given
-#   the state variable as their first argument.
-#
-#   Handlers are attached to the html elements. Handler functions' first argument
-#   is always the state object of the instance.
-#
-#   Each time a handler is called, changes in state are detected. If the state
-#   has changed, the instance of the component is updated as needed.
-#
-# BRANCHING AND LOOPS: if/elsif/else and foreach
-#
-#   an element (like div,span) or a component reference (like myapp) 
-#   may have 'if'/'elseif' functions that take
-#   the state as an argument and expect a true value to indicate that branch
-#   be included or not. After an if or elseif, an 'else' may be evaluated if its
-#   precednents returned false.
-#
-#   an element or component reference with a 'foreach' and a 'forval'. foreach 
-#   is a function that returns an array. forval is a variable name. spiderpup will
-#   add that element or component for each item in the list while placing the list
-#   item value in the state at state.it[forval value] and the iteration index at
-#   state.idx[forval value] while it builds that element.
-#
-css: >-
-  @keyframes blinker {
-    50% {
-      border: solid 3px green;
-      opacity: 0;
-    }
-  }
-  .loading {
-    color: blue;
-    animation: blinker 4s linear infinite;
-  }
-  .red { background: red; }
-  .green { background: green; }
+title: madyote.com
 
-  .new {
-    background-color: skyblue;
-    border: bevel 3px lightblue;
-  }
-
-  .red,
-  .green {
-    margin: 3px;
-    padding: 2px;
-    border: solid black 2px;
-    cursor: pointer;
-  }
-
-  .row {
-    display: flex;
-    flex-direction: row;
-  }
-
-  .col {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .myapp {
-    //border: solid 4px grey;
-    padding: 5px;
-    margin: 10px;
-  }
-
-title: spiderpup example page
-
-onLoad: >-
-  c => setTimeout( () => { c.set('deltime',3); c.refresh() }, 3000 )
+import:
+  logins: yote_test/logins
 
 data:
-  treat: yes
+  appName: test
+  pageMode: default
 
-body:
-  - myapp:
-      on_green: (s,e) => alert( `got green ${e}` )
-          
-  - myapp:
-      # this overrides the default data in the component
-      # recipe
-      if: c => c.get( 'deltime' ) > 2
-      class: new myapp
-      data:
-        red: 10
-        toggled: true
-        title: Hello there, I'm a new instance
-  - div:
-      class: loading
-      textContent: loading
-      else:
-  - myapp:
-      # default functions may be overridden in this
-      # instance of the coponent
-      functions:
-        flip: >
-          s => {
-            alert( 'flip override' );
-            const bb = s.el.buttonBox;
-            bb.appendChild( bb.children[0] );
+onLoad: >-
+  c => {
+    yote.fetchAppTryLogin( c.get( 'appName' ) )
+      .then( app => {
+          if (app) {
+            c.broadcast( 'app', app );
+            if (app.acct) {
+               c.broadcast( 'login', app.acct );
+            }
           }
-      data:
-        red: 100
-        number:  [ 4, 12, 82, 5, 0, 9 ]
-        table: 
-          - [ 6, lump, niffer, sven, carbon, appendix ]
-          - [ 15, hella, thinker, pander, aroba, appendix ]
-        toggled: false
-        title: check this out, i'm newest
+      } );
+  }
+
+listen: >-
+  (c,msg,data) => {
+    switch( msg ) {
+      case "login":
+        c.set( msg, data );
+        c.fun.pageMode( 'default' );
+        break;
+      case "app":
+        c.set( msg, data );
+        break;
+      case "pageMode":
+        // maybe navigate to a new url
+        // catch that and have that in the history?
+        // so there is no reload
+        c.fun.pageMode( data );
+        //c.set( msg, data );
+        break;
+      case "logout":
+        c.set( 'login', undefined );
+        c.fun.pageMode( 'default' );
+        break;
+    }
+  }
+
+  
+body:
+  - logins.siteHeader:
+  - section:
+      - h1: MADYOTE
+      - p: >-
+          well, what do i want to say here? Stuff I want to do.
+
+      - outline:
+          data:
+            title: Yote Components
+            items:
+              - server
+              - spiderpup
+              - objectstore
+              - recordstore
+
+      - outline:
+          data:
+            title: Yote Apps
+            items:
+              - spuc
+              - GRU
+
+      - outline:
+          data:
+            title: ToDo Items
+            items:
+              - translate 500s into more clear text. certainly go for the log, go to the page at least for development
+              - try to adhere to a feature freeze for spiderpup and yote. see what can be accomplished with it as is. include a wishlist for future features
+              - make madyote.com its own repo / place this file and others in it
+              - component styles. come up with rules of thumb
+              - make login page for this. 
+              - make CLI account tools
+              - make CLI setup and configuration tool
+              - put the todo, components, etc in the store and have this fetch from the store.
+              - spiderpup example page where you can practice spiderpup
+              - write learn yote by example
+              
+
+            
 
 components:
-  myapp:
-
-    # each instance of myapp has its own seperate state which is
-    # passed to functions as the first argument 's' for state.
-    # This is even the first argument for event handlers.
-    # The state object has the following fields:
-    #    data - an object with get( key ) and set( key, value )
-    #    fun - hash of name -> function
-    #    el - hash of label -> html element
-    #    parent - state of enclosing parent element, if any
-
-    # default data for an instance of myapp. can be acccessed thru
-    # the state (s) variable like so.
-    #     s.get( 'title' )
-    #     s.set( 'title', 'new title' )
-    # changing data in this way causes the app to be refreshed after
-    # the function it was run from completes.
-    # the initial state data may be overridden in instances of myapp
+  outline:
     data:
-      red: 0
-      toggled: false
-      title: Hello there
-      number:  [ '', 50, 1, 213, 40 ]
-      table: 
-        - [ 6, lump, niffer, sven, carbon ]
-        - [ 15, hella, thinker, pander, aroba ]
-
-    # called after app is placed on the page. the state s is passed
-    onLoad: s => s.get( 'toggled' ) && s.fun.flip()
-
-    # functions are available thru s.fun
-    #   s.fun.flip for exaple
-    functions:
-      flip: >
-        s => {
-          // flip green and red buttons
-          const bb = s.el.buttonBox;
-          bb.appendChild( bb.children[0] );
-        }
-
-    # maybe this should be root for components
+      title: untitled
+      items: [ 1, 2, 3 ]
     contents:
-      # components may have only one 'root' element inside them
-      - div:
-          # this div container element has a class and contents
-          class: myapp
-          contents:
-            # this h1 has a list inside of it is equivalent to one that is a hash with only a 'contents' section
-            - h1:
-                # a span with textContent of 'TITLE:'
-                - span: TITLE:
-                - span: ' '
-                - span: s => s.get('title')
-            - div:
-                class: spaced row
-                contents:
-                  - div:
-                      class: row
-                      # a handle allows this div element to be referred in the state
-                      # variable as s.el.buttonBox
-                      handle: buttonBox
+      - section:
+          - div:
+              - span: c => c.get('title')
+              - ul:
+                  - li:
+                      foreach: c => c.get('items')
+                      forval: item
                       contents:
-
+                        - a:
+                            if: c => Array.isArray(c.it.item)
+                            href: c => c.it.item[1]
+                            textContent: c => c.it.item[0]
                         - span:
-                            handle: red
-                            class: red
-                            textContent: s => s.get( 'red' ) + ' red clicks'
-                            on_click: (s,ev) => s.set( 'red', 1 + parseInt(s.get('red')))
-
-                        - span:
-                            handle: green
-                            class: green
-                            textContent: green
-                            on_click: s => { alert( 'Green' ); s.event( 'green', 'click' ); }
-
-                  - div:
-                      - button:
-                          handle: switchButton
-                          textContent: click me to switch places of red and green
-                          # this click calls the toggle function defined in the functions of myapp
-                          # (and overridden once in the body above).
-                          # it then toggles the toggle which causes things to refresh
-                          on_click: >
-                              (s,ev) => {
-                                s.fun.flip()
-                                s.set('toggled', ! s.get('toggled') )
-                              }
-
-            # branching with if / elseif / else
-            # only one of the following divs will appear
-            - div:
-                textContent: green on left
-                if: s => s.get('toggled')
-            - div:
-                textContent: more than 100 red on left
-                elseif: s => s.get( 'red' ) > 100
-            - div:
-                textContent: more than 10 red on left
-                elseif: s => s.get( 'red' ) > 10
-            - div:
-                textContent: red on left
-                else:
-
-            - ul:
-                
-                # maybe the thing to do is, on refresh, trim the old list items to the size
-                # of the new if they are bigger, then one by one pass in the new data and have
-                # each existing recalculate, then add new as needed
-
-                contents:
-                  - table:
-                      border: 1
-  
-                      if: s => s.get( 'table' ).length > 0
-
-                      contents:
-                        - tr:
-                            - th:
-                                foreach: s => s.get('number')
-                                forval: col
-                                textContent: s => s.it.col
-                            
-                        - tr:
-                            # function must return a list or iterable
-                            foreach: s => s.get('table')
-
-                            # if there is a foreach, there must be a var to store
-                            # each item in the list in. the var will be accessible in
-                            # the 's.it' object
-                            forval: row
-                            
-                            contents:
-                              - th:
-                                  textContent: s => s.it.row[0]
-
-                              - td:
-                                  foreach: s => s.it.row.slice(1)
-                                  #foreach: s => s.it.row.slice(1)
-                                  forval: col
-                                  textContent: >-
-                                    s => {
-                                       const rowVal = parseInt(s.it.row[0]);
-                                       const rowName = s.it.col;
-                                       const colVal = parseInt(s.get('number')[s.idx.col + 1]);
-                                       return `${rowName} : ${rowVal} x ${colVal} = ${colVal*rowVal}`;
-#                                       s.it.col + ' : ' + s.it.row[0] + ' x ' + s.get('table')[0][s.idx.col + 1] + ' = ' +  (parseInt(s.it.row[0]) * parseInt(s.get('table')[0][s.idx.col + 1]))
-                                    }
-                                  
-
-            - div: THE END
+                            textContent: c => c.it.item
+                            else:
