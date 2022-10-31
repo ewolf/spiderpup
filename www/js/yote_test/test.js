@@ -38,10 +38,12 @@
      foreach with looping components in looping elements
      foreach with looping elements in looping components 
 
-   todo
      test title
+
      test component function
      test body/namespace function
+
+   todo
      test preLoad
      test onLoad
      test handles for elements
@@ -131,12 +133,56 @@ function ok( bool, msg ) {
 
 function like( actual, regex, msg ) {
   if (actual.match( regex )) {
-    pass( msg );
-    return true;
-  } else {
-    fail( `${msg}'. expected '${regex}' and got '${actual}` );
-  }
+    return pass( msg );
+  } 
+  return fail( `${msg}'. expected '${regex}' and got '${actual}` );
 }
+
+function is_deeply( actual, expected, msg ) {
+  if (_is_deeply( actual, expected)) {
+    return pass( msg );
+  }
+  console.log( actual, expected, 'FAIL' );
+  return fail( msg );
+}
+function _is_deeply( actual, expected ) {
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) {
+      console.log( 'mismatch array vs non array' );
+      return false;
+    }
+    if (actual.length !== expected.length) {
+      console.log( 'mismatch array length' );
+      return false;
+    }
+    for( let i=0; i<actual.length; i++ ) {
+      if (! _is_deeply( actual[i], expected[i] )) {
+        console.log( "B");
+        return false;
+      }
+    }
+    return true;
+  } else if(typeof actual === 'object') {
+    if (typeof expected !== 'object') {
+      console.log( 'mismatch object vs non object' );
+      return false;
+    }
+    const keys = Object.keys(actual);
+    if (keys.length !== Object.keys(expected).length) {
+      console.log( 'mismatch hash key length' );
+      return false;
+    }
+    for ( let i=0; i<keys.length; i++ ) {
+      if (! _is_deeply( actual[keys[i]], expected[keys[i]] )) {
+        console.log( "A");
+        return false;
+      }
+    }
+    return true;
+  } 
+  return actual === expected;
+}
+
 function is( actual, expected, msg ) {
   if (actual === expected) {
     pass( msg );
@@ -149,11 +195,13 @@ function pass (msg) {
   ran++;
   passes++;
   console.log( `passed: test '${msg}'` );
+  return true;
 }
 function fail (msg) {
   ran++;
   fails++;
   console.log( `FAILED: test '${msg}'` );
+  return false;
 }
 function doneTesting() {
   if (ran === passes) {
@@ -386,8 +434,19 @@ function makeFilespace( bodyContents, args, otherFS ) {
   return fs;
 } //makeFilespace
 
-function run() {
-  
+function test(...tests) {
+  run( tests ).then( () => doneTesting() );
+}
+
+function run(tests) {
+  return new Promise( (res, rej) => {
+    let cnt = tests.length;
+    while( tests.length > 0 ) {
+      const testfun = tests.shift();
+      Promise.resolve( testfun() )
+        .then( () => { if (0 == --cnt) {res()} } );
+    }
+  } );
 }
 
 // tests
@@ -397,7 +456,7 @@ function run() {
 //   textContent from function
 //   component function override
 //   nodes with internal content and no specified spot
-function testBasic() {
+const testBasic = () => {
   reset();
   body( [ el( 'span', "FIRST" ), //0
           el( 'div', "SECOND", //1
@@ -480,7 +539,7 @@ function testBasic() {
 //   textContent from function
 //   component function override
 //   nodes with internal content and no specified spot
-function testIfs() {
+const testIfs = () => {
   reset();
   body( 
     [
@@ -628,7 +687,7 @@ function testIfs() {
 //     including components from other namespaces
 //     nodes with internal content and a specified spot
 //
-function testNamespace() {
+const testNamespace = () => {
   reset();
   body( [
     node( 'ON.containery' ),   // body| 0 div | header | main (int) | footer
@@ -734,7 +793,7 @@ function testNamespace() {
 
 } //testNamespace
 
-function testComponentHandles() {
+const testComponentHandles = () => {
   reset();
   body( [
     el( 'table', 
@@ -899,7 +958,7 @@ function testComponentHandles() {
 
 } //testComponentHandles() {
 
-function testLoop() {
+const testLoop = () => {
   reset();
   body( [
     el( 'table', 
@@ -1064,7 +1123,7 @@ function testLoop() {
              
 } //testLoop
 
-function testHandles() {
+const testHandles = () => {
   const calls = [];
 
   reset();
@@ -1147,18 +1206,21 @@ function testHandles() {
   ] );
 
   let bodyInstance = go();
-  Promise.resolve( bodyInstance.loadPromise )
-    .then( () => { console.log( calls ); debugger } );
-  console.log( calls );
+  return Promise.resolve( bodyInstance.loadPromise )
+    .then( () => { 
+      is_deeply( calls, [ 'BUTTON', 
+                          'body hears hi there',
+                          'stuff hears hi there',
+                          'instance of body from TEST got event from stuff',
+                        ], 'correct calls' );
+    } );
 
-//  confirmEl( 'test-handles',
-//           );
 }
 
-// testIfs();
-//testBasic();
-// testNamespace();
-// testLoop();
-testHandles();
-
-doneTesting();
+test( 
+  testIfs,
+  testBasic,
+  testNamespace,
+  testLoop,
+  testHandles,
+);
