@@ -279,7 +279,6 @@ sub make_error {
 #
 sub yaml_to_js {
     my ($yaml_root_directory,$filename) = @_;
-    print STDERR "($yaml_root_directory,$filename)\n";
     $root_directory = $yaml_root_directory;
 
     my $funs       = [];
@@ -288,13 +287,11 @@ sub yaml_to_js {
     my $js = '';
     eval {
         my $default_filename = [load_namespace( $filename, $filespaces, $funs )];
-print STDERR "OOOOOO\n";
         $js = "let funs = [\n" . join(",", map { "\t$_" } @$funs) . "];\n" .
             "let filespaces = ".to_json( $filespaces ) . ";\n" .
             "let defaultFilename = ".to_json($default_filename)."[0];\n"; 
     };
     if ($@) {
-        print STDERR ")GOT ERROR $@\n";
         $js = make_error($filename);
     }
     # put the default_filename in an array so it can be json escaped, in case it has quotes or something crazy like that.
@@ -309,9 +306,7 @@ sub load_namespace {
     return $yaml_file if $filespaces->{$yaml_file};
 
     if (-e $yaml_file) {
-        print STDERR "LOADING> $yaml_file\n";
         my $yaml = YAML::LoadFile( $yaml_file );
-        print STDERR "LOADED> $yaml_file\n";
         my $namespace = { 
             namespaces => {},
         };

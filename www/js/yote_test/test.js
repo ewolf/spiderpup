@@ -205,6 +205,7 @@ function doneTesting() {
   }
 }
 function confirmEl( testname, tag, arg1, arg2, el, path ) {
+  
   let attrs = arg1 || {}, contents = arg2 || [];
 
   if (typeof arg1 === 'string') {
@@ -227,6 +228,11 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
 
   const pathstr = path.join("|");
 
+  if (el === undefined) {
+    fail( `path "${pathstr}" not found for test "${testname}"` );
+    return; 
+  }
+
   const teststr = `in test ${testname} at path ) ${pathstr}`;
 
   is (el.tagName.toLowerCase(), tag.toLowerCase(), `tag ${teststr}`);
@@ -238,7 +244,7 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
       const fld = Object.keys( val )[0];
       const eVal = attrs[attr][fld];
       const aVal = el[attr][fld];
-      if (! is (aVal, eVal, `expected property '${attr}.${fld}' to be '${eVal}' and got '${aVal}'  ${teststr}`)) {
+      if (! is (aVal, eVal, `expected property '${attr}.${fld}' to be '${eVal}' and got '${aVal}'  ${teststr} in test ${testname} at path ) ${pathstr}`)) {
         debugger;
       }
     }
@@ -248,7 +254,7 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
         debugger;
       }
     } else {
-      if (! is(el.getAttribute( attr ), val, `expected for attribute ${attr} : '${val}' and got '${el.getAttribute(attr)}' ${teststr}` ) ) {
+      if (! is (el.getAttribute( attr ), val, `expected for attribute ${attr} : '${val}' and got '${el.getAttribute(attr)}' ${teststr}` ) ) {
         debugger;
       }
     }
@@ -498,7 +504,7 @@ const testBasic = () => {
   
   go();
 
-  is( document.title, 'titlez', 'title was given and set' );
+  is ( document.title, 'titlez', 'title was given and set' );
   confirmEl( 'test-basic',
              'body',
               [
@@ -524,7 +530,7 @@ const testBasic = () => {
                       ]
                     ]]]]]);
 
-} //testBasic
+}; //testBasic
 
 // tests
 //   general placement of els in document.
@@ -544,7 +550,7 @@ const testIfs = () => {
       el ('section', [ // if/elseif/elseif/elseif/else
         node( 'stuff', { if: 3 } ),
         node( 'stuff', { elseif: 4 } ),
-        node( 'stuff', { elseif: 5 } ),
+        node( 'stuff', { elseif: 5, debug: true } ),
         node( 'stuff', { elseif: 6 } ),
         node( 'stuff', { else: true } ),
       ] ),
@@ -630,6 +636,8 @@ const testIfs = () => {
                ]
              ]
            );
+}
+const foo = () => {
 
   // now check for fails for wrong if/then/else combos
   reset();
@@ -673,7 +681,7 @@ const testIfs = () => {
   }
 
 
-} //testIfs
+}; //testIfs
 
 
 //
@@ -682,15 +690,134 @@ const testIfs = () => {
 //     nodes with internal content and a specified spot
 //
 const testNamespace = () => {
+
   reset();
+  try {
+    body( [
+      node( 'ON.containery', 
+            [
+              el( 'div', {
+                if: 0,
+                textContent: 'in o middle' } ),
+              el( 'div', {
+                else: true,
+                textContent: 'nope nope im the else' } ),
+            ]
+          ),
+    ] );
+    def_namespace( {
+      data: {
+        blat: 'i1',
+      },
+    } );
+    def_funs( [
+      c => c.get('blat'),      // 0
+      c => c.fun.foot(),       // 1
+      c => "foot",             // 2
+    ] );
+    
+    go();
+    fail( 'used namespace that was not imported or declared' );
+  } catch( e ) {
+    pass( 'errored out when trying to import from a non declared, non imported namespace' );
+    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a non imported non declared namespace' );
+  }
+
+  reset();
+  try {
+    body( [
+      node( 'ON.containery', 
+            [
+              el( 'div', {
+                if: 0,
+                textContent: 'in o middle' } ),
+              el( 'div', {
+                else: true,
+                textContent: 'nope nope im the else' } ),
+            ]
+          ),
+    ] );
+    def_namespace( {
+      namespaces: {
+        ON: 'OTHERNAME',
+      },
+      data: {
+        blat: 'i1',
+      },
+    } );
+    def_funs( [
+      c => c.get('blat'),      // 0
+      c => c.fun.foot(),       // 1
+      c => "foot",             // 2
+    ] );
+    
+    go();
+    fail( 'used namespace that was declared but not imported' );
+  } catch( e ) {
+    pass( 'errored out when trying to import from a declared but non imported namespace' );
+    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a declared but non imported namespace' );
+  }
+
+  reset();
+  try {
+    body( [
+      node( 'ON.containery', 
+            [
+              el( 'div', {
+                if: 0,
+                textContent: 'in o middle' } ),
+              el( 'div', {
+                else: true,
+                textContent: 'nope nope im the else' } ),
+            ]
+          ),
+    ] );
+    def_namespace( {
+      data: {
+        blat: 'i1',
+      },
+    } );
+    other_namespaces(
+      {
+        OTHERNAME: {
+          components: {
+            containery: {
+              contents: [
+                el( 'div', [
+                  el( 'header', 'head' ),
+                  el( 'main', { textContent: 'main', internalContent: true } ),
+                  el( 'footer', { textContent: 1 } ),
+                ] ),
+              ],
+            },
+          },
+          functions: {
+            foot: 2,
+          },
+        }, //OTHER (namespace)
+      } );
+    def_funs( [
+      c => c.get('blat'),      // 0
+      c => c.fun.foot(),       // 1
+      c => "foot",             // 2
+    ] );
+
+    go();
+    fail( 'used namespace that was imported but not declared' );
+  } catch( e ) {
+    pass( 'errored out when trying to import from a imported but not declared namespace' );
+    like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a imported but not declared namespace' );
+  }
+
+
   body( [
     node( 'ON.containery' ),   // body| 0 div | header | main (int) | footer
-    node( 'ON.containery', [   // 1
-      el( 'div', 'in the middle' )
+    node( 'ON.containery', [   // 1 div
+      el( 'div', 'in the middle' ) // 2 div
     ] ),
-    node( 'ON.containery', //4
+    node( 'ON.containery', //3 div
           [
-            el( 'div', {
+            el( 'div', { //4 div
               if: 0,
               textContent: 'in a middle' } ),
             el( 'div', {
@@ -698,10 +825,9 @@ const testNamespace = () => {
               textContent: 'nop nope' } ),
           ] ),
     node( 'ON.containery', //5
-          { data: { blat: 'i2' } },
           [
             el( 'div', {
-              if: 0,
+              if: 3,
               textContent: 'in o middle' } ),
             el( 'div', {
               else: true,
@@ -747,6 +873,7 @@ const testNamespace = () => {
     c => c.get('blat') == 1, // 0
     c => c.fun.foot(),       // 1
     c => "foot",             // 2
+    c => c.get('blat' ) != 1, //3
   ] );
 
   go();
@@ -785,7 +912,7 @@ const testNamespace = () => {
                   ]],
               ] );
 
-} //testNamespace
+}; //testNamespace
 
 const testComponentHandles = () => {
   reset();
@@ -950,7 +1077,7 @@ const testComponentHandles = () => {
              ] //body
            );
 
-} //testComponentHandles() {
+}; //testComponentHandles() {
 
 const testLoop = () => {
   reset();
@@ -1025,7 +1152,6 @@ const testLoop = () => {
   ] );
 
   go();
-
   confirmEl( 'test-loop',
              'body',
              [
@@ -1115,7 +1241,7 @@ const testLoop = () => {
              ] //body
            );
              
-} //testLoop
+}; //testLoop
 
 const testHandles = () => {
   const calls = [];
@@ -1138,6 +1264,15 @@ const testHandles = () => {
                   el( 'span', { handle: 'loopySpan', textContent: 10 } ),
                 ] )
           ] ),
+
+      // handles in ifs
+      el ( 'div', {
+        textContent: 'woof',
+        handle: 'switchy',
+        id: 'switchy',
+        if: 13, //check_toggle 
+      } ),
+
     ],
   );
 
@@ -1149,6 +1284,11 @@ const testHandles = () => {
 
     functions: {
       bodyDo: 5,
+      toggle: 12,
+    },
+
+    data: {
+      show: true,
     },
     
     components: {
@@ -1224,6 +1364,8 @@ const testHandles = () => {
     c => ["D","E"], // 9 foreach
     c => `${c.it.i}${c.it.j}`, // 10 textContent
     c => `FLUFF ${c.it.i} / ${c.it.j}`, // 11 fluf text
+    c => c.set( 'show', ! c.get('show') ), //12 toggl
+    c => c.get( 'show' ), // 13 check_toggle
   ] );
 
   let bodyInstance = go();
@@ -1249,15 +1391,49 @@ const testHandles = () => {
                   [ 'div', [ [ 'span', 'FLUFF C / D' ], [ 'span', 'CD' ] ] ],
                   [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
                 ] ],
+              [ 'div', 'woof' ],
             ],
            );
   // test the multihandles
-  is( bodyInstance.comp.loopyFluff.length, 6, '6 loopy fluffs' ) ;
-  is( bodyInstance.el.loopySpan.length, 6, '6 loopy spans' ) ;  
-  is_deeply( bodyInstance.comp.loopyFluff.map( bi => bi.type ), bodyInstance.comp.loopyFluff.map( () => 'instance of fluff from TEST' ), 'loopyFluff is componentns' );
-  is_deeply( bodyInstance.el.loopySpan.map( span => span.dataset.key )
+  is ( bodyInstance.comp.loopyFluff.length, 6, '6 loopy fluffs' ) ;
+  is ( bodyInstance.el.loopySpan.length, 6, '6 loopy spans' ) ;  
+  is_deeply ( bodyInstance.comp.loopyFluff.map( bi => bi.type ), bodyInstance.comp.loopyFluff.map( () => 'instance of fluff from TEST' ), 'loopyFluff is componentns' );
+  is_deeply ( bodyInstance.el.loopySpan.map( span => span.dataset.key )
                                       .map( key => key.replace (/^[^:]+:/, '' ) ),
              [ 'i=0,j=0', 'i=0,j=1', 'i=1,j=0', 'i=1,j=1', 'i=2,j=0', 'i=2,j=1' ], 'loopsSpan right keys' );
+
+  is ( bodyInstance.el.switchy, document.getElementById( 'switchy' ), 'handle works' );
+
+  bodyInstance.fun.toggle();
+
+  bodyInstance.refresh();
+
+  is ( bodyInstance.el.switchy, undefined, 'handle is gone when ifd out' );
+
+  confirmEl('test-handles',
+            'body',
+            [
+              [ 'button', 'click me' ],
+              [ 'span', 'stuff' ],
+              [ 'section', 
+                [
+                  [ 'div', [ [ 'span', 'FLUFF A / D' ], [ 'span', 'AD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF A / E' ], [ 'span', 'AE' ] ] ], ] ],
+              [ 'section', 
+                [
+                  
+                  [ 'div', [ [ 'span', 'FLUFF B / D' ], [ 'span', 'BD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF B / E' ], [ 'span', 'BE' ] ] ],
+                ] ],
+              [ 'section', 
+                [
+                  
+                  [ 'div', [ [ 'span', 'FLUFF C / D' ], [ 'span', 'CD' ] ] ],
+                  [ 'div', [ [ 'span', 'FLUFF C / E' ], [ 'span', 'CE' ] ] ],
+                ] ],
+              [ 'div', { textContent: 'woof', style: { display: 'none' }} ],
+            ],
+           );
 
   return Promise.resolve( bodyInstance.loadPromise )
     .then( () => { 
@@ -1269,7 +1445,7 @@ const testHandles = () => {
                         ], 'correct calls' );
     } );
 
-} //testHandles
+}; //testHandles
 
 const testMoreLoop = () => {
   // set up a loop who's function returns data. confirm. change the data, refresh
@@ -1451,7 +1627,7 @@ const testMoreLoop = () => {
                  ] ],
              ], // body
   );  
-} //testMoreLoop
+}; //testMoreLoop
 
 const testIfLoop = () => {
   // set up a loop who's function returns data. confirm. change the data, refresh
@@ -1539,16 +1715,76 @@ const testIfLoop = () => {
   );
 
 
-} //testIfLoop
+}; //testIfLoop
+
+const testInternals = () => {
+  reset();
+  body(
+    [
+      node( 'containy',
+        [
+          el( 'div', { handle: 'adiv', id: 'guess', textContent: 'wunda' } ),
+        ] ),
+    ]
+  );
+    
+  def_namespace( {
+    
+    data: {
+      intro: "hi there",
+    },
+    
+    components: {
+      containy: {
+        contents: [ el( 'section', { id : 'containy' },
+            [
+              el( 'h1', 'containy' ),
+              el( 'div', { internalContent: true } ),
+            ] ) ],
+      },
+    },
+  } );
+  
+  
+  let bodyInstance = go();
 
 
+  confirmEl( 'test-internals',
+             'body',
+             [
+               [ 'section', 
+                 [
+                   [ 'h1', 'containy' ],
+                   [ 'div', [ 'div', 'wunda' ] ],
+                 ]
+               ],
+             ],  //body
+           );
 
-test( /*
+  is (document.body.instance, bodyInstance, 'body instance attached to body' );
+  let internalEl = document.getElementById( 'guess' );
+  let containyInstanceEl = document.getElementById( 'containy' );
+  let containyInstance = containyInstanceEl.instance;
+  is (containyInstance.type, 'instance of containy from TEST', 'instance attached in the internals' );
+
+  is (bodyInstance._data.intro, 'hi there', 'data in bodyInstance' );
+  is (bodyInstance.el.adiv, internalEl, 'handle to internal el in bodyinstance' );
+
+  ok ( ! ('adiv' in containyInstance.el), 'container doesnt have the handle to the internal thing' );
+  
+  ok ( ! ('intro' in containyInstance._data), 'intro did not directly copy from enclosing instance' );
+  
+}; //testInternals
+
+test( 
+
   testIfs,
   testBasic,
   testNamespace,
   testLoop,
   testHandles,
-  testMoreLoop,*/
+  testMoreLoop,
   testIfLoop,
+
+  testInternals,
 );

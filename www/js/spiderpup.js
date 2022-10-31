@@ -78,6 +78,32 @@ const init = (spaces,funz,defFilename) => {
 
     // now make an instance
     const bodyInstance = newBodyInstance( html.body, document.body );
+    
+    // transfer over the namespace data
+    if (defaultNamespace.data) {
+      const data = bodyInstance._data;
+      Object.keys(defaultNamespace.data).forEach( arg => {
+        let val = defaultNamespace.data[arg];
+        let isFun = false;
+        if (typeof val === 'string') {
+          const x = val.substr( 0, 1 );
+          const checkVal = val.substr( 1 );
+          if (x === 'i') { // int
+            val = Number.parseInt( checkVal );
+          } else if (x === 'f') { // float
+            val = Number.parseFloat( checkVal );
+          } else if (x === 'c') { // code/function
+            val = funs[Number.parseInt(checkVal)];
+            isFun = true;
+          } else if (x === 's') {
+            val = checkVal;
+          } else {
+          }
+        }
+        data[arg] = val;
+      } );
+    }
+
 
     if (html.head) {
       const head = document.head;
@@ -209,6 +235,9 @@ const prepNode = (node,namespace) => {
       if (tagParts.length == 2) {
         con.type = 'component';
         con.isComponent = true;
+        if ( namespace.namespaces === undefined || namespace.namespaces[tagParts[0]] === undefined ) {
+          throw new Error( `requested namespace that was not imported` );
+        }
         const importedNamespace = namespace.namespaces[tagParts[0]];
         con.asRecipe = importedNamespace.components[tagParts[1]];
       } else if (namespace.components[tag]) {
@@ -237,7 +266,7 @@ const attachFunctions = node => {
       const funHash = node[hashName];
       if (funHash) {
         Object.keys( funHash )
-          .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) );
+          .forEach( fun => ( funHash[fun] = funs[funHash[fun]] ) )
       }
     } );
 }; //attachFunctions
@@ -373,10 +402,15 @@ const newInstance = (node, enclosingInstance) => {
 
   // populate data from the namespace, recipe, enclosing instance and the node
   // itself (in ascending precedence)
-  [asNamespace,asRecipe,enclosingInstance,node].forEach( level =>
+  const seen = {};
+  const levelseen = {}; // in case node and asRecipe are the same
+//  [asNamespace,asRecipe,enclosingInstance,node].forEach( level =>
+  [node,asRecipe].forEach( level =>
     level && level.data &&
       Object.keys(level.data).forEach( arg => {
+        if (arg === 'pageMode') { debugger; }
         let val = level.data[arg];
+        let isFun = false;
         if (typeof val === 'string') {
           const x = val.substr( 0, 1 );
           const checkVal = val.substr( 1 );
@@ -386,12 +420,20 @@ const newInstance = (node, enclosingInstance) => {
             val = Number.parseFloat( checkVal );
           } else if (x === 'c') { // code/function
             val = funs[Number.parseInt(checkVal)];
+            isFun = true;
           } else if (x === 's') {
             val = checkVal;
           } else {
           }
         }
-        data[arg] = val;
+        if (instance.type.match(/yamlS/) && arg === 'pageMode') { debugger; }
+          console.log( `instance ${instance.type} set '${arg}' -> '${val}'` );
+//        if ( ! seen[arg] || isFun || true ) {
+        if ( ! seen[arg] || isFun ) {
+          seen[arg] = true;
+
+          data[arg] = val;
+        }
       } ) );
 
   // gets data from this instance or parent instance
@@ -649,6 +691,8 @@ const newInstance = (node, enclosingInstance) => {
           conEl = key2el[ conKey ] || instance._prepElement( con, conKey, el );
           key2el[ conKey ] = conEl;
 
+          if (con.debug) { debugger; }
+
           // if it is branched, determine if it should appear by running the branching
           // check functions
           if (con.if) {
@@ -688,8 +732,6 @@ const newInstance = (node, enclosingInstance) => {
               const upto = el.lastcount || 0;
               instance._loop_level++;
               
-              if (con.debug) { debugger; }
-
               // remove any that are more than the list count
               if (upto > list.length) {
                 for (let i=list.length === 0 ? 1 : list.length; i<upto; i++) {
@@ -776,7 +818,13 @@ const newInstance = (node, enclosingInstance) => {
               // though maybe in refresh?
               if (con.contents) {
                 const intEl = findInternalContent( conEl );
-                conInstance._refreshContents( intEl, con.contents );
+                // need to attach the instance to the internal content node
+                if (true) {
+                  instance._refreshContents( intEl, con.contents );
+                } else {
+                  conInstance._refreshContents( intEl, con.contents );
+                }
+
                 // const intKey2el = makeKey2el(intEl);
                 // const intRoot = con.contents[0];
                 // const intKey = `${instance.id}.${intRoot.id}`;
@@ -791,8 +839,16 @@ const newInstance = (node, enclosingInstance) => {
             // hide this element
             conEl.style.display = 'none';
 
+            if (con.handle) {
+              if (con.isComponent) {
+                instance.comp[con.handle] = undefined;
+              } else {
+                instance.el[con.handle] = undefined;
+              }
+            }
+
             // if if is a component, it should have an instance, hidden or not. 
-            if (con.isComponent && ! instance.comp[con.handle]) {
+            if (false && con.isComponent && ! instance.comp[con.handle]) {
               let newinst;
               if (con.foreach) {
                 instance.comp[con.handle] = instance.comp[con.handle] || [];
@@ -909,8 +965,9 @@ const newInstance = (node, enclosingInstance) => {
     instance._refreshElement( el, rootNode );
 
     if (instance.node.contents && instance.node.name !== 'body' && instance.node.contents.length > 0) {
-      const intel = findInternalContent(el);
-      instance._refreshContents( intel, instance.node.contents);
+
+       const intel = findInternalContent(el);
+       instance.parent._refreshContents( intel, instance.node.contents);
     }
 
     if (needsInit && asRecipe.onLoad && asRecipe.name === 'body') {

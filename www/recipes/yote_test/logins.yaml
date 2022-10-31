@@ -1,20 +1,39 @@
 ---
 
 less: >-
+  .login-widget {
+      ul {
+          position: absolute;
+          right: 4px;
+          padding: 10px;
+          border: solid blue 3px;
+          margin: 0;
+          background-color: #dfd;
+      }
+      li {
+          list-style-type: none;
+          cursor: pointer;
+      }
+      li:hover {
+          background-color: #aca;
+      }
+      li.divider {
+          height: 1px;
+          margin: 0.25rem 0;
+          padding: 0;
+          background-color: #dbdbdb;
+      }
+  }
   .login-body-widget {
     background-color: lightyellow;
   }
   
-
-functions:
-  tease: c => { console.log( c ); alert('tease') }
-
 components:
 
   siteHeader:
     functions:
       attach: >-
-        (c,bodyWidget,woof) => {
+        (c,bodyWidget) => {
           c.comp.loginHeaderWidget.set( 'bodyWidget', bodyWidget );
           bodyWidget.set( 'headerWidget', c.comp.loginHeaderWidget );
         }
