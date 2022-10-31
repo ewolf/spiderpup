@@ -81,7 +81,6 @@ const init = (spaces,funz,defFilename) => {
 
     if (html.head) {
       const head = document.head;
-
       document.title = html.head.title || '';
 
       // explicit style
@@ -910,12 +909,12 @@ const newInstance = (node, enclosingInstance) => {
       const intel = findInternalContent(el);
       instance._refreshContents( intel, instance.node.contents);
     }
-    
+
     if (needsInit && asRecipe.onLoad && asRecipe.name === 'body') {
       // indicates that this is the root node for a component that
       // has not had its onLoad done. The preLoad may be a promise,
       // so resolve that and then run the onLoad
-      Promise.resolve( instance.preLoad )
+      instance.loadPromise = Promise.resolve( instance.preLoad )
         .then (() => asRecipe.onLoad( instance ) );
     }
   }; //refresh

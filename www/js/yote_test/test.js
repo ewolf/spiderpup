@@ -39,9 +39,15 @@
      foreach with looping elements in looping components 
 
    todo
-
-     test handles for components
+     test title
+     test component function
+     test body/namespace function
+     test preLoad
+     test onLoad
      test handles for elements
+     test handles for elements in loops in loops
+     test handles for components
+     test handles for components in loops in loops
 
      test component handlers
      test element handlers
@@ -81,9 +87,10 @@ let def, funs;
 function reset() {
   // empty and clear attributes
   document.body.innerHTML = '';
+  document.body.hasInit = false;
   funs = [];
   def = { TEST: { components: {}, 
-                  html: { body: {contents: [] } } } };
+                  html: { head: {}, body: {contents: [] } } } };
   
 }
 
@@ -346,7 +353,13 @@ function body( bodyContents ) {
 }
 function def_namespace( args ) {
   Object.keys( args ).forEach( key => {
-    def.TEST[key] = args[key];
+    if (key.match( /^(title|include)/ ) ) {
+      def.TEST.html.head[key] = args[key];
+    } else if (key.match( /^(listen|onLoad|preLoad)/ ) ) {
+      def.TEST.html.body[key] = args[key];
+    } else {
+      def.TEST[key] = args[key];
+    }
   } );
 }
 function other_namespaces( args ) {
@@ -359,7 +372,7 @@ function def_funs( funcs ) {
 }
 
 function go() {
-  init( def, funs, 'TEST' );
+  return init( def, funs, 'TEST' );
 }
 
 function makeFilespace( bodyContents, args, otherFS ) {
@@ -401,6 +414,7 @@ function testBasic() {
               ])
         ]),
     def_namespace({
+      title: 'titlez',
       components: {
         foo: {
           functions: {
@@ -431,6 +445,7 @@ function testBasic() {
   
   go();
 
+  is( document.title, 'titlez', 'title was given and set' );
   confirmEl( 'test-basic',
              'body',
               [
@@ -1049,9 +1064,101 @@ function testLoop() {
              
 } //testLoop
 
-//testIfs();
+function testHandles() {
+  const calls = [];
+
+  reset();
+  body( 
+    [
+      el( 'button', { handle: 'button', 
+                      on_click: 4,
+                      textContent: 'click me' } ),
+      node( 'stuff', { handle: 'stuff', 
+                       on_stuffEvent: 6,
+                     } ),
+    ],
+  );
+
+  def_namespace( {
+    listen: 2,
+    
+    onLoad: 3,
+
+    functions: {
+      bodyDo: 5,
+    },
+    
+    components: {
+
+      stuff: {
+        listen: 0,
+        functions: {
+          shout: 1,
+        },
+        contents: [ el( 'span', 'stuff' ) ],
+      },
+    }
+  } );
+
+  // onload happens, which
+  //   * pushes ['BUTTON']
+  // and clicks the button which makes a broadcast which is
+  // heard by the body which registers the message with bodydo
+  //   * pushes ['body hears hi there']
+  // which broadcasts the message which is heard
+  // by the stuff which uses inherited bodydo to record
+  //   * pushes ['stuff hears body hears hi there']
+  // which sends a stuffEvent which is picked up
+  // by the body and is recorded
+  //   * pushes ['instance of body from TEST got event from stuff']
+
+  def_funs( [
+    (c,type,msg) => { //0 //stuff listen (catches broadcast, pushes)
+      if (type !== 'stuff' ) {
+        // tests that bodydo is inherited 
+        c.fun.bodyDo( `stuff hears ${msg}` );
+        c.event( 'stuffEvent', "MYEV" );
+      }
+    }, 
+
+    c => c.broadcast( 'stuff', 'hi there' ), //1 shout  (sends a broadcast)
+
+    (c,type,msg) => { //2 body listen (catches broadcast, sends braodcast if its not body)
+      if (type !== 'body') {
+        c.fun.bodyDo( `body hears ${msg}` );
+        c.broadcast( 'body', msg );
+      }
+    },
+    c => {  //3 onLoad
+      c.comp.stuff;
+      calls.push( c.el.button.tagName );
+      
+      c.el.button.click();
+    }, 
+    c => {  // 4 click (calls shout on stuff)
+      c.comp.stuff.fun.shout();
+    },
+    (c,msg) => { // 5 bodydo (pushes a message)
+      calls.push( msg );
+    },
+    (c,evt) => { // 6 stuffEvent
+      calls.push( c.type + " got event from stuff" );
+    },
+  ] );
+
+  let bodyInstance = go();
+  Promise.resolve( bodyInstance.loadPromise )
+    .then( () => { console.log( calls ); debugger } );
+  console.log( calls );
+
+//  confirmEl( 'test-handles',
+//           );
+}
+
+// testIfs();
 //testBasic();
-//testNamespace();
-testLoop();
+// testNamespace();
+// testLoop();
+testHandles();
 
 doneTesting();

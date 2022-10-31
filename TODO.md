@@ -3,6 +3,9 @@ Current things to do:
 * deicde on how to serialize handles for foreach
   thinking that they should simply be serialized
 
+* event propagation: make sure an event is only
+  handled once by a handler to discorage infinite loops
+
 * decide if dynamic component should be a thing
    (am thinking not)
 
