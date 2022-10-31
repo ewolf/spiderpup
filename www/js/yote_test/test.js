@@ -72,6 +72,9 @@
 
      add more todo
 
+     javascript YAML parser
+
+     perl JSON writer (with fun)
 */
 
 window.misc = 0;
