@@ -1843,3 +1843,4 @@ test(
   testInternals,
 
 );
+warn( 'tests for class addition, tests for recipe alias w/ data copying. tests for data copying');

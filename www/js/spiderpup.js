@@ -155,7 +155,7 @@ const prepNamespace = (namespace,filename) => {
   prepNode( namespace, 'namespace' );
   namespace.filename = filename;
   namespace.name = `namespace ${filename}`;
-
+  attachGetters( namespace );
   namespace.components = namespace.components || {};
   Object.keys( namespace.components )
     .forEach( recipeName => {
@@ -210,7 +210,9 @@ const prepRecipe = (recipe,name,namespace) => {
   }
   prepNode( recipe, 'recipe', namespace );
   recipe.namespace = namespace;
+  recipe.parent = namespace;
   recipe.name = name;
+  attachGetters( recipe );
 
   return recipe;
 } //prepRecipe
@@ -268,7 +270,7 @@ const finalizeRecipe = (recipe) => {
 
 const newBodyInstance = recipe => {
   const instance = newInstance(recipe);
-
+  instance.parent = recipe.namespace;
   const bodyKey = instance._key();
   document.body.key = document.body.dataset.key = bodyKey;
 
@@ -398,10 +400,9 @@ const newInstance = (recipe,parent,node) => {
     attachData( instance, node );
   }
   attachFunctions( instance, recipe );
-  attachData( instance, recipe );
+    attachData( instance, recipe );
   if (parent) {
     attachFunctions( instance, parent );
-    attachData( instance, parent );
     attachForFields( instance, parent );
   }
   
@@ -413,34 +414,36 @@ const newInstance = (recipe,parent,node) => {
     } );
   delete instance.functions;
 
-
-  instance.set = function(k,v) {
-    this._changed = this._changed || v !== this.data[k];
-    this.data[k] = v;
-    return this;
-  };
-  instance.get = function(k,defVal) {
-    if (k in this.data) return dataVal( this.data[k], instance );
-    let val = this.parent && this.parent.get( k );
-    if (val === undefined && defVal !== undefined) {
-      val = this.data[k] = defVal;
-    }
-    // data can be a value or a function. if a function, run it to
-    // get the data
-    return dataVal( val, instance );
-  };
-  instance._check = function() {
-    const changed = this._changed;
-    this._changed = false;
-    return changed;
-  }
+  attachGetters( instance );
 
   recipe.preLoad && (instance.preLoad = recipe.preLoad(instance)); 
 
   return instance;
 }; //newInstance
 
-
+const attachGetters = node => {
+  node.set = function(k,v) {
+    this._changed = this._changed || v !== this.data[k];
+    this.data[k] = v;
+    return this;
+  };
+  node.get = function(k,defVal) {
+    if (k in this.data) return dataVal( this.data[k], node );
+    let val = this.parent && this.parent.get( k );
+    if (val === undefined && defVal !== undefined) {
+      val = this.data[k] = defVal;
+    }
+    // data can be a value or a function. if a function, run it to
+    // get the data
+    return dataVal( val, node );
+  };
+  node._check = function() {
+    const changed = this._changed;
+    this._changed = false;
+    return changed;
+  }
+  
+};
 
 // serial is an int that serializes all the nodes.
 let serial = 1;
@@ -704,7 +707,7 @@ function refresh(node,el,internalContent) {
     // check for listeners
 
     const instance = this.parent;
-    Object.keys( rootNode.on )
+    rootNode.on && Object.keys( rootNode.on )
       .forEach( evname => {
         // so a componentInstance uses 'event' to send a message
         // to its listeners
