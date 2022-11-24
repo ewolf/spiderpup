@@ -44,6 +44,10 @@
  */
 
 
+// ----------------------------------------------------------------------------------------------------
+//                               BOOTSTRAP
+// ----------------------------------------------------------------------------------------------------
+
 window.onload = ev => {
   init( filespaces, funs, defaultFilename );
 }
@@ -152,6 +156,9 @@ const init = (spaces,funz,defFilename) => {
 }; //init
 
 
+// ----------------------------------------------------------------------------------------------------
+//                               PREP LOGIC
+// ----------------------------------------------------------------------------------------------------
 
 
 // setup the namespace, attach methods, prep all the recipes inside, and verify their names
@@ -247,6 +254,7 @@ const finalizeRecipe = (recipe) => {
   const seen = {};
   let aliasedRecipe = namespace.findRecipe( aliasRecipe.contents[0].tag );
   while( aliasedRecipe ) {
+    console.log( "checking " + aliasedRecipe.name );
     if (seen[aliasedRecipe.id]) {
       throw new Error( `cyclic recipe dependency found in ${recipe.name} in namespace ${namespace.filename}` );
     }
@@ -258,7 +266,7 @@ const finalizeRecipe = (recipe) => {
     root = aliasedRecipe.contents[0];
     attachFunctions( aliasRecipe, aliasedRecipe );
     attachData( aliasRecipe, aliasedRecipe );
-    aliasedRecipe = aliasedRecipe.namespace.findRecipe( aliasRecipe.contents[0].tag );
+    aliasedRecipe = aliasedRecipe.namespace.findRecipe( aliasedRecipe.contents[0].tag );
   }
 
   // set up the rest from the original namespace
@@ -291,6 +299,12 @@ const newBodyInstance = recipe => {
 
   return instance;
 }; //newBodyInstance
+
+
+// ----------------------------------------------------------------------------------------------------
+//                               INSTANCE LOGIC
+// ----------------------------------------------------------------------------------------------------
+
 
 const newInstance = (recipe,parent,node) => {
   const instance = {
@@ -346,6 +360,8 @@ const newInstance = (recipe,parent,node) => {
     _refresh: refresh,
     _refresh_content: _refresh_content,
     _new_el: _new_el,
+    _refresh_element:  _refresh_element,
+    _resolve_onLoad: _resolve_onLoad,
 
     _key2instance: {},
 
@@ -600,8 +616,7 @@ const findInternalContent = (el,recur) => {
 
 };
 
-function refresh(node,el,internalContent) {
-
+function _refresh_element( node, el ) {
   // el must have a value if it has gotten to this point
 
   // an element that needs init has no handlers and stuff
@@ -630,6 +645,7 @@ function refresh(node,el,internalContent) {
 
   // check on handles
   node.handle && this._attachElHandle( el, node.handle );
+
 
   const seen = {};
 
@@ -691,6 +707,13 @@ function refresh(node,el,internalContent) {
         el.setAttribute( attr, attrs[attr] );
       }
     } );
+
+  return needsInit;
+} //_refresh_element
+
+function refresh(node,el,internalContent) {
+
+  const needsInit = this._refresh_element( node, el );
   
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
@@ -704,7 +727,14 @@ function refresh(node,el,internalContent) {
     }
   }
 
-  if (needsInit && rootNode) {
+  needsInit && this._resolve_onLoad(el);
+
+} //refresh
+
+function _resolve_onLoad(el) {
+  // 
+  const rootNode = el.instance && el.instance.rootNode;
+  if (rootNode) {
     this.recipe.onLoad && Promise.resolve( this.preLoad )
       .then (() => this.recipe.onLoad( this ) );
     // check for listeners
@@ -754,6 +784,8 @@ function _refresh_content(content, el) {
     // and hide it
     if (!conEl) {
       const recipe = this.recipe.namespace.findRecipe( con.tag );
+      if (con.tag === 'foo') {  debugger; }
+
       if (recipe) {
         // needs a new instance
         const conInst =
