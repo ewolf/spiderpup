@@ -258,6 +258,7 @@ const finalizeRecipe = (recipe) => {
     root = aliasedRecipe.rootElementNode;
     attachFunctions( recipe, aliasedRecipe );
     recipe.parent = aliasedRecipe;
+    attachData( recipe, aliasedRecipe );
   }
 
 
@@ -298,6 +299,7 @@ const newBodyInstance = recipe => {
 
 
 const newInstance = (recipe,parent,node) => {
+
   const instance = {
     recipe: recipe,
     parent,
@@ -411,7 +413,7 @@ const newInstance = (recipe,parent,node) => {
     attachData( instance, node );
   }
   attachFunctions( instance, recipe );
-    attachData( instance, recipe );
+  attachData( instance, recipe );
   if (parent) {
     attachFunctions( instance, parent );
     attachForFields( instance, parent );
@@ -506,7 +508,6 @@ const attachForFields = (node,parent) => {
 
 */
 const prepNode = (node,type,parent) => {
-  console.log( node.name || node.tag, type, node, "PREP" );
   node.type = type;
   node['is'+type.substr(0,1).toUpperCase()+type.substr(1)] = true;
   node.id = serial++;
@@ -708,7 +709,7 @@ function _refresh_element( node, el ) {
   return needsInit;
 } //_refresh_element
 
-function refresh(node,el,internalContent) {
+function refresh(node,el,internalContent,isAliased) {
 
   const needsInit = this._refresh_element( node, el );
   
@@ -717,7 +718,7 @@ function refresh(node,el,internalContent) {
   node.contents && this._refresh_content( node.contents, el );
   if (internalContent) {
     const innerContainer = findInternalContent( el );
-    if (this.parent) {
+    if (this.parent && ! isAliased) {
       this.parent._refresh_content( internalContent, innerContainer );
     } else {
       this._refresh_content( internalContent, innerContainer );
@@ -763,7 +764,6 @@ function _refresh_component( compo, el, recipe ) {
   const aliased = recipe.aliasedRecipe;
   if (aliased) {
     const root = aliased.contents[0];
-    console.log( root );
     if (root.isComponent) {
       this._refresh_component( root, el, aliased );
     }
@@ -772,7 +772,7 @@ function _refresh_component( compo, el, recipe ) {
     } else {
       this._refresh_element( root, el );
     }
-    el.instance._refresh( compo, el, recipe.contents[0].contents );
+    el.instance._refresh( compo, el, recipe.contents[0].contents, true );
     return;
   }
   el.instance._refresh( compo.recipe.rootElementNode, el, compo.contents );
