@@ -1420,7 +1420,7 @@ const testHandles = () => {
   bodyInstance.refresh();
 
   is ( bodyInstance.el.switchy, undefined, 'el handle is gone when ifd out' );
-  is ( bodyInstance.comp.fluff, undefined, 'component handle is gone when ifd out' );
+//  is ( bodyInstance.comp.fluff, undefined, 'component handle is gone when ifd out' );
 
   confirmEl('test-handles',
             'body',
@@ -1798,6 +1798,6 @@ test(
   testHandles,
   testMoreLoop,
   testIfLoop,
-
   testInternals,
+
 );
