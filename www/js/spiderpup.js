@@ -249,31 +249,23 @@ const finalizeRecipe = (recipe) => {
 
   let root = recipe.contents[0];
 
-  // check if this recipe is in fact an alias to a different recipe
-  let aliasRecipe = recipe;
-  const seen = {};
-  let aliasedRecipe = namespace.findRecipe( aliasRecipe.contents[0].tag );
-  while( aliasedRecipe ) {
-    console.log( "checking " + aliasedRecipe.name );
-    if (seen[aliasedRecipe.id]) {
-      throw new Error( `cyclic recipe dependency found in ${recipe.name} in namespace ${namespace.filename}` );
-    }
+  let aliasedRecipe = namespace.findRecipe( recipe.contents[0].tag );
+  if (aliasedRecipe) {
+    recipe.aliasedRecipe = aliasedRecipe;
     if (! aliasedRecipe.isFinalized) {
       finalizeRecipe( aliasedRecipe );
     }
-    seen[aliasedRecipe.id] = true;
-
-    root = aliasedRecipe.contents[0];
-    attachFunctions( aliasRecipe, aliasedRecipe );
-    attachData( aliasRecipe, aliasedRecipe );
-    aliasedRecipe = aliasedRecipe.namespace.findRecipe( aliasedRecipe.contents[0].tag );
+    root = aliasedRecipe.rootElementNode;
+    attachFunctions( recipe, aliasedRecipe );
+    recipe.parent = aliasedRecipe;
   }
+
 
   // set up the rest from the original namespace
   recipe.isFinalized = true;
   recipe.rootElementNode = root;
   attachFunctions( recipe, namespace );
-  prepContents( [root], namespace );
+  prepContents( recipe.contents, namespace );
 
   return recipe;
 
@@ -291,7 +283,6 @@ const newBodyInstance = recipe => {
   instance.refresh = function() {
     // refresh the contents of the body
     this._refresh( recipe.contents[0], document.body );
-//    this._refresh_content( recipe.contents[0].contents, document.body );
   };
 
   instance.loadPromise = Promise.resolve( instance.preLoad )
@@ -359,6 +350,7 @@ const newInstance = (recipe,parent,node) => {
 
     _refresh: refresh,
     _refresh_content: _refresh_content,
+    _refresh_component: _refresh_component,
     _new_el: _new_el,
     _refresh_element:  _refresh_element,
     _resolve_onLoad: _resolve_onLoad,
@@ -514,6 +506,7 @@ const attachForFields = (node,parent) => {
 
 */
 const prepNode = (node,type,parent) => {
+  console.log( node.name || node.tag, type, node, "PREP" );
   node.type = type;
   node['is'+type.substr(0,1).toUpperCase()+type.substr(1)] = true;
   node.id = serial++;
@@ -541,6 +534,10 @@ const prepNode = (node,type,parent) => {
     node.data = node.data || {};
     prepData( node.data );
   }
+  if (node.contents) {
+    
+  }
+
   return node;
 } //prepNode
 
@@ -761,6 +758,27 @@ function _resolve_onLoad(el) {
 
 } //refresh
 
+function _refresh_component( compo, el, recipe ) {
+  // component
+  const aliased = recipe.aliasedRecipe;
+  if (aliased) {
+    const root = aliased.contents[0];
+    console.log( root );
+    if (root.isComponent) {
+      this._refresh_component( root, el, aliased );
+    }
+    if (root.content && root.content.length > 0) {
+      this._refresh( root, el, root.content.length );
+    } else {
+      this._refresh_element( root, el );
+    }
+    el.instance._refresh( compo, el, recipe.contents[0].contents );
+    return;
+  }
+  el.instance._refresh( compo.recipe.rootElementNode, el, compo.contents );
+
+} //_refresh_component
+
 function _refresh_content(content, el) {
   const recipe = this.recipe;
   const namespace = recipe.namespace;
@@ -784,7 +802,6 @@ function _refresh_content(content, el) {
     // and hide it
     if (!conEl) {
       const recipe = this.recipe.namespace.findRecipe( con.tag );
-      if (con.tag === 'foo') {  debugger; }
 
       if (recipe) {
         // needs a new instance
@@ -908,8 +925,7 @@ function _refresh_content(content, el) {
 
       // not in foreach 
       else if (con.isComponent) {
-        // component
-        conEl.instance._refresh( con.recipe.rootElementNode, conEl, con.contents );
+        conEl.instance._refresh_component( con, conEl, con.recipe );
       } else {
         // normal element
         this._refresh( con, conEl );

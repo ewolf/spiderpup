@@ -1793,13 +1793,15 @@ const testInternals = () => {
       containy: {
         contents: [ el( 'section', { id : 'containy' },
             [
-              el( 'h1', 'containy' ),
+              el( 'h1', { textContent: 0 }  ),
               el( 'div', { internalContent: true } ),
             ] ) ],
       },
     },
   } );
   
+  def_funs( [ c => "containy", // 0
+              ] );
   
   let bodyInstance = go();
 
