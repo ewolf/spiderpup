@@ -91,7 +91,7 @@ function reset() {
 }
 
 function debug() {
-  //debugger;
+  debugger;
 }
 
 function elPath(string) {
@@ -196,9 +196,12 @@ function pass (msg) {
   return true;
 }
 function fail (msg) {
+  const stack = new Error().stack.split( /[\n\r]+/ );
+  const lineNum = stack[stack.length-2].replace( /.*:(\d+):\d+\)$/, '$1' );
   ran++;
   fails++;
-  console.log( `FAILED: test '${msg}'` );
+  console.log( `FAILED: test '${msg}' (line ${lineNum})` );
+  debug();
   return false;
 }
 function doneTesting() {
@@ -1396,7 +1399,7 @@ const testHandles = () => {
       calls.push( msg );
     },
     (c,evt) => { // 6 stuffEvent
-      calls.push( c.type + " got event from stuff" );
+      calls.push( c.name + " got event from stuff" );
     },
     (c,evt) => { // 7 preload
       return new Promise( (res,rej) => {
@@ -1443,7 +1446,7 @@ const testHandles = () => {
   // test the multihandles
   is ( bodyInstance.comp.loopyFluff.length, 6, '6 loopy fluffs' ) ;
   is ( bodyInstance.el.loopySpan.length, 6, '6 loopy spans' ) ;  
-  is_deeply ( bodyInstance.comp.loopyFluff.map( bi => bi.type ), bodyInstance.comp.loopyFluff.map( () => 'instance of fluff from TEST' ), 'loopyFluff is componentns' );
+  is_deeply ( bodyInstance.comp.loopyFluff.map( bi => bi.name ), bodyInstance.comp.loopyFluff.map( () => 'instance of recipe fluff in instance of recipe html' ), 'loopyFluff is componentns' );
   is_deeply ( bodyInstance.el.loopySpan.map( span => span.dataset.key )
                                       .map( key => key.replace (/^[^:]+:/, '' ) ),
              [ 'i=0,j=0', 'i=0,j=1', 'i=1,j=0', 'i=1,j=1', 'i=2,j=0', 'i=2,j=1' ], 'loopsSpan right keys' );
@@ -1451,7 +1454,7 @@ const testHandles = () => {
   is ( bodyInstance.el.switchy, document.getElementById( 'switchy' ), 'element handle works' );
   
   let fluffInst = document.getElementById( 'tempfluff' ).instance;
-  is (fluffInst.type, 'instance of fluff from TEST', 'fluff instance' );
+  is (fluffInst.name, 'instance of recipe fluff in instance of recipe html', 'fluff instance' );
   is ( bodyInstance.comp.fluff, fluffInst , 'component handle works' );
 
   bodyInstance.fun.toggle();
@@ -1493,7 +1496,7 @@ const testHandles = () => {
                           'BUTTON', 
                           'body hears hi there',
                           'stuff hears hi there',
-                          'instance of body from TEST got event from stuff',
+                          'instance of recipe html got event from stuff',
                         ], 'correct calls' );
     } );
 
@@ -1817,28 +1820,26 @@ const testInternals = () => {
   let internalEl = document.getElementById( 'guess' );
   let containyInstanceEl = document.getElementById( 'containy' );
   let containyInstance = containyInstanceEl.instance;
-  is (containyInstance.type, 'instance of containy from TEST', 'instance attached in the internals' );
+  is (containyInstance.name, 'instance of recipe containy in instance of recipe html', 'instance attached in the internals' );
 
-  is (bodyInstance._data.intro, 'hi there', 'data in bodyInstance' );
+  is (bodyInstance.data.intro, 'hi there', 'data in bodyInstance' );
   is (bodyInstance.el.adiv, internalEl, 'handle to internal el in bodyinstance' );
 
   ok ( ! ('adiv' in containyInstance.el), 'container doesnt have the handle to the internal thing' );
   
-  ok ( ! ('intro' in containyInstance._data), 'intro did not directly copy from enclosing instance' );
+  ok ( ('intro' in containyInstance.data), 'intro did copy from enclosing instance' );
   
 }; //testInternals
 
 test( 
 
+  testNamespace,
+  testBasic,
+  testIfs,
   testLoop,
-
-  // testNamespace,
-  // testBasic,
-  // testIfs,
-//  testLoop,
-//  testHandles,
-//  testMoreLoop,
-//  testIfLoop,
-//  testInternals,
+  testHandles,
+  testMoreLoop,
+  testIfLoop,
+  testInternals,
 
 );

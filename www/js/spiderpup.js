@@ -55,8 +55,6 @@ const init = (spaces,funz,defFilename) => {
   funs = funz;
   defaultFilename = defFilename;
 
-  console.log( filespaces, `FILESPACES default is '${defaultFilename}'` );
-
   // see if the module requested has a body to render.
   // if not, then loading this does nothing
   const html = filespaces[defaultFilename].html;
@@ -84,7 +82,11 @@ const init = (spaces,funz,defFilename) => {
   const defaultNamespace = filespaces[defaultFilename];
 
   // html is a recipe too, containing one thing in contents, the body
-  const htmlRecipe = prepRecipe( { tag: 'html', contents: [{ tag: 'body', contents: html.body.contents}] }, 'html', defaultNamespace );
+  const htmlRecipe = {...html.body};
+  htmlRecipe.tag = 'html';
+  htmlRecipe.contents = [{ tag: 'body', contents: html.body.contents}];
+
+  prepRecipe( htmlRecipe, 'html', defaultNamespace );
   finalizeRecipe( htmlRecipe );
 
   // there may be a head that has javascript/css imports
@@ -246,6 +248,7 @@ const finalizeRecipe = (recipe) => {
       finalizeRecipe( aliasedRecipe );
     }
     seen[aliasedRecipe.id] = true;
+
     root = aliasedRecipe.contents[0];
     attachFunctions( aliasRecipe, aliasedRecipe );
     attachData( aliasRecipe, aliasedRecipe );
@@ -270,12 +273,17 @@ const newBodyInstance = recipe => {
   document.body.key = document.body.dataset.key = bodyKey;
 
   document.body.instance = instance;
+  instance.rootEl = document.body;
 
   instance.refresh = function() {
     // refresh the contents of the body
     this._refresh( recipe.contents[0], document.body );
 //    this._refresh_content( recipe.contents[0].contents, document.body );
   };
+
+  instance.loadPromise = Promise.resolve( instance.preLoad )
+    .then(() => recipe.onLoad && recipe.onLoad(instance));
+
   return instance;
 }; //newBodyInstance
 
@@ -284,6 +292,8 @@ const newInstance = (recipe,parent,node) => {
     recipe: recipe,
     parent,
     name: parent ? `instance of recipe ${recipe.name} in ${parent.name}` : `instance of recipe ${recipe.name}`,
+
+    rootNode: node,
 
     // handles
     el: {},
@@ -296,19 +306,41 @@ const newInstance = (recipe,parent,node) => {
 
     // listeners
     eventListeners: {}, // event name -> listeners
+    on: {}, //handler -> function
+
+    broadcast: function( act, msg ) {
+      this.top._propagateBroadcast(act,msg);
+      this.top.refresh();
+    },
+    _propagateBroadcast: function(act, msg) {
+      this.broadcastListener && this.broadcastListener(this,act, msg );
+      // propagates here and each child with the given message
+      Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) );
+
+    },
+
+    event: function(event,result) {
+      const listeners = this.eventListeners[event];
+      listeners && listeners.forEach( l => l( result ) );
+    },
+
+    broadcastListener: (node && node.listen) || recipe.listen,
+
+    // instance functions
+    fun: {}, 
 
     // TODO: should listens be additive? that is, run
     // listen code for recipe and for the node?
     // also make class attribute additive?
     //    broadcastListener: node.listen || recipe.listen,
 
-    refresh: function(el) {
-      this._refresh( recipe, el );
+    refresh: function() {
+      this._refresh( recipe, this.rootEl );
     }, //refresh
 
     _refresh: refresh,
     _refresh_content: _refresh_content,
-    _make_el: _make_el,
+    _new_el: _new_el,
 
     _key2instance: {},
 
@@ -333,7 +365,31 @@ const newInstance = (recipe,parent,node) => {
       }
       return base;
     }, //key
+
+    _attachElHandle: function( el, handle ) {
+      if (this._loop_level > 0) {
+        if (!Array.isArray(this.el[handle])) {
+          this.el[handle] = [];
+        } 
+        this.el[handle].push( el );
+      } else {
+        this.el[handle] = el;
+      }
+    },
+
+    _attachCompHandle: function( comp, handle ) {
+      if (this._loop_level > 0 ) {
+        if (!Array.isArray(this.comp[handle])) {
+          this.comp[handle] = [];
+        } 
+        this.comp[handle].push( comp );
+      } else {
+        this.comp[handle] = comp;
+      }
+    },
   };
+
+  instance.top = (parent && parent.top) || instance;
 
   prepNode( instance, 'instance', recipe );
 
@@ -346,7 +402,17 @@ const newInstance = (recipe,parent,node) => {
   if (parent) {
     attachFunctions( instance, parent );
     attachData( instance, parent );
+    attachForFields( instance, parent );
   }
+  
+  // now convert functions
+  Object.keys( instance.functions )
+    .forEach( funname => {
+      const fun = instance.functions[funname];
+      instance.fun[funname] = function() { return fun(instance, ...arguments ) }
+    } );
+  delete instance.functions;
+
 
   instance.set = function(k,v) {
     this._changed = this._changed || v !== this.data[k];
@@ -368,6 +434,8 @@ const newInstance = (recipe,parent,node) => {
     this._changed = false;
     return changed;
   }
+
+  recipe.preLoad && (instance.preLoad = recipe.preLoad(instance)); 
 
   return instance;
 }; //newInstance
@@ -399,6 +467,15 @@ const attachData = (node,parent) => {
       (node.data[fld] = fld in node.data ? node.data[fld] : parent.data[fld])
     );
 }; //attachData
+
+const attachForFields = (node,parent) => {
+  [ 'it', 'idx' ]
+    .forEach( fd => {
+      const forhash = parent[fd];
+      forhash && Object.keys(forhash)
+        .forEach( forname => node[fd][forname] = forhash[forname]  )
+    } );
+}; //attachForData
 
 /*
   Nodes types:
@@ -438,7 +515,7 @@ const prepNode = (node,type,parent) => {
     } );
 
   if (type !== 'element') {
-    node.fun = node.functions = node.functions || {};
+    node.functions = node.functions || {};
     node.data = node.data || {};
     prepData( node.data );
   }
@@ -529,6 +606,7 @@ function refresh(node,el,internalContent) {
 
     // attach element event handlers once
     if (node.on) {
+      const instance = this;
       Object.keys( node.on ).forEach( evname => {
         const evfun = function() {
           const prom = node.on[evname]( instance, ...arguments );
@@ -544,12 +622,51 @@ function refresh(node,el,internalContent) {
     }
   } // needs init
 
-  // populate the attributes of the element
-  const source = node.isComponent ? node.recipe : node;
+  // check on handles
+  node.handle && this._attachElHandle( el, node.handle );
 
+  const seen = {};
+
+  const rootNode = el.instance && el.instance.rootNode;
+  if (rootNode) {
+
+    // attach handle if needed. attach this instance to its parent instance
+    rootNode.handle && this.parent._attachCompHandle( this, rootNode.handle );
+
+    // this is the root element of the component, so any attributes
+    // attached to the component node should be transfered to its root element
+    // populate the attributes of the element
+    const calcs = rootNode.calculate;
+
+    calcs && Object.keys( calcs )
+      .filter( attr => ! seen[attr] )
+      .forEach( attr => {
+        seen[attr] = true;
+        if (attr.match( /^(textContent|innerHTML)$/)) {
+          el[attr] = calcs[attr](this);
+        } else {
+          el.setAttribute( attr, calcs[attr](this) );
+        }
+      } );
+
+    const attrs = rootNode.attrs;
+    attrs && Object.keys( attrs )
+      .filter( attr => ! seen[attr] )
+      .forEach( attr => {
+        seen[attr] = true;
+        if (attr.match( /^(textContent|innerHTML)$/)) {
+          el[attr] = attrs[attr];
+        } else {
+          el.setAttribute( attr, attrs[attr] );
+        }
+      } );
+  }
+  
   const calcs = node.calculate;
   calcs && Object.keys( calcs )
+    .filter( attr => ! seen[attr] )
     .forEach( attr => {
+      seen[attr] = true;
       if (attr.match( /^(textContent|innerHTML)$/)) {
         el[attr] = calcs[attr](this);
       } else {
@@ -557,15 +674,18 @@ function refresh(node,el,internalContent) {
       }
     } );
 
-  node.attrs && Object.keys( node.attrs )
+  const attrs = node.attrs;
+  attrs && Object.keys( attrs )
+    .filter( attr => ! seen[attr] )
     .forEach( attr => {
+      seen[attr] = true;
       if (attr.match( /^(textContent|innerHTML)$/)) {
-        el[attr] = node.attrs[attr];
+        el[attr] = attrs[attr];
       } else {
-        el.setAttribute( attr, node.attrs[attr] );
+        el.setAttribute( attr, attrs[attr] );
       }
     } );
-
+  
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
   node.contents && this._refresh_content( node.contents, el );
@@ -576,6 +696,31 @@ function refresh(node,el,internalContent) {
     } else {
       this._refresh_content( internalContent, innerContainer );
     }
+  }
+
+  if (needsInit && rootNode) {
+    this.recipe.onLoad && Promise.resolve( this.preLoad )
+      .then (() => this.recipe.onLoad( this ) );
+    // check for listeners
+
+    const instance = this.parent;
+    Object.keys( rootNode.on )
+      .forEach( evname => {
+        // so a componentInstance uses 'event' to send a message
+        // to its listeners
+        const evfun = function() {
+          const prom = rootNode.on[evname]( instance, ...arguments );
+          // resolve in case it returns undefined or returns a promise
+          Promise.resolve( prom )
+            .then( () => {
+              if ( instance._check() ) instance.refresh();
+            } );
+        };
+
+        // update component instance event listeners
+        this.eventListeners[evname] = this.eventListeners[evname] || [];
+        this.eventListeners[evname].push( evfun );
+      } );
   }
 
 } //refresh
@@ -607,10 +752,12 @@ function _refresh_content(content, el) {
         // needs a new instance
         const conInst =
               this._key2instance[key] = newInstance( recipe, this, con );
-        conEl = conInst._make_el( conInst.recipe.rootElementNode, key, el );
+        conEl = conInst._new_el( conInst.recipe.rootElementNode, key, el );
         conEl.instance = conInst;
+        conInst.rootEl = conEl;
+        
       } else {
-        conEl = this._make_el( con, key, el );
+        conEl = this._new_el( con, key, el );
       }
       conEl.style.display = 'none';
       key2el[key] = conEl;
@@ -655,7 +802,7 @@ function _refresh_content(content, el) {
         // remove extras but never the first index
         const forval = con.forval;
         const list = con.foreach( this );
-        const upto = el.lastcount || 0;
+        const upto = conEl.lastcount || 0;
         this._loop_level++;
         
         // remove any that are more than the list count
@@ -666,7 +813,7 @@ function _refresh_content(content, el) {
             itEl && itEl.remove();
           }
         }
-        el.lastcount = list.length;
+        conEl.lastcount = list.length;
 
         if (list.length === 0) {
           // nothing to display, so hide the zero indexed foreach
@@ -692,7 +839,7 @@ function _refresh_content(content, el) {
               if (!forInstance) {
                 const recipe = this.recipe.namespace.findRecipe( con.tag );
                 forInstance = newInstance( recipe, this, con );
-                forEl = i == 0 ? forInstance._make_el( forInstance.recipe.rootElementNode, forKey, el ) : forInstance._make_el( forInstance.recipe.rootElementNode, forKey, undefined, lastEl );
+                forEl = i == 0 ? forInstance._new_el( forInstance.recipe.rootElementNode, forKey, el ) : forInstance._new_el( forInstance.recipe.rootElementNode, forKey, undefined, lastEl );
                 forInstance.rootEl = forEl;
                 forEl.instance = forInstance;
                 this._key2instance[ forKey ] = forInstance;
@@ -702,26 +849,11 @@ function _refresh_content(content, el) {
               forInstance.idx[forval] = i;
               forInstance.it[forval] = list[i];
 
-              if (con.handle) {
-                const comps = this.comp[con.handle]
-                      = this.comp[con.handle] || [];
-                comps.length = list.length;
-                comps[i] = forInstance;
-              }
               forInstance._refresh( con.recipe.rootElementNode, forEl, con.contents );
             } 
             else { //is element
-              forEl = forEl || ( i == 0 ? this._make_el( con, forKey, el ) :
-                                 this._make_el( con, forKey, undefined, lastEl ) );
-              if (con.handle) {
-                
-                if (! Array.isArray( this.el[con.handle])) {
-                  this.el[con.handle] = [];
-                }
-                const els = this.el[con.handle];
-                els.length = list.length;
-                els[i] = forEl;
-              }
+              forEl = forEl || ( i == 0 ? this._new_el( con, forKey, el ) :
+                                 this._new_el( con, forKey, undefined, lastEl ) );
               this._refresh( con, forEl );
             }
             lastEl = forEl;
@@ -737,7 +869,7 @@ function _refresh_content(content, el) {
       } //has a foreach 
 
       // not in foreach 
-      else if (conEl.isComponent) {
+      else if (con.isComponent) {
         // component
         conEl.instance._refresh( con.recipe.rootElementNode, conEl, con.contents );
       } else {
@@ -748,10 +880,18 @@ function _refresh_content(content, el) {
     } else { // ELEMENT NOT DISPLAYED
       conEl.style.display = 'none';
 
+      if (con.handle) {
+        if (con.isComponent) {
+        
+        } else {
+          delete this.el[con.handle];
+        }
+      }
+
       // remove handles
+      delete this.el[key];
 
       if (con.foreach) {
-        debugger;
         // remove all but first loop entry
         for (let i=1; i<conEl.lastcount; i++) {
           const forKey = this._key( con, i );
@@ -762,10 +902,11 @@ function _refresh_content(content, el) {
       }
     }
 
-  } );
+  } ); //each content item
+
 } //_refresh_content
 
-const _make_el = (node,key,attachToEl, attachAfterEl) => {
+const _new_el = (node,key,attachToEl, attachAfterEl) => {
   const tag = node.tag;
   const newEl = document.createElement( tag );
   if (node.internalContent) {
@@ -778,7 +919,7 @@ const _make_el = (node,key,attachToEl, attachAfterEl) => {
     attachToEl.append( newEl );
   }
   return newEl;
-}; //_make_el
+}; //_new_el
 
 const makeKey2el = el => {
   const key2el = {};
