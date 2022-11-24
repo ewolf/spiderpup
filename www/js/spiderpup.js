@@ -49,7 +49,6 @@ const init = (spaces,funz,defFilename) => {
 
   // see if the module requested has a body to render.
   // if not, then loading this does nothing
-  const defaultNamespace = prepNamespace( filespaces[defaultFilename], defaultFilename );
   const html = filespaces[defaultFilename].html;
   if (!(html && html.body)) {
     console.warn( `no body defined in '${defaultFilename}'` );
@@ -71,6 +70,8 @@ const init = (spaces,funz,defFilename) => {
     .forEach( filename => {
       finalizeNamespaces( filespaces[filename], filename );
     } );
+
+  const defaultNamespace = filespaces[defaultFilename];
 
   // html is a recipe too, containing one thing in contents, the body
   const htmlRecipe = prepRecipe( { tag: 'html', contents: [{ tag: 'body', contents: html.body.contents}] }, 'html', defaultNamespace );
@@ -143,6 +144,7 @@ const init = (spaces,funz,defFilename) => {
 const prepNamespace = (namespace,filename) => {
   prepNode( namespace, 'namespace' );
   namespace.filename = filename;
+  namespace.name = `namespace ${filename}`;
 
   namespace.components = namespace.components || {};
   Object.keys( namespace.components )
@@ -179,7 +181,7 @@ const finalizeNamespaces = (namespace,filename) => {
   Object.keys( namespace.components )
     .forEach( recipeName => {
       const recipe = namespace.components[recipeName];
-      finalizeRecipe( recipeName );
+      finalizeRecipe( recipe );
     } );
 }; //finalizeNamespaces
 
@@ -252,17 +254,17 @@ const finalizeRecipe = (recipe) => {
 const newBodyInstance = recipe => {
   const instance = newInstance(recipe);
   instance.refresh = function() {
-      // refresh the contents of the body
-      this._refresh( recipe.contents[0], document.body, recipe.contents[0].contents );
+    // refresh the contents of the body
+    this._refresh( recipe.contents[0], document.body, recipe.contents[0].contents );
   };
   return instance;
 }; //newBodyInstance
 
-const newInstance = (recipe,parent) => {
+const newInstance = (recipe,parent,node) => {
   const instance = {
     recipe,
     parent,
-
+    name: parent ? `instance of recipe ${recipe.name} in ${parent.name}` : `instance of recipe ${recipe.name}`,
     refresh: function(el) {
       this._refresh( recipe, el );
     }, //refresh
@@ -297,8 +299,17 @@ const newInstance = (recipe,parent) => {
   };
 
   prepNode( instance, 'instance', recipe );
-  attachFunctions( instance, parent || recipe );
-  attachData( instance, parent || recipe );
+
+  if (node) {
+    attachFunctions( instance, node );
+    attachData( instance, node );
+  }
+  attachFunctions( instance, recipe );
+  attachData( instance, recipe );
+  if (parent) {
+    attachFunctions( instance, parent );
+    attachData( instance, parent );
+  }
 
   // copy data from the recipe
   instance._data = {...recipe.data};
@@ -344,7 +355,7 @@ const attachFunctions = (node,parent) => {
     .forEach( funtype => {
       const funhash = parent[funtype];
       funhash && Object.keys(funhash)
-        .forEach( funname => node[funhash][funname] = node[funtype][funname] || funhash[funname]  )
+        .forEach( funname => node[funtype][funname] = node[funtype][funname] || funhash[funname]  )
     } );
 }; //attachFunctions
 
@@ -374,12 +385,14 @@ const prepNode = (node,type,parent) => {
   node['is'+type.substr(0,1).toUpperCase()+type.substr(1)] = true;
   node.id = serial++;
 
+
   //
   // attach functions where proxy references exist
   //
   [ 'preLoad', 'onLoad', 'if', 'elseif', 'foreach', 'listen' ]
-    .forEach( fun =>
+    .forEach( fun => 
       node[fun] !== undefined && ( node[fun] = funs[node[fun]] ) );
+
 
   [ 'calculate', 'on', 'functions' ]
     .forEach( hashName => {
@@ -391,7 +404,7 @@ const prepNode = (node,type,parent) => {
     } );
 
   if (type !== 'element') {
-    node.fun = node.functions || {};
+    node.fun = node.functions = node.functions || {};
     node.data = node.data || {};
     prepData( node.data );
   }
@@ -432,16 +445,19 @@ const prepData = data => {
 const prepContents = (contents,namespace) => {
   contents
     && contents.forEach( con => {
-      if (namespace.findRecipe(con.tag)) {
-        prepComponentNode( con, namespace );
+      const recipe = namespace.findRecipe(con.tag);
+      if (recipe) {
+        prepComponentNode( con, namespace, recipe );
       } else {
         prepElementNode( con, namespace );
       }
     } );
 };
 
-const prepComponentNode = (node,namespace) => {
-  prepDescriptiveNode( node, 'element' );
+const prepComponentNode = (node,namespace,recipe) => {
+  prepNode( node, 'component', recipe );
+  attachFunctions( node, recipe );
+  node.recipe = recipe;
   prepContents( node.contents, namespace );
 };
 
@@ -487,8 +503,24 @@ function _installElement( node, key, attachToEl, attachAfter ) {
     return newEl;
 }
 
-function refresh(node,el,content) {
-  content = content || node.content || [];
+const findInternalContent = (el,recur) => {
+  if ( el.internalContent ) return el;
+
+  const chilInts = Array.from( el.children )
+        .map( chld => findInternalContent( chld, true ) )
+        .filter( chld => chld !== undefined );
+
+  if (chilInts.length > 0) {
+    return chilInts[0];
+  }
+
+  if (!recur) {
+    return el;
+  }
+
+};
+
+function refresh(node,el,internalContent) {
   
   // el must have a value if it has gotten to this point
 
@@ -497,6 +529,10 @@ function refresh(node,el,content) {
   const needsInit = !!!el.hasInit;
   if (needsInit) {
     el.hasInit = true;
+
+    if (node.internalContent) {
+      el.internalContent = el.dataset.internalContent = true;
+    }
     
     // attach element event handlers once
     if (node.on) {
@@ -516,12 +552,17 @@ function refresh(node,el,content) {
   } // needs init
   
   // populate the attributes of the element
-  node.calculate && Object.keys( node.calculate )
+  const source = node.isComponent ? node.recipe : node;
+
+  if (node.isComponent) { debugger; }
+
+  const calcs = node.calculate;
+  calcs && Object.keys( calcs )
     .forEach( attr => {
       if (attr.match( /^(textContent|innerHTML)$/)) {
-        el[attr] = calcs[attr](instance);
+        el[attr] = calcs[attr](this);
       } else {
-        el.setAttribute( attr, calcs[attr](instance) );
+        el.setAttribute( attr, calcs[attr](this) );
       }
     } );
 
@@ -537,6 +578,10 @@ function refresh(node,el,content) {
   // create elements as needed here, even if hidden
   // make sure if then else chain is good
   node.contents && this._refresh_content( node.contents, node, el );
+  if (internalContent) {
+    const innerContainer = findInternalContent( el );
+    this._refresh_content( internalContent, node, el );
+  }
 
 } //refresh
 
@@ -578,18 +623,22 @@ function refresh_content(content, node, el) {
       if (recipe) {
         // needs a new instance
         const conInst = 
-              this._key2instance[key] = newInstance( recipe, this );
+              this._key2instance[key] = newInstance( recipe, this, con );
         conEl = this._make_el( conInst.recipe.rootElementNode.tag, key, el );
+        console.log( con.contents );
+        conInst._refresh( con.recipe.rootElementNode, conEl, con.contents ); 
       } else {
         conEl = this._make_el( con.tag, key, el );
+        this._refresh( con, conEl ); 
       }
-      this._refresh( con, conEl ); 
     }
   } );
 } //refresh_content
 
 const makeEl = (tag,key,attachToEl, attachAfterEl) => {
+  if (tag === 'ul') { debugger; }
   const newEl = document.createElement( tag );
+  newEl.key = newEl.dataset.key = key;
   if (attachAfterEl) {
     attachAfterEl.after( newEl );
   } else {

@@ -1791,13 +1791,13 @@ const testInternals = () => {
 
 test( 
 
-  testIfs,
+//  testIfs,
   testBasic,
-  testNamespace,
-  testLoop,
-  testHandles,
-  testMoreLoop,
-  testIfLoop,
-  testInternals,
+//  testNamespace,
+//  testLoop,
+//  testHandles,
+//  testMoreLoop,
+//  testIfLoop,
+//  testInternals,
 
 );
