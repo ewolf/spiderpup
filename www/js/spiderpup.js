@@ -63,6 +63,9 @@ const init = (spaces,funz,defFilename) => {
     return;
   }
 
+  const defaultNamespace = filespaces[defaultFilename];
+
+
   // prep and connect the namespaces
   Object.keys( filespaces )
     .forEach( filename => {
@@ -71,6 +74,9 @@ const init = (spaces,funz,defFilename) => {
       Object.keys( namespace.namespaces )
         .forEach( alias => (namespace.namespaces[alias] =
                             filespaces[namespace.namespaces[alias]]) );
+      if (filename !== defaultFilename) {
+        namespace.parent = defaultNamespace;
+      }
     } );
 
   // finalize the namespaces
@@ -78,8 +84,6 @@ const init = (spaces,funz,defFilename) => {
     .forEach( filename => {
       finalizeNamespaces( filespaces[filename], filename );
     } );
-
-  const defaultNamespace = filespaces[defaultFilename];
 
   // html is a recipe too, containing one thing in contents, the body
   const htmlRecipe = {...html.body};
@@ -261,7 +265,6 @@ const finalizeRecipe = (recipe) => {
   recipe.isFinalized = true;
   recipe.rootElementNode = root;
   attachFunctions( recipe, namespace );
-  attachData( recipe, namespace );
   prepContents( [root], namespace );
 
   return recipe;

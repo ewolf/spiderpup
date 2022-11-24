@@ -1822,12 +1822,12 @@ const testInternals = () => {
   let containyInstance = containyInstanceEl.instance;
   is (containyInstance.name, 'instance of recipe containy in instance of recipe html', 'instance attached in the internals' );
 
-  is (bodyInstance.data.intro, 'hi there', 'data in bodyInstance' );
+  is (bodyInstance.get( 'intro' ), 'hi there', 'data in bodyInstance' );
   is (bodyInstance.el.adiv, internalEl, 'handle to internal el in bodyinstance' );
 
   ok ( ! ('adiv' in containyInstance.el), 'container doesnt have the handle to the internal thing' );
   
-  ok ( ('intro' in containyInstance.data), 'intro did copy from enclosing instance' );
+  ok ( containyInstance.get( 'intro' ), 'intro did copy from enclosing instance' );
   
 }; //testInternals
 
@@ -1843,4 +1843,4 @@ test(
   testInternals,
 
 );
-warn( 'tests for class addition, tests for recipe alias w/ data copying. tests for data copying');
+console.warn( 'tests for class addition, tests for recipe alias w/ data copying. tests for data copying');
