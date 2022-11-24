@@ -90,6 +90,10 @@ function reset() {
   
 }
 
+function debug() {
+  //debugger;
+}
+
 function elPath(string) {
   const pathParts = string.toLowerCase().split( '|' );
 
@@ -245,17 +249,17 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
       const eVal = attrs[attr][fld];
       const aVal = el[attr][fld];
       if (! is (aVal, eVal, `expected property '${attr}.${fld}' to be '${eVal}' and got '${aVal}'  ${teststr} in test ${testname} at path ) ${pathstr}`)) {
-        debugger;
+        debug();
       }
     }
     else if (attr === 'textContent') {
       const textNode = el.childNodes[0] && el.childNodes[0].textContent;
       if ( ! is (textNode, val, `expected text '${val}' and got '${textNode}' ${teststr}`) ) {
-        debugger;
+        debug();
       }
     } else {
       if (! is (el.getAttribute( attr ), val, `expected for attribute ${attr} : '${val}' and got '${el.getAttribute(attr)}' ${teststr}` ) ) {
-        debugger;
+        debug();
       }
     }
   } );
@@ -267,7 +271,7 @@ function confirmEl( testname, tag, arg1, arg2, el, path ) {
     contents = [contents];
   }
 
-  if( ! is (el.childElementCount, contents.length, `content count ${teststr}` ) ) { debugger; }
+  if( ! is (el.childElementCount, contents.length, `content count ${teststr}` ) ) { debug(); }
 
   contents.forEach( (con,idx) => {
     const [ contag, conarg1, conarg2 ] = con;
@@ -295,22 +299,22 @@ function checkNode( path, expected_attrs, msg ) {
       const aVal = actualEl[attr][fld];
       passes = passes && aVal === eVal;
       if (!passes) {
-        debugger;
         failmsg = `expected property '${attr}.${fld}' to be '${eVal}' and got '${aVal}'`;
+        debug();
       }
     }
     else if (attr === 'textContent') {
       const textNode = actualEl.childNodes[0] && actualEl.childNodes[0].textContent;
       passes = passes && textNode === val;
       if (!passes) {
-        debugger;
         failmsg = `expected text '${val}' and got '${textNode}'`;
+        debug();
       }
     } else {
       passes = passes && actualEl.getAttribute( attr ) === val;
       if (!passes) {
-        debugger;
         failmsg = `expected for attribute ${attr} : '${val}' and got '${actualEl.getAttribute(attr)}'`;
+        debug();
       }
     }
   } );
@@ -589,7 +593,6 @@ const testIfs = () => {
   ] );
 
   go();
-
   confirmEl( 'test-ifs',
              'body',
              [ 
@@ -636,7 +639,7 @@ const testIfs = () => {
                ]
              ]
            );
-}
+} //testIfs
 const foo = () => {
 
   // now check for fails for wrong if/then/else combos
@@ -681,7 +684,7 @@ const foo = () => {
   }
 
 
-}; //testIfs
+}; //foo
 
 
 //
@@ -809,7 +812,7 @@ const testNamespace = () => {
     like ( e.message, /requested namespace that was not imported/, 'error message for trying to use a imported but not declared namespace' );
   }
 
-
+  reset();
   body( [
     node( 'ON.containery' ),   // body| 0 div | header | main (int) | footer
     node( 'ON.containery', [   // 1 div
@@ -876,8 +879,43 @@ const testNamespace = () => {
     c => c.get('blat' ) != 1, //3
   ] );
 
-  go();
+  const inst = go();
 
+  confirmEl( 'test-namespace',
+             'body',
+              [
+                [ 'div',
+                  [
+                    ['header','head'],
+                    ['main','main'],
+                    ['footer','foot']
+                  ]],
+                [ 'div',
+                  [
+                    ['header','head'],
+                    ['main','main',['div','in the middle']],
+                    ['footer','foot']
+                  ]],
+                [ 'div', // body | 2 div
+                  [
+                    ['header','head'],
+                    ['main','main',[
+                      ['div','in a middle'],
+                      ['div',{style: {display:'none'}}]
+                    ]],
+                    ['footer','foot']
+                  ]],
+                [ 'div',
+                  [
+                    ['header','head'],
+                    ['main','main',[
+                      ['div',{style: {display:'none'}}],
+                      ['div','nope nope im the else']]],
+                    ['footer','foot']
+                  ]],
+              ] );
+
+  inst.refresh();
   confirmEl( 'test-namespace',
              'body',
               [
@@ -1152,6 +1190,7 @@ const testLoop = () => {
   ] );
 
   go();
+
   confirmEl( 'test-loop',
              'body',
              [
@@ -1791,9 +1830,11 @@ const testInternals = () => {
 
 test( 
 
-//  testIfs,
-  testBasic,
-//  testNamespace,
+  testLoop,
+
+  // testNamespace,
+  // testBasic,
+  // testIfs,
 //  testLoop,
 //  testHandles,
 //  testMoreLoop,
