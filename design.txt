@@ -6,8 +6,8 @@ Designer Input. The YAML files.
 
 The YAML files have the following top level keywords:
 
- # body for page
- * body: special component recipe node
+ # page definition
+ * page with fields 'body' and 'title'
  * preLoad: called when namespace is loaded
  * onLoad: called when namespace is rendered
 
@@ -22,7 +22,7 @@ The YAML files have the following top level keywords:
  * less : string less that will be translated into css to include
 
  # namespace things
- * import: alias -> YAML filename
+ * import_namespace: alias -> YAML filename
  * recipes: name -> component recipe node
  * data: name  -> function or value
  * functions: name -> function
@@ -38,7 +38,7 @@ The YAML files have the following top level keywords:
  * preLoad: called when namespace is loaded
 
 
- # component instance nodes
+ # component (recipe) instance nodes
  * contents: list of element or component instance nodes
              that are in the scope of the instance that
              creates the component and are placed

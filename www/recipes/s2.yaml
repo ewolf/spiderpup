@@ -1,7 +1,8 @@
-html:
-  head:
-    title: foooooo
-    style: .ilb { display: inline-block }
+page:
+
+  title: foooooo
+  
+  style: .ilb { display: inline-block; border: solid 4px blue; }
   body: 
     - foo:
     - foo:
@@ -16,5 +17,5 @@ recipes:
           - span: 'FOO '
           - div:
               class: ilb
-              internalContent: 1
+              fill: true
           - span: ' END'

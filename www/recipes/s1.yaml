@@ -1,4 +1,4 @@
 ---
-html:
+page:
   body: 
     - h1: hello world

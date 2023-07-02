@@ -55,7 +55,7 @@ open http://127.0.0.1:3000/mypage.html
 ### test
 
 ```
-$ cd spiderpup/scripts
+$ cd spiderpup/script
 $ PERL5LIB=../lib; morbo spiderpup
 ```
 

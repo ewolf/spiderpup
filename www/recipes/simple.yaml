@@ -6,8 +6,9 @@ page:
 
   body: 
     style: 
-      - background-color: green
+      - background-color: mintcream
     contents:
       - div: BEEP
-
+      - div:
+          - span: BEP
     
