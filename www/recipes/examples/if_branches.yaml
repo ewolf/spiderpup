@@ -4,13 +4,14 @@ css: >-
   .low { border: solid red 8px }
   .good { border: solid green 8px }
   .high { border: solid purple 8px }
-    
-body:
-  - NumberAdjuster:
-      data:
-        value: 15
-        incVal: 5
-        name: 'pressure'
+
+page:    
+  body:
+    - NumberAdjuster:
+        data:
+          value: 15
+          incVal: 5
+          name: 'pressure'
           
 recipes:
   NumberAdjuster:

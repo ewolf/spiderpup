@@ -114,7 +114,7 @@ class Namespace extends Node {
   onLoad() {
 
   }
-}
+} //class NameSpace
 
 class Recipe extends Node {
 
@@ -172,7 +172,7 @@ class Recipe extends Node {
     return inst;
   }
 
-}
+} //class Recipe
 
 
 class BodyRecipe extends Recipe {
@@ -196,7 +196,7 @@ class BodyRecipe extends Recipe {
   installTitle() {
     this.head.title && (document.title = this.head.title);
   }
-}
+}  //class BodyRecipe
 
 class Builder extends Node {
 
@@ -279,7 +279,6 @@ class Builder extends Node {
           }
 
           if (con.contents && con.contents.length) {
-            debugger;
             const toFillBuilders = child_B.defaultFillContents =
                   con.contents.map( fill_con => {
                     const fill_B = new Builder();
@@ -301,9 +300,31 @@ class Builder extends Node {
         this.contentBuilders.push( child_B );
       } );
   } //fillOut
+
+  buildElement( inst ) {
+    const el = document.createElement( this.tag );
+    el.dataset.SPID = this.id;
+
+    // attach event listeners
+    this.on && Object.keys( this.on )
+      .forEach( evname => {
+        const onfun = this.on[evname];
+        const evfun = function() {
+          const prom = onfun( inst, ...arguments );
+          Promise.resolve( prom )
+            .then( () => {
+              if ( inst.check() ) inst.refresh();
+            } );
+        };
+        el.addEventListener( evname, evfun );
+      } );
+
+    return el;
+  }
    
 } // class Builder
  
+
 class Instance extends Node {
 
   setup( recipe, builder ) {
@@ -312,6 +333,43 @@ class Instance extends Node {
     builder.instance = this;
     this.childInstances = {}; // id -> instance
     this.builder_id2el = {};
+    this.layer( recipe, builder );
+  }
+
+  check() {
+    const changed = this.changed;
+    this.changed = false;
+    return changed;
+  }
+
+  makeData() {
+    const inst = this;
+    return new Proxy( {}, {
+      get(target, name, receiver) {
+        return Reflect.get(target, name, receiver);
+      },
+      set(target, name, value, receiver) {
+        const original = Reflect.get(target, name, receiver);
+        if (value !== original) {
+          inst.changed = true;
+          return Reflect.set(target, name, value, receiver);
+        }
+        return value;
+      }
+    } );
+    
+  }
+
+  layer( recipe, builder ) {
+    // we want za data
+    const data = this.data ||= this.makeData();
+    [ recipe, builder ]
+      .forEach ( from => {
+        from.data && Object.keys( from.data )
+          .forEach( fld => {
+            data[fld] = from.data[fld];
+          } );
+      } );
   }
 
   getFillEl(name) {
@@ -350,7 +408,9 @@ class Instance extends Node {
     const attrs = builder.attrs;
     attrs && Object.keys(attrs)
       .forEach( attr => {
+
         const val = this.dataVal( attrs[attr] );
+
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
@@ -379,7 +439,7 @@ class Instance extends Node {
 
     const builderID2el = {};
     Array.from( el.children )
-      .forEach( el => el.dataSet.SPID && ( builderID2el[el.dataSet.SPID] = el ) );
+      .forEach( el => el.dataset.SPID && ( builderID2el[el.dataset.SPID] = el ) );
     
     (builder.contentBuilders).forEach( con_B => {
       let con_E = builderID2el[con_B.id];
@@ -388,21 +448,21 @@ class Instance extends Node {
 
       if (instance_R) {
         // we didnt check if there is already an instance
-        let con_I = builder.instance.childInstances[con_B.id]
+        const con_I = builder.instance.childInstances[con_B.id]
             ||= instance_R.createInstance(con_B);
 
         const inst_B = con_I.instanceBuilder;
 
         if (!con_E) {
-          con_E = document.createElement( inst_B.tag );
+          con_E = inst_B.buildElement(con_I);
           this.builder_id2el[con_B.id] = con_E;
+          con_I.attachTo( con_E );
           el.append( con_E );
         }
         
         con_I._refresh( con_E, inst_B );
 
         // check for fill and fill contents
-        if (con_B.contents && con_B.contents.length) debugger;
         if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
           const fill_E = con_I.getFillEl();
           con_B.defaultFillContents
@@ -414,7 +474,7 @@ class Instance extends Node {
       } 
       else { // element builder
         if (!con_E) {
-          con_E = document.createElement( con_B.tag );
+          con_E = con_B.buildElement(this);
           this.builder_id2el[con_B.id] = con_E;
           el.append( con_E );
         }
@@ -445,29 +505,3 @@ class Instance extends Node {
   }
 } // Class Instance
 
-class ElementNode extends Node {
-  setup( data ) {
-    this.recipe = data.recipe;
-    [ 'attrs', 'data', 'on' ]
-      .forEach ( htype => {
-        const dataHash = data[htype] ||= {};
-        const nodeHash = this[htype] = {};
-        Object.keys (dataHash)
-          .forEach( fld => (nodeHash[fld] = dataHash[fld] ));
-      } );
-
-    console.warn( "this is where the function handlers shoudl be" );
-    
-    this.contents = data.contents.map( child => {
-//      const childRecipe = 
-//      const childNode = new ElementNode( 
-    } );
-
-
-  }
-
-  refresh( el ) {
-    
-  }
-  
-}

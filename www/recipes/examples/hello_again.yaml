@@ -4,12 +4,12 @@ less: >
   .mainstyle {
     background-color: wheat;
   }
-      
-body:
-  - div:
-      class: mainstyle
-      contents:
-        - h1: hello world
-        - h2: 
-            textContent: this is spiderpup
-            style: background-color: lightblue;
+page:      
+  body:
+    - div:
+        class: mainstyle
+        contents:
+          - h1: hello world
+          - h2: 
+              textContent: this is spiderpup
+              style: background-color: lightblue;

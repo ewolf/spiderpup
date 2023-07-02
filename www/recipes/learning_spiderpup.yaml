@@ -504,11 +504,9 @@ data:
     #       file:
     #       code: >-
 
+title: learning spiderpup
 
-html:
-  head:
-    title: learning spiderpup
-
+page:
   body:
     - h1: learning spiderpup
     - p: This file teaches how to write spiderpup YAML by example.

@@ -1,6 +1,6 @@
-html:
-  head:
-    title: example
+title: example
+
+page:
   body:
     - testapp:
 
@@ -10,10 +10,8 @@ recipes:
       count: 0
     contents:
       - button:
-          calculate:
-            textContent: s => s.data.get( 'count' )
-          events:
-            click: >-
-              (s,ev) => {
-                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
-              }
+          textContent: s => s.data.count
+          on_click: >-
+            (s,ev) => {
+               s.data.count++;
+            }
