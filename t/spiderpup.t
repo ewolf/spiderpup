@@ -101,13 +101,13 @@ is_deeply( $funs, [
                '()=>{return 2}',
            ], 'funs' );
 
-my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'components'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\ndiv table { color: green; }\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'components'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
+my $exp = {'t/www/recipes/impy.yaml'=>{'namespaces'=>{},'functions'=>{},'data'=>{},'recipes'=>{'myform'=>{'contents'=>[{'contents'=>[{'tag'=>'mydiv'}],'tag'=>'form'}],'functions'=>{'foo'=>0}},'mydiv'=>{'contents'=>[{'attrs'=>{'textContent'=>'my div'},'tag'=>'div'}]}}},'t/www/recipes/import_test.yaml'=>{'data'=>{},'html'=>{'head'=>{'style'=>"body { background: blue; }\ndiv table { color: green; }\n",'script'=>"alert(\"HI\")",'javascript'=>['js_one.js','js_two.js'],'css'=>['css_one.css'],'title'=>'test thing'},'body'=>{'listen'=>1,'contents'=>[{'tag'=>'bar.myform','functions'=>{'foo'=>2}}]}},'recipes'=>{},'namespaces'=>{'bar'=>'t/www/recipes/impy.yaml'},'functions'=>{}}};
 is_deeply( $filespaces, $exp, 'file spaces for import_test' );
 
 ($funs, $filespaces, $defNS) = spiderpup_data( "simple_test.yaml" );
 is_deeply( $funs, [], 'simple no funs' );
 $exp = {'t/www/recipes/simple_test.yaml'=>
-        {'data'=>{ x => 'y' },'components'=>{},'functions'=>{},'namespaces'=>{},
+        {'data'=>{ x => 'y' },'recipes'=>{},'functions'=>{},'namespaces'=>{},
              'html'=>{'body'=>{'contents'=>[{'tag'=>'div','attrs'=>{'textContent'=>'hello world'}}]}}}};
 is_deeply( $filespaces, $exp, 'file spaces for simple test' );
 
@@ -116,7 +116,7 @@ throws_ok(
     sub {
         my $loader = sub {
             return {
-                components => {
+                recipes => {
                     burp => {
 
                     },
@@ -133,7 +133,7 @@ throws_ok(
     sub {
         my $loader = sub {
             return {
-                components => {
+                recipes => {
                     burp => {
                         contents => []
                     },
@@ -149,14 +149,14 @@ throws_ok(
 ($funs, $filespaces, $defNS) = spiderpup_data( "error.yaml" );
 is( $defNS, 'ERROR', 'error namespace name' );
 is_deeply ($funs, [], 'no error funs' );
-is_deeply( $filespaces, {"ERROR"=>{"html"=>{"body"=>{"contents"=>[{"tag"=>"h3","attrs"=>{"textContent"=>"Error in file recipes/error.yaml"}},{"tag"=>"div","contents"=>[{"attrs"=>{"textContent"=>"recipe \'burp\' must contain contents at lib/Yote/SpiderPup.pm line 32.\n"},"tag"=>"p"}]}]}},"functions"=>{},"components"=>{},"namespaces"=>{},"data"=>{}}}, 'error data' );
+is_deeply( $filespaces, {"ERROR"=>{"html"=>{"body"=>{"contents"=>[{"tag"=>"h3","attrs"=>{"textContent"=>"Error in file recipes/error.yaml"}},{"tag"=>"div","contents"=>[{"attrs"=>{"textContent"=>"recipe \'burp\' must contain contents at lib/Yote/SpiderPup.pm line 31.\n"},"tag"=>"p"}]}]}},"functions"=>{},"recipes"=>{},"namespaces"=>{},"data"=>{}}}, 'error data' );
 
 
 throws_ok(
     sub {
         my $loader = sub {
             return {
-                components => {
+                recipes => {
                     'burp.urp' => {
                         contents => [ "div" ],
                     },
@@ -171,7 +171,7 @@ throws_ok(
 
 my $loader = sub {
     return {
-        components => {
+        recipes => {
             'spano' => {
                 data => { items => [ "A", "B", undef ] },
                 contents => [ 'span' ],
@@ -188,7 +188,7 @@ Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 is_deeply( $namespaces,
            {
                '/' => {
-                   'components' => {
+                   'recipes' => {
                        'spano' => {
                            'contents' => [ {
                                'tag' => 'span',
@@ -218,32 +218,34 @@ $loader = sub {
             beep => 'function() { alert("BEEP") }',
             leep => 'c=>alert("leep")',
         },
-        body => {
-            'contents' => [
-                { 'div' => {
-                    if => 'c => true',
-                    textContent => "first",
-                    handle => "FIRSTY",
-                }},
-                { 'div' => {
-                    elseif => '() => true',
-                    textContent => "second",
-                    on_click => 'function() { alert("CLEEK") }',
-                }},
-                { 'div' => {
-                  else => 'True',
-                  textContent => 'c => "third "+c.it.doh+" = "+c.idx.doh"',
-                  forval => 'doh',
-                  foreach => [ 1,2,3,4 ],
-                }},
-            ],
-        },
+        page => {
+            body => {
+                'contents' => [
+                    { 'div' => {
+                        if => 'c => true',
+                        textContent => "first",
+                        handle => "FIRSTY",
+                      }},
+                    { 'div' => {
+                        elseif => '() => true',
+                        textContent => "second",
+                        on_click => 'function() { alert("CLEEK") }',
+                      }},
+                    { 'div' => {
+                        else => 'True',
+                        textContent => 'c => "third "+c.it.doh+" = "+c.idx.doh"',
+                                                 forval => 'doh',
+                                                 foreach => [ 1,2,3,4 ],
+                      }},
+                    ],
+            },
+        }
     };
 };
 $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 my $js = Yote::SpiderPup::to_json( $namespaces, 1 );
-is ($js, '{"/":{"components":{},"data":{},"functions":{"beep":function() { alert("BEEP") },"leep":c=>{return alert("leep")}},"html":{"body":{"contents":[{"attrs":{"textContent":"first"},"handle":"FIRSTY","if":c=>{return true},"tag":"div"},{"attrs":{"textContent":"second"},"elseif":()=>{return true},"on":{"click":function() { alert("CLEEK") }},"tag":"div"},{"attrs":{"textContent":c=>{return "third "+c.it.doh+" = "+c.idx.doh"}},"else":1,"foreach":[1,2,3,4],"forval":"doh","tag":"div"}],"listen":()=>{return console.log("I HEAR U")},"onLoad":()=>{ console.log( "loaded" ) },"preLoad":()=>{ console.log( "starting to load" ) }}},"namespaces":{}}}', "json checks out" );
+is ($js, '{"/":{"data":{},"functions":{"beep":function() { alert("BEEP") },"leep":c=>{return alert("leep")}},"html":{"body":{"contents":[{"attrs":{"textContent":"first"},"handle":"FIRSTY","if":c=>{return true},"tag":"div"},{"attrs":{"textContent":"second"},"elseif":()=>{return true},"on":{"click":function() { alert("CLEEK") }},"tag":"div"},{"attrs":{"textContent":c=>{return "third "+c.it.doh+" = "+c.idx.doh"}},"else":1,"foreach":[1,2,3,4],"forval":"doh","tag":"div"}],"listen":()=>{return console.log("I HEAR U")},"onLoad":()=>{ console.log( "loaded" ) },"preLoad":()=>{ console.log( "starting to load" ) }}},"namespaces":{},"recipes":{}}}', "json checks out" );
 is_deeply( $namespaces,
            {
                '/' => {
@@ -287,7 +289,7 @@ is_deeply( $namespaces,
                        beep => 'function() { alert("BEEP") }',
                        leep => 'c=>alert("leep")',
                    },
-                   components => {},
+                   recipes => {},
                },
            },
            'body with branches and loops' );
@@ -295,21 +297,23 @@ is_deeply( $namespaces,
 
 $loader = sub {
     return {
-        body => {
-            'contents' => [
-                { 'slotty' => {
-                    fill_contents => {
-                        one => [
-                            { 'div' => 'div one' },
-                            ],
-                        two => [
-                            { 'div' => 'div two' },
-                            ],
-                    } } },
-                { 'div' => undef },
-            ],
+        page => {
+            body => {
+                'contents' => [
+                    { 'slotty' => {
+                        fill_contents => {
+                            one => [
+                                { 'div' => 'div one' },
+                                ],
+                            two => [
+                                { 'div' => 'div two' },
+                                ],
+                        } } },
+                    { 'div' => undef },
+                    ],
+            },
         },
-        components => {
+        recipes => {
             'slotty' => {
                 data => { hasSlot => 'false', hasYarg => 'FALSE' },
                 contents => [
@@ -336,7 +340,9 @@ $loader = sub {
 $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 $js = Yote::SpiderPup::to_json( $namespaces, 1 );
-is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"attrs":{"textContent":"div one"},"tag":"div"}],"two":[{"attrs":{"textContent":"div two"},"tag":"div"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
+
+is ($js, '{"/":{"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"attrs":{"textContent":"div one"},"tag":"div"}],"two":[{"attrs":{"textContent":"div two"},"tag":"div"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{},"recipes":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}}}}', "json checks out with slots" );
+
 is_deeply( $namespaces,
            {
                '/' => {
@@ -354,7 +360,7 @@ is_deeply( $namespaces,
                                ],
                        }
                    },
-                   components => {
+                   recipes => {
                        slotty => {
                            data => { hasSlot => 'false', hasYarg => 'FALSE' },
                            contents => [
@@ -384,19 +390,21 @@ is_deeply( $namespaces,
 
 $loader = sub {
     return {
-        body => {
-            'contents' => [
-                { 'slotty' => {
-                  'fill_contents' => {
-                      one => [
-                          { 'slotty' => {
-                            'on_foo' => '() => alert()' },
-                          } ],
-                  } } },
-                { 'div' => undef },
-            ],
+        page => {
+            body => {
+                'contents' => [
+                    { 'slotty' => {
+                        'fill_contents' => {
+                            one => [
+                                { 'slotty' => {
+                                    'on_foo' => '() => alert()' },
+                                } ],
+                        } } },
+                    { 'div' => undef },
+                    ],
+            },
         },
-        components => {
+        recipes => {
             'slotty' => {
                 data => { hasSlot => 'false', hasYarg => 'FALSE' },
                 contents => [
@@ -423,16 +431,15 @@ $loader = sub {
 $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 $js = Yote::SpiderPup::to_json( $namespaces, 1 );
-is ($js, '{"/":{"components":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}},"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"on":{"foo":()=>{return alert()}},"tag":"slotty"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{}}}', "json checks out with slots" );
+is ($js, '{"/":{"data":{},"functions":{},"html":{"body":{"contents":[{"fill_contents":{"one":[{"on":{"foo":()=>{return alert()}},"tag":"slotty"}]},"tag":"slotty"},{"tag":"div"}]}},"namespaces":{},"recipes":{"slotty":{"contents":[{"contents":[{"fill":"one","tag":"div"},{"fill":"two","tag":"div"},{"fill":true,"tag":"div"}],"tag":"div"}],"data":{"hasSlot":false,"hasYarg":false}}}}}', "json checks out with slots" );
 
 $filespaces = {};
 my $yaml_file = Yote::SpiderPup::load_namespace( $base, 'recipes/import_test_again.yaml', $filespaces );
 is ($yaml_file, "$base/recipes/import_test_again.yaml", "load namespace return");
-
 is_deeply ($filespaces,
            {
                't/www/recipes/impy.yaml' => {
-                   'components' => {
+                   'recipes' => {
                        'mydiv' => {
                            'contents' => [
                                {
@@ -457,7 +464,7 @@ is_deeply ($filespaces,
                    'functions' => {}
                },
                't/www/recipes/import_test_again.yaml' => {
-                   'components' => {},
+                   'recipes' => {},
                    'html' => {
                        'body' => {
                            'contents' => [ {
@@ -477,7 +484,7 @@ is_deeply ($filespaces,
                },
                't/www/recipes/impy_two.yaml' => {
                    'functions' => {},
-                   'components' => {
+                   'recipes' => {
                        'myimpy' => {
                            'attrs' => {
                                'class' => 'myclass'
@@ -507,10 +514,12 @@ throws_ok(
     sub {
         my $loader = sub {
             return {
-                body => {
-                    contents => [ { tag => "div" } ],
+                page => {
+                    body => {
+                        contents => [ { tag => "div" } ],
+                    },
                 },
-                import => {
+                import_namespaces => {
                     i1 => "import_one",
                     "this.for.that" => "import_dead",
                 }

@@ -2,7 +2,7 @@
 import:
   bar: examples/more_impy
   
-components:
+recipes:
   myform:
     functions:
       foo: () => alert( 'impy.yaml foo' )

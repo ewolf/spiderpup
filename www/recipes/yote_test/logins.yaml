@@ -28,7 +28,7 @@ less: >-
     background-color: lightyellow;
   }
   
-components:
+recipes:
 
   siteHeader:
     functions:

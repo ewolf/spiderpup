@@ -1,4 +1,4 @@
-Spiderpup allows you to build reactive websites using yaml to describe components and modules built from javascript, less/css and html elements. It maps urls to yaml files that it uses to serve pages. 
+Spiderpup allows you to build reactive websites using yaml to describe recipes and modules built from javascript, less/css and html elements. It maps urls to yaml files that it uses to serve pages. 
 
 # ---- data transition -------
 
@@ -23,7 +23,7 @@ The YAML files have the following top level keywords:
 
  # namespace things
  * import: alias -> YAML filename
- * components: name -> component recipe node
+ * recipes: name -> component recipe node
  * data: name  -> function or value
  * functions: name -> function
  * listen: function called to listen to a general broadcast
@@ -104,7 +104,7 @@ FILENAME NODE ----
          },
   'functions': { <name>: <function>, .. },
   'data': { <name>: <value or function>, ... },
-  'components': { <name>: <recipe node>, ... },
+  'recipes': { <name>: <recipe node>, ... },
 }
 
 BODY NODE ---
@@ -173,7 +173,7 @@ style: >-
     }
   }
 
-components:
+recipes:
   counter:
     data:
       clicks: 0
@@ -220,7 +220,7 @@ body:
 
 
 
-Components contain html elements (and other components), defined functions and stateful variables. Think of them like classes which have instances place on the page. Components can talk to each other by listening to and broadcasting messages.
+Recipes contain html elements (and other recipes), defined functions and stateful variables. Think of them like classes which have instances place on the page. Recipes can talk to each other by listening to and broadcasting messages.
 
 
 
@@ -247,7 +247,7 @@ A walkthru of what happens with spider pup
 
     includde js files in defaultNamespace.html.head.js
 
-  compile recipies defined in defaultNamespace.components
+  compile recipies defined in defaultNamespace.recipes
 
   compile defaultNamespace.html.body
 

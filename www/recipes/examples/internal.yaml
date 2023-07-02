@@ -12,7 +12,7 @@ body:
   - no-specified-internal:
       - span: AFTER FINISH
 
-components:
+recipes:
   with-specified-internal:
     - div:
         - span: first

@@ -207,7 +207,7 @@ body:
                 if: c => ! c.get('app')
                 textContent: app not yet loaded
 
-components:
+recipes:
 
   counter:
     data:

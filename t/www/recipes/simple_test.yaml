@@ -3,5 +3,6 @@
 data:
   x: y
 
-body:
-  - div: hello world
+page:
+  body:
+    - div: hello world

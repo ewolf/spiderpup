@@ -1,9 +1,10 @@
 ---
-import:
+import_namespaces:
   impy: impy
   bar: impy_two
 
-body:
-  - bar.myform:
-      functions:
-        foo: () => 2
+page:
+  body:
+    - bar.myform:
+        functions:
+          foo: () => 2

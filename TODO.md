@@ -38,7 +38,7 @@ Current things to do:
 * more explanations in gotchas
   - weed out semicolons at the end of '() => something;'
   - better error messages
-  - bind functions to components
+  - bind functions to recipes
 
 * better name for internal content?
 

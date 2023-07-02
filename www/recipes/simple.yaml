@@ -1,7 +1,13 @@
-html:
-  head:
-    title: foooooo
+
+
+page:
+
+  title: foooooo
+
   body: 
-    - div: BEEP
+    style: 
+      - background-color: green
+    contents:
+      - div: BEEP
 
     

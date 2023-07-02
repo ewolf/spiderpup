@@ -5,7 +5,7 @@ html:
   body:
     - testapp:
 
-components:
+recipes:
   testapp:
     data:
       count: 0

@@ -128,7 +128,7 @@ body:
 
     - sitefooter:
 
-components:
+recipes:
 
   message:
     class: row space

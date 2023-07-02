@@ -1,7 +1,8 @@
 ---
-import:
+import_namespaces:
   impy: impy
-components:
+
+recipes:
   myimpy:
     class: myclass
     contents:

@@ -6,7 +6,7 @@ functions:
 body:
   onLoad: s => s.set( 'count', 0 )
   contents:
-    - h1: dynamic components
+    - h1: dynamic recipes
     - h2: add a component with the press of a button
     - button:
         on:
@@ -15,7 +15,7 @@ body:
     - div:
         attach-el: box
 
-components:
+recipes:
   dyno:
     contents:
       - div:

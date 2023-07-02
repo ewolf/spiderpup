@@ -74,7 +74,7 @@ data:
         on it. State data is used to calculate how the page appears.
       lessons:
         -
-          title: components and state data
+          title: recipes and state data
           about: >
             Each instance of component has its own state object.
             That state object has a data field that is populated with
@@ -83,10 +83,10 @@ data:
 
             The instance state is always passed to functions as the
             only argument.
-          link: http://localhost:3000/examples/components_and_state.html
+          link: http://localhost:3000/examples/recipes_and_state.html
           files:
             -
-              file: YAML file *.../spiderpup/www/recipes/examples/components_and_state.yaml*
+              file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_state.yaml*
               code: >-
                 ---
 
@@ -96,7 +96,7 @@ data:
                      - greeting:
                          data:
                            greeting: I override
-                components:
+                recipes:
                   greeting:
                     data:
                       greeting: Hello there
@@ -154,16 +154,16 @@ data:
                       textContent: this is spiderpup
                       style: background-color: lightblue;
     -
-      title: components
+      title: recipes
       about: >-
-        Components are resuable snippets that can contain
-        other components inside them. The components act like
+        Recipes are resuable snippets that can contain
+        other recipes inside them. The recipes act like
         html tags. In this example, the 'main' component
         has the 'greeting' component included twice inside of it.
-      link: http://localhost:3000/examples/components.html
+      link: http://localhost:3000/examples/recipes.html
       files:
         -
-          file: YAML file .../spiderpup/www/recipes/examples/components.yaml
+          file: YAML file .../spiderpup/www/recipes/examples/recipes.yaml
           code: >-
             ---
 
@@ -174,7 +174,7 @@ data:
                  - header:
                  - main:
                  - footer:
-                     components:
+                     recipes:
                        header:
                          - div:
                              - h1: I am the title
@@ -218,7 +218,7 @@ data:
                   - span: MIDDLE
                 - no-specified-internal:
                   - span: AFTER FINISH
-            components:
+            recipes:
               with-specified-internal:
                 - div:
                     - span: first
@@ -257,7 +257,7 @@ data:
             import:
               - bar: examples/more_impy
 
-            components:
+            recipes:
               myform:
                 functions:
                   foo: () => alert( 'impy.yaml foo' )
@@ -276,7 +276,7 @@ data:
           code: >-
             ---
 
-            components:
+            recipes:
               impydiv:
                 - div: my impy div
     -
@@ -354,7 +354,7 @@ data:
       link:
       files:
     -
-      title: components and state data
+      title: recipes and state data
       about: >-
         Each instance of component has its own state object.
         That state object has a data field that is populated with
@@ -363,10 +363,10 @@ data:
 
         The instance state is always passed to functions as the
         only argument.
-      link: http://localhost:3000/examples/components_and_state.html
+      link: http://localhost:3000/examples/recipes_and_state.html
       files:
         -
-          file: YAML file *.../spiderpup/www/recipes/examples/components_and_state.yaml*
+          file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_state.yaml*
           code: >-
             ---
 
@@ -377,7 +377,7 @@ data:
                     data:
                       greeting: I override
 
-            components:
+            recipes:
               greeting:
                 data:
                   greeting: Hello there
@@ -416,7 +416,7 @@ data:
                     textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
                     on_click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
     -
-      title: components and functions
+      title: recipes and functions
       about: >-
         Each component manages its own state and have functions.
         The functions can be called from the state object's `fun` object.
@@ -425,10 +425,10 @@ data:
         This example shows a simple control to set a positive number for
         pressure and temperature settings.
 
-      link: http://localhost:3000/examples/components_and_functions.html
+      link: http://localhost:3000/examples/recipes_and_functions.html
       files:
         -
-          file: YAML file *.../spiderpup/www/recipes/examples/components_and_functions.yaml*
+          file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_functions.yaml*
           code: >-
             ---
 
@@ -441,7 +441,7 @@ data:
                     data:
                       name: 'pressure'
 
-            components:
+            recipes:
               NumberAdjuster:
                 data:
                   value: 0
@@ -520,12 +520,12 @@ html:
           $ morbo spiderpup
 
     - h2: spiderpup static basics
-    - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable components.
+    - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable recipes.
     - chapters:
         data:
           source: chapters
 
-components:
+recipes:
   try:
     data:
       count: 3

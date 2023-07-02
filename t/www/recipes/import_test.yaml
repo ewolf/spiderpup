@@ -1,5 +1,5 @@
 ---
-import:
+import_namespaces:
   bar: impy
 
 javascript: alert("HI")
@@ -9,6 +9,8 @@ include:
     - js_one.js
     - js_two.js
   css: css_one.css
+
+listen: c => { if( true ) { return 7.1; } }
 
 css: >-
   body { background: blue; }
@@ -20,11 +22,11 @@ less: >-
     }
   }
 
-title: test thing
+page: 
 
-listen: c => { if( true ) { return 7.1; } }
+  title: test thing
 
-body:
-  - bar.myform:
-      functions:
-        foo: () => 2
+  body:
+    - bar.myform:
+        functions:
+          foo: () => 2

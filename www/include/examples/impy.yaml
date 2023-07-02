@@ -2,7 +2,7 @@
 import:
   - examples/more_impy: bar
   
-components:
+recipes:
   myform:
     functions:
       foo: () => 1

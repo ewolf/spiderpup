@@ -1,4 +1,4 @@
 ---
-components:
+recipes:
   impydiv:
     - div: my very impy div

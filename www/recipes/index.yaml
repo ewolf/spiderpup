@@ -68,7 +68,7 @@ body:
 
             - outline:
                 data:
-                  title: Yote Components
+                  title: Yote Recipes
                   items:
                     - server
                     - spiderpup
@@ -90,9 +90,9 @@ body:
                     - make CLI account tools
                     - make CLI setup and configuration tool
                     - extend lib directory to /opt/yote/lib
-                    - put the todo, components, etc in the store and have this fetch from the store.
+                    - put the todo, recipes, etc in the store and have this fetch from the store.
                     - make login page for this. 
-                    - allow for components as aliases to other components with their data, function, etc sections modifying them, so they get translated/expanded into aliased w/ data. i think the problem was that the root node of the component got messed up if its just an other component. so on server side, gotta sort of macro that, fold that into aliasedcomponent + its data
+                    - allow for recipes as aliases to other recipes with their data, function, etc sections modifying them, so they get translated/expanded into aliased w/ data. i think the problem was that the root node of the component got messed up if its just an other component. so on server side, gotta sort of macro that, fold that into aliasedcomponent + its data
                     - spiderpup.pm returns raw yaml if you give it the /recipes directory use this as a page control
                     - a control on the page that reveals the yaml that created it
 
@@ -111,7 +111,7 @@ body:
                     - logging to /opt/yote/log/yote.log (this is in yote.service)
                     - 
 
-components:
+recipes:
   yamlShower:
     data:
       showing: false

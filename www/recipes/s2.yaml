@@ -7,7 +7,7 @@ html:
     - foo:
         - div: MORE
 
-components:
+recipes:
   foo:
     contents:
       - div:

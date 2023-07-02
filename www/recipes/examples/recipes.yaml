@@ -7,7 +7,7 @@ body:
   - main:
   - footer:
 
-components:
+recipes:
   header:
     - div:
         - h1: I am the title

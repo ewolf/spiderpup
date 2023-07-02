@@ -1,7 +1,6 @@
 package Yote::SpiderPup;
 
-use strict;
-use warnings;
+use 5.14.0;
 
 use Data::Dumper;
 
@@ -116,7 +115,7 @@ sub make_error {
     my $err = "$@";
     return q~let filespaces = ~
              . to_json( { ERROR => {
-                 components => {},
+                 recipes => {},
                  data => {},
                  functions => {},
                  namespaces => {},
@@ -247,7 +246,7 @@ sub load_namespace {
         $fn =~ s![.]!-!g;
 
         # check for imports
-        if (my $imports = $yaml->{import}) {
+        if (my $imports = $yaml->{import_namespaces}) {
             for my $ns (keys %$imports) {
                 if ($ns =~ /\./) {
                     die "namespace may not contain '.' and got '$ns'";
@@ -265,32 +264,35 @@ sub load_namespace {
             }
         }
 
-        $namespace->{components} = {};
-        for my $recipe_name (keys %{$yaml->{components}}) {
+        $namespace->{recipes} = {};
+        for my $recipe_name (keys %{$yaml->{recipes}}) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
-            my $recipe = $yaml->{components}{$recipe_name};
-            $namespace->{components}{$recipe_name} = 
-                build_recipe( $recipe_name, $yaml->{components}{$recipe_name}, $filename );
+            my $recipe = $yaml->{recipes}{$recipe_name};
+            $namespace->{recipes}{$recipe_name} = 
+                build_recipe( $recipe_name, $yaml->{recipes}{$recipe_name}, $filename );
         }
 
         $namespace->{data} = $yaml->{data} || {};
 
-        my $body = $yaml->{body};
+        for my $thing (qw( css javascript javascript-module )) {
+            if (ref $yaml->{include}{$thing} eq 'ARRAY') {
+                $namespace->{html}{head}{$thing} = $yaml->{include}{$thing};
+            } 
+            elsif ($yaml->{include}{$thing}) {
+                $namespace->{html}{head}{$thing} = [$yaml->{include}{$thing}];
+            }
+        }
+
+
+        my $page = $yaml->{page};
+        my $body = $page->{body};
 
         if ($body) {
 
-            if ($yaml->{title}) {
-                $namespace->{html}{head}{title} = $yaml->{title};
+            if ($page->{title}) {
+                $namespace->{html}{head}{title} = $page->{title};
             }
 
-            for my $thing (qw( css javascript javascript-module )) {
-                if (ref $yaml->{include}{$thing} eq 'ARRAY') {
-                    $namespace->{html}{head}{$thing} = $yaml->{include}{$thing};
-                } 
-                elsif ($yaml->{include}{$thing}) {
-                    $namespace->{html}{head}{$thing} = [$yaml->{include}{$thing}];
-                }
-            }
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename, $fn );
 
             for my $targ (qw( listen onLoad preLoad )) {
@@ -312,6 +314,7 @@ sub load_namespace {
         if (@css) {
             $root_namespace->{html}{head}{style} .= join( '', @css );
         }
+
         if ($yaml->{javascript}) {
             $root_namespace->{html}{head}{script} .= $yaml->{javascript};
         }

@@ -5,7 +5,7 @@ body:
       data:
         greeting: I override
 
-components:
+recipes:
   greeting:
     data:
       greeting: Hello there

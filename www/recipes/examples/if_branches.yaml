@@ -12,7 +12,7 @@ body:
         incVal: 5
         name: 'pressure'
           
-components:
+recipes:
   NumberAdjuster:
     data:
       incVal: 1

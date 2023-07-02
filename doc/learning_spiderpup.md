@@ -13,7 +13,7 @@ $ morbo spiderpup
 ## spiderpup static basics
 
 These examples show spiderpup transforming YAML into html. They
-introduce spiderpup reusable components.
+introduce spiderpup reusable recipes.
 
 ### hello world
 
@@ -66,16 +66,16 @@ html:
               style: background-color: lightblue;
 ```
 
-### components
+### recipes
 
-Components are resuable snippets that can contain
-other components inside them. The components act like
+Recipes are resuable snippets that can contain
+other recipes inside them. The recipes act like
 html tags. In this example, the 'main' component
 has the 'greeting' component included twice inside of it.
 
-http://localhost:3000/examples/components.html
+http://localhost:3000/examples/recipes.html
 
-YAML file *.../spiderpup/www/recipes/examples/components.yaml*
+YAML file *.../spiderpup/www/recipes/examples/recipes.yaml*
 ```
 ---
 html:
@@ -86,7 +86,7 @@ html:
     - main:
     - footer:
 
-components:
+recipes:
   header:
     - div:
         - h1: I am the title
@@ -132,7 +132,7 @@ html:
     - no-specified-internal:
       - span: AFTER FINISH
 
-components:
+recipes:
   with-specified-internal:
     - div:
         - span: first
@@ -171,7 +171,7 @@ YAML file *.../spiderpup/www/include/examples/impy.yaml*
 import:
   - bar: examples/more_impy
   
-components:
+recipes:
   myform:
     functions:
       foo: () => 1
@@ -186,7 +186,7 @@ YAML file *.../spiderpup/www/include/examples/more_impy.yaml*
 
 ```
 ---
-components:
+recipes:
   impydiv:
     - div: my impy div
 ```
@@ -250,9 +250,9 @@ alert( "HELLO ADDITIONAL B" );
 State is kept for the page and for each component placed 
 on it. State data is used to calculate how the page appears.
 
-### components and state data
+### recipes and state data
 
-http://localhost:3000/examples/components_and_state.html
+http://localhost:3000/examples/recipes_and_state.html
 
 Each instance of component has its own state object.
 That state object has a data field that is populated with
@@ -262,7 +262,7 @@ That data can be overridden at component placement.
 The instance state is passed to `calculate` functions as the
 only argument.
 
-YAML file *.../spiderpup/www/recipes/examples/components_and_state.yaml*
+YAML file *.../spiderpup/www/recipes/examples/recipes_and_state.yaml*
 ```
 ---
 html:
@@ -272,7 +272,7 @@ html:
         data:
           greeting: I override
 
-components:
+recipes:
   greeting:
     data:
       greeting: Hello there
@@ -313,18 +313,18 @@ html:
         
 ```
 
-### components and functions
+### recipes and functions
 
-http://localhost:3000/examples/components_and_functions.html
+http://localhost:3000/examples/recipes_and_functions.html
 
-Components can have functions attached to them. The functions can
+Recipes can have functions attached to them. The functions can
 be called from the state object's `fun` object. When called, the
 state is automatically passed to them as the first argument.
 
 This example shows a simple control to set a positive number for
 pressure and temperature settings.
 
-YAML file *.../spiderpup/www/recipes/examples/components_and_functions.yaml*
+YAML file *.../spiderpup/www/recipes/examples/recipes_and_functions.yaml*
 ```
 ---
 html:
@@ -336,7 +336,7 @@ html:
         data:
           name: 'pressure'
 
-components:
+recipes:
   NumberAdjuster:
     data:
       value: 0
@@ -384,7 +384,7 @@ html:
           incVal: 5
           name: 'pressure'
           
-components:
+recipes:
   NumberAdjuster:
     data:
       incVal: 1
@@ -490,10 +490,10 @@ html:
 http://localhost:3000/examples/attach_component.html
 
 Subcomponent state can be attached to a state object. In this example,
-the `testapp` component has two `counter` components embedded in it.
+the `testapp` component has two `counter` recipes embedded in it.
 Each instance of a component has its own state. The state of a subcomponent
 can be attached in the `comp` object of the state. A testapp state (s)
-here has references to its child components thru s.comp.A and s.comp.B.
+here has references to its child recipes thru s.comp.A and s.comp.B.
 
 YAML file *.../spiderpup/www/recipes/examples/attach_component.yaml*.
 ```
@@ -504,7 +504,7 @@ html:
   body:
     - testapp:
 
-components:
+recipes:
   testapp:
     data:
       count: 0

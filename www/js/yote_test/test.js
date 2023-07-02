@@ -26,8 +26,8 @@ const testsToDo = [
 
    completed
      simple html structure
-     include components
-     include components function override
+     include recipes
+     include recipes function override
      nodes with internal content and a specified spot
      nodes with internal content and no specified spot
      namespace inclusions
@@ -35,24 +35,24 @@ const testsToDo = [
      functions inherited from non-default namespace
 
      if/elseif/else with elements
-     if/elseif/else with components
+     if/elseif/else with recipes
      nodes with internal content that has if/then
      if/elseif/elseif/elseif/else
      fail if elseif is given
      fail if else is given
 
      foreach with looping elements in looping elements
-     foreach with looping components that have looping internal content and loops
+     foreach with looping recipes that have looping internal content and loops
        in their own content
-     foreach with looping components in looping components
-     foreach with looping components in looping elements
-     foreach with looping elements in looping components 
+     foreach with looping recipes in looping recipes
+     foreach with looping recipes in looping elements
+     foreach with looping elements in looping recipes 
      foreach'd component with internal content
      foreach with if/elseif/else elements
-     foreach with if/elseif/else components
+     foreach with if/elseif/else recipes
      foreaches with same looping var at same level
      foreach elements in foreach elements
-     foreach components in foreach elements
+     foreach recipes in foreach elements
      nodes with internal content that has foreach
 
      test title
@@ -64,13 +64,13 @@ const testsToDo = [
      test onLoad
 
      test handles for elements
-     test handles for components
+     test handles for recipes
      test component handlers
      test element handlers
      test broadcast
 
      test handles for elements in loops 
-     test handles for components in loops
+     test handles for recipes in loops
 
      update list size, refresh and get correct number of items
 
@@ -94,7 +94,7 @@ function reset() {
   // empty and clear attributes
   document.body.innerHTML = '';
   document.body.hasInit = false;
-  def = { TEST: { components: {}, 
+  def = { TEST: { recipes: {}, 
                   html: { head: {}, body: {contents: [] } } } };
   
 }
@@ -450,7 +450,7 @@ function makeFilespace( bodyContents, args, otherFS ) {
   const fs = { ...(otherFS||{}) };
   fs.TEST = args || {};
   fs.TEST.html = { body: { contents: bodyContents } };
-  fs.TEST.components = fs.TEST.components || {};
+  fs.TEST.recipes = fs.TEST.recipes || {};
   
   def = fs;
 
@@ -513,8 +513,8 @@ function run(tests) {
 
 // tests
 //   general placement of els in document.
-//   components
-//   elements given to components
+//   recipes
+//   elements given to recipes
 //   textContent from function
 //   component function override
 //   nodes with internal content and no specified spot
@@ -537,7 +537,7 @@ const testBasic = () => {
         ]),
     def_namespace({
       title: 'titlez',
-      components: {
+      recipes: {
         foo: {
           attrs: { class: 'woot boot', 
                    style: 'cursor:pointer' },
@@ -551,7 +551,7 @@ const testBasic = () => {
           ],
         }, // foo component
         
-      }, //components
+      }, //recipes
       
       functions: {
         groan: c => "groan",
@@ -594,8 +594,8 @@ const testBasic = () => {
 
 // tests
 //   general placement of els in document.
-//   components
-//   elements given to components
+//   recipes
+//   elements given to recipes
 //   textContent from function
 //   component function override
 //   nodes with internal content and no specified spot
@@ -619,7 +619,7 @@ const testIfs = () => {
 
   def_namespace( {
     data: { blat: 1, number: 50 },
-    components: {
+    recipes: {
       iffy: {
         data: { number: 1 },
         contents: [
@@ -736,7 +736,7 @@ const foo = () => {
 
 //
 // tests
-//     including components from other namespaces
+//     including recipes from other namespaces
 //     nodes with internal content and a specified spot
 //
 const testNamespace = () => {
@@ -820,7 +820,7 @@ const testNamespace = () => {
     other_namespaces(
       {
         OTHERNAME: {
-          components: {
+          recipes: {
             containery: {
               contents: [
                 el( 'div', [
@@ -888,7 +888,7 @@ const testNamespace = () => {
   other_namespaces(
     {
       OTHERNAME: {
-        components: {
+        recipes: {
           containery: {
             contents: [
               el( 'div', [
@@ -1011,7 +1011,7 @@ const testComponentHandles = () => {
   def_namespace( {
     data: { blat: 1, number: 50 },
 
-    components: {
+    recipes: {
       looper: {
         data: {
           mult: 3,
@@ -1162,7 +1162,7 @@ const testLoop = () => {
   def_namespace( {
     data: { blat: 1, number: 50 },
 
-    components: {
+    recipes: {
       looper: {
         data: {
           mult: 3,
@@ -1365,7 +1365,7 @@ console.warn( 'its probably wrong for node stuff to have an on_stuffEvent handle
       show: true,
     },
     
-    components: {
+    recipes: {
 
       stuff: {
         listen: (c,type,msg) => { 
@@ -1700,7 +1700,7 @@ const testIfLoop = () => {
       },
     },
 
-    components: {
+    recipes: {
 
       fluff: {
         contents: [ el( 'section', { textContent: c => `[j ${c.idx.j}/${c.it.j}]` } ) ],
@@ -1762,7 +1762,7 @@ const testInternals = () => {
       intro: "hi there",
     },
     
-    components: {
+    recipes: {
       containy: {
         contents: [ el( 'section', { id : 'containy' },
             [
@@ -1837,7 +1837,7 @@ const testAliasedRecipes = () => {
       defdata: 12,
     },
     
-    components: {
+    recipes: {
       boo: {
         contents: [ el( 'div', 'boo' ) ],
       },
@@ -1852,7 +1852,7 @@ const testAliasedRecipes = () => {
 
   other_namespaces( {
     T2: {
-      components: {
+      recipes: {
         foo: {
           data: { foodata: 'true' },
           contents: [ node( 'bar', { fill: true,
@@ -1929,7 +1929,7 @@ const testInstanceRefresh = () => {
       seen: 0,
     },
 
-    components: {
+    recipes: {
       holder: {
         contents: [
           el( 'div', { textContent : c => {c.set('seen',1+c.get('seen')); return `seen ${c.get('seen')}`;} } )
@@ -1988,7 +1988,7 @@ const testFills = () => {
       toggleRight: c => c.set('showRight', !c.get('showRight') ),
     },
 
-    components: {
+    recipes: {
       holder: {
         contents: [
           el( 'main', { style: 'display:flex; flex-direction: row' },
@@ -2127,7 +2127,7 @@ const testFillEvents = () => {
       },
     },
 
-    components: {
+    recipes: {
       inner: {
         contents: [ el( 'span', 'INNY' ) ],
         onLoad: c => c.event( 'innerLoad', 'Loaded' ),

@@ -8,7 +8,7 @@ body:
       data:
         name: 'pressure'
 
-components:
+recipes:
   NumberAdjuster:
     data:
       value: 0
