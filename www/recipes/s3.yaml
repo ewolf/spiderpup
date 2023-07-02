@@ -11,7 +11,4 @@ recipes:
     contents:
       - button:
           textContent: s => s.data.count
-          on_click: >-
-            (s,ev) => {
-               s.data.count++;
-            }
+          on_click: s => s.data.count++

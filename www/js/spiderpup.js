@@ -584,6 +584,7 @@ class Instance extends Node {
         if (instance_R) {
           // we didnt check if there is already an instance
           const con_I = this.childInstances[con_B.id];
+          const inst_B = con_I.instanceBuilder;
           con_I._refresh( con_E, inst_B );
 
           // check for fill and fill contents
