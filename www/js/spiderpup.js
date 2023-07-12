@@ -247,7 +247,7 @@ class Builder extends Node {
             } );
         }
       });
-    [ 'listen', 'fill', 'if', 'elseif', 'else' ]
+    [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forval' ]
       .forEach( fun => 
         layerAbove[fun] && (this[fun] = layerAbove[fun]) );
 
@@ -341,6 +341,8 @@ class Instance extends Node {
     this.builder = builder;
     this.childInstances = {}; // id -> instance
     this.builder_id2el = {};
+    this.it            = {};
+    this.idx           = {};
     this.layer( recipe, builder );
   }
 
@@ -447,23 +449,23 @@ class Instance extends Node {
     // catalog child elements ---------------------------
     const builderID2el = {};
     Array.from( el.children )
-      .forEach( child_el => {
-        if (child_el.dataset.SP_ID) {
-          if (child_el.dataset.SP_FOR_IDX !== undefined) {
-            builderID2child_el[`${child_el.dataset.SP_ID}_${child_el.dataset.SP_FOR_IDX}`] = child_el;
+      .forEach( child_E => {
+        if (child_E.dataset.SP_ID) {
+          if (child_E.dataset.SP_FOR_IDX !== undefined) {
+            builderID2el[`${child_E.dataset.SP_ID}_${child_E.dataset.SP_FOR_IDX}`] = child_E;
           } else {
-            builderID2el[child_el.dataset.SP_ID] = child_el;
+            builderID2el[child_E.dataset.SP_ID] = child_E;
           }
         }
       } );
 
     // little function to remove extra forloop elements
-    const forTrim = (startIdx,con_E) => {
+    const forTrim = (startIdx,con_B,con_E) => {
       for (let i=startIdx; i<con_E.dataset.SP_LAST_LEN; i++) {
         const key = `${con_E.dataset.SP_ID}_${i}`
-        const forEl = builderID2el[key];
+        const for_E = builderID2el[key];
         delete builderID2el[key];
-        forEl && forEl.remove();
+        for_E && for_E.remove();
         // remove any child instance that went along with this forloop
         delete this.childInstances[`${con_B.id}_${i}`];
       }
@@ -474,19 +476,23 @@ class Instance extends Node {
     let lastWasConditional = false,
         conditionalDone = false,
         lastConditionalWasTrue = false;
+    // hang on to for instances
     const forBuilderID2List = {};
+    const forBuilderID2Instances = {};
+    const forBuilderID2E = {};
 
     (builder.contentBuilders).forEach( con_B => {
       let con_E = builderID2el[con_B.id];
+      const instance_R = con_B.instanceRecipe;  
+      let inst_B, con_I;
 
       // create the element if need be
       if (!con_E) {
-        const instance_R = con_B.instanceRecipe;  
         if (instance_R) {
-          const con_I = this.childInstances[con_B.id]
-                ||= instance_R.createInstance(con_B,this);
+          con_I = this.childInstances[con_B.id]
+            ||= instance_R.createInstance(con_B,this);
 
-          const inst_B = con_I.instanceBuilder;
+          inst_B = con_I.instanceBuilder;
           con_E = inst_B.buildElement(con_I);
           con_I.attachTo( con_E );
         }
@@ -545,10 +551,33 @@ class Instance extends Node {
         // create elements and maybe child instances for
         // each iteration of the loop
         if (con_B.foreach && con_B.forval) {
-          const list = forBuilderID2List[con_B] = con_B.foreach(this);
+          const forInstances = forBuilderID2Instances[con_B.id] = [con_I];
+          const for_Es = forBuilderID2E[con_B.id] = [con_E];
+          const list = forBuilderID2List[con_B.id] = con_B.foreach(this);
           if (con_E.dataset.SP_LAST_LIST_LEN > list.length) {
-            // remove list items past the end
-            
+            forTrim( list.length - 1, con_B, con_E );
+          }
+          con_E.dataset.SP_LAST_LIST_LEN = list.length;
+          let lastEl = con_E;
+          for (let i=1; i<list.length; i++) {
+            const key = `${con_B.id}_${i}`;
+            let for_E = builderID2el[key];
+            if (!for_E) {
+              if (instance_R) {
+                const forIDKey = `${con_B.id}_${i}`;
+                const for_I = this.childInstances[forIDKey]
+                      ||= instance_R.createInstance(con_B,this);
+                forInstances.push( for_I );
+                for_E = inst_B.buildElement(for_I);
+                builderID2el[forIDKey] = for_E;
+                con_I.attachTo( for_E );
+              } else {
+                for_E = con_B.buildElement(this);
+              }
+              for_E.dataset.SP_FOR_IDX = i;
+            }
+            for_Es.push( for_E );
+            el.append( for_E );
           }
         } else if (con_B.foreach || con_B.forval) {
           this.recipe.error( 'foreach and forval must both be present' );
@@ -557,15 +586,8 @@ class Instance extends Node {
       } else {
         con_E.style.display = 'none';
         // remove foreach beyond zero
-        if (con_E.dataset.SP_LAST_IDX > 0) {
-          for (let i=1; i<con_E.dataset.SP_LAST_LEN; i++) {
-            const key = `${con_E.dataset.SP_ID}_${i}`
-            const forEl = builderID2el[key];
-            delete builderID2el[key];
-            forEl && forEl.remove();
-            // remove any child instance that went along with this forloop
-            delete this.childInstances[`${con_B.id}_${i}`];
-          }
+        if (con_E.dataset.SP_LAST_LEN > 1) {
+            forTrim( 1, con_B, con_E );
         }
         
       }
@@ -578,48 +600,49 @@ class Instance extends Node {
       .filter( con_B => showElementWithID[con_B.id] )
       .forEach( con_B => {
         const con_E = builderID2el[con_B.id];
-
         const instance_R = con_B.instanceRecipe;
 
-        if (instance_R) {
-          // we didnt check if there is already an instance
-          const con_I = this.childInstances[con_B.id];
-          const inst_B = con_I.instanceBuilder;
-          con_I._refresh( con_E, inst_B );
+        const list = forBuilderID2List[con_B.id];
+        if (list) { // foreach items
 
-          // check for fill and fill contents
-          if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
-            const fill_E = con_I.getFillEl();
-            con_B.defaultFillContents
-              .forEach( fill_con_B =>
-                this._refresh( fill_E, fill_con_B )
-              )
+          const for_Es = forBuilderID2E[con_B.id];
+          const forInstances = forBuilderID2Instances[con_B.id] = [];
+          for (let i=0; i<list.length; i++ ) {
+            this.it[ con_B.forval ] = list[i];
+            this.idx[ con_B.forval ] = i;
+            if (instance_R) {
+              const for_I = forInstances[i];
+              for_I.refresh();
+              if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
+                const fill_E = for_I.getFillEl();
+                con_B.defaultFillContents
+                  .forEach( fill_con_B => this._refresh( fill_E, fill_con_B ));
+              }
+
+            } else {
+              this._refresh( for_Es[i], con_B );
+            }
           }
-        } 
-        else { // element builder
-          this._refresh( con_E, con_B );
         }
+        else { //single item
+          if (instance_R) {
+            // we didnt check if there is already an instance
+            const con_I = this.childInstances[con_B.id];
+            con_I.refresh();
+
+            // check for fill and fill contents
+            if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
+              const fill_E = con_I.getFillEl();
+              con_B.defaultFillContents
+                .forEach( fill_con_B => this._refresh( fill_E, fill_con_B ));
+            }
+          } 
+          else { // element builder
+            this._refresh( con_E, con_B );
+          }
+        }
+
       } );
-
-
-    // start with the root el
-    //    this.rootNode.refresh( this.root_EL );
-    
-
-    // if its an element, is easy, refresh the element node
-
-    // if its a component and that recipes head is also
-    // a component, that is where it gets interesting
-
-    // make 'builder nodes'
-
-    // innermost recipe has a element root
-    //  create a builder on that
-    // if a recipe has its root an other recipe
-    //  take that other root builder and copy it
-    //  then overlay methods and data on top of it
-    //  overriding and adding.
-    //  add listeners in addition
 
   }
 } // Class Instance
