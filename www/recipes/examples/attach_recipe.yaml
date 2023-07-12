@@ -1,8 +1,10 @@
 ---
 
 title: example
-body:
-  - testapp:
+
+page:
+  body:
+    - testapp:
 
 recipes:
   testapp:
@@ -16,18 +18,17 @@ recipes:
               data:
                 count: 1
           - div:
-              calculate: 
-                textContent: c => { const a = c.comp.A.get( 'count' ), b = c.comp.B.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+              textContent: c => { const a = c.comp.A.data.count, b = c.comp.B.data.count; return a + ' + ' + b + ' = ' + (a+b) }
               
   counter:
     data:
       count: 0
     contents:
       - button:
-          textContent: c => c.get( 'count' )
+          textContent: c => c.data.count
           on_click: >-
               (c,ev) => {
-                 c.set( 'count', 1 + c.get( 'count' ) )
+                 c.data.count++;
                  c.parent.refresh();
               }
           

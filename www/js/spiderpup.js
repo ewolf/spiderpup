@@ -378,7 +378,10 @@ class Recipe extends Node {
   createInstance(builder, parentInstance) {
     const inst = new Instance();
     inst.setup( this, builder );
-    inst.parentInstance = parentInstance;
+    inst.parent = parentInstance;
+    if (builder.handle) {
+      parentInstance.comp[builder.handle] = inst;
+    }
     return inst;
   }
 
@@ -559,9 +562,9 @@ class Builder extends Node {
       } );
   } //fillOut
 
-  buildElement( inst ) {
+  buildElement( inst, builderNode ) {
     const el = document.createElement( this.tag );
-    el.dataset.SP_ID = this.id;
+    el.dataset.SP_ID = (builderNode||this).id;
 
     if (this.handle) {
       inst.el[this.handle] = el;
@@ -596,7 +599,8 @@ class Instance extends Node {
     this.builder_id2el = {};
     this.it            = {};
     this.idx           = {};
-    this.el            = {};
+    this.el            = {}; // handle -> element
+    this.comp          = {}; // handle -> component
     this.layer( recipe, builder );
   }
 
@@ -747,7 +751,7 @@ class Instance extends Node {
             ||= instance_R.createInstance(con_B,this);
 
           inst_B = con_I.instanceBuilder;
-          con_E = inst_B.buildElement(con_I);
+          con_E = inst_B.buildElement(con_I, con_B);
           con_I.attachTo( con_E );
         }
         else { // element not instance
@@ -822,7 +826,7 @@ class Instance extends Node {
                 const for_I = this.childInstances[forIDKey]
                       ||= instance_R.createInstance(con_B,this);
                 forInstances.push( for_I );
-                for_E = inst_B.buildElement(for_I);
+                for_E = inst_B.buildElement(for_I,con_B);
                 builderID2el[forIDKey] = for_E;
                 con_I.attachTo( for_E );
               } else {
