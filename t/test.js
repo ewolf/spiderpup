@@ -381,7 +381,7 @@ function el(tag, attrs, contents) {
       elNode.fill = attrs[attr];
       delete attrs[attr];
     }
-    else if (attr.match(/^(if|elseif|else|foreach|forval|data|handle|debug)$/)) {
+    else if (attr.match(/^(if|elseif|else|foreach|forvar|data|handle|debug)$/)) {
       elNode[attr] = attrs[attr];
       delete attrs[attr];
     }
@@ -404,7 +404,7 @@ function node(tag, args, contents) {
     if (m) {
       n.on[m[1]] = args[fld];
     }
-    else if (fld.match(/^(if|elseif|else|foreach|forval|debug|handle)/)) {
+    else if (fld.match(/^(if|elseif|else|foreach|forvar|debug|handle)/)) {
       n[fld] = args[fld];
     }
     else if(fld.match( /^(fill_contents)$/)) {
@@ -982,27 +982,27 @@ const testComponentHandles = () => {
   reset();
   body( [
     el( 'table', 
-        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forval: 'row' },
-              [ el( 'td', { forval: 'col', 
+        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forvar: 'row' },
+              [ el( 'td', { forvar: 'col', 
                             foreach: c => [ "D", "E" ],
                             textContent: c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`,
                           } ) ] ) ] ),
     el( 'main',
-        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forval: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]` },
-              [ el( 'div', { foreach: c => [ "D", "E" ], forval: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]` },
-                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]` } ) ],
+        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forvar: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]` },
+              [ el( 'div', { foreach: c => [ "D", "E" ], forvar: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]` },
+                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forvar: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]` } ) ],
                   ) ] )] ),
 
     el ('section', [
       node( 'looper', { foreach: c => [ "A", "B", "C" ], 
-                        forval: 'I', 
+                        forvar: 'I', 
                         data: { number:  c => c.get('mult') * c.idx.I } } ),
     ] ),
 
     el ('section', [
-      node( 'multilooper', { foreach: c => [ 'Z' ], forval: 'ML' }, 
+      node( 'multilooper', { foreach: c => [ 'Z' ], forvar: 'ML' }, 
             [
-              el( 'span', { foreach: c => [ "D", "E" ], forval: 'IS', textContent: c => c.it.IS } ),
+              el( 'span', { foreach: c => [ "D", "E" ], forvar: 'IS', textContent: c => c.it.IS } ),
             ] ),
     ] ),
 
@@ -1027,9 +1027,9 @@ const testComponentHandles = () => {
             el ( 'span', 'upper' ),
             el ( 'div', { fill: true } ),
             el ( 'span', 'middle' ),
-            node( 'looper', { foreach: c => [ "A", "B", "C" ], forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
+            node( 'looper', { foreach: c => [ "A", "B", "C" ], forvar: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
-            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, foreach: c => [ "D", "E" ], forval: 'I' } ) ] ),
+            el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, foreach: c => [ "D", "E" ], forvar: 'I' } ) ] ),
             el ( 'span', 'lowest' ),
           ] ),
         ],
@@ -1134,26 +1134,26 @@ const testLoop = () => {
   reset();
   body( [
     el( 'table', 
-        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forval: 'row' },
-              [ el( 'td', { forval: 'col', 
+        [ el( 'tr', { foreach: c => [ "A", "B", "C" ], forvar: 'row' },
+              [ el( 'td', { forvar: 'col', 
                             foreach: () => [ "D", "E" ],
                             textContent: c => `[row ${c.idx.row}/${c.it.row}, col ${c.idx.col}/${c.it.col}]`,
                           } ) ] ) ] ),
     el( 'main',
-        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forval: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]`, },
-              [ el( 'div', { foreach: () => [ "D", "E" ], forval: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]`, },
-                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ) ],
+        [ el( 'section', { foreach: c => [ "A", "B", "C" ], forvar: 'i', textContent: c => `[i ${c.idx.i}/${c.it.i}]`, },
+              [ el( 'div', { foreach: () => [ "D", "E" ], forvar: 'j', textContent: c => `[j ${c.idx.j}/${c.it.j}]`, },
+                [ el( 'span', { foreach: c => [ 'F', 'G', 'H' ], forvar: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ) ],
                   ) ] )] ),
 
     el ('section', [
       node( 'looper', { foreach: c => [ "A", "B", "C" ], 
-                        forval: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
+                        forvar: 'I', data: { number: c => c.get('mult') * c.idx.I, } } ),
     ] ),
 
     el ('section', [
-      node( 'multilooper', { foreach: c => [ 'Z' ], forval: 'ML' }, 
+      node( 'multilooper', { foreach: c => [ 'Z' ], forvar: 'ML' }, 
             [ // loop with component with internal loop
-              el( 'span', { foreach: c => [ "D", "E" ], forval: 'IS', textContent: c => c.it.IS } ),
+              el( 'span', { foreach: c => [ "D", "E" ], forvar: 'IS', textContent: c => c.it.IS } ),
             ] ),
     ] ),
 
@@ -1179,11 +1179,11 @@ const testLoop = () => {
             el ( 'div', { fill: true } ),
             el ( 'span', 'middle' ),
             node( 'looper', { foreach: [ "A", "B", "C" ], 
-                              forval: 'I', 
+                              forvar: 'I', 
                               data: { number: c => c.get('mult') * c.idx.I, } } ),
             el ( 'span', 'lower' ),
             el ( 'ul', [ el ( 'li', { textContent: c => `(${c.it.I}/${c.idx.I})`, 
-                                      foreach: [ "D", "E" ], forval: 'I' } ) ] ),
+                                      foreach: [ "D", "E" ], forvar: 'I' } ) ] ),
             el ( 'span', 'lowest' ),
           ] ),
         ],
@@ -1300,9 +1300,9 @@ const testHandles = () => {
                        },
                      } ),
       //handles in loops
-      el( 'section', { foreach: c => ["A","B","C"], forval: 'i' },
+      el( 'section', { foreach: c => ["A","B","C"], forvar: 'i' },
           [
-            el( 'div', { foreach: c => ["D","E"], forval: 'j' },
+            el( 'div', { foreach: c => ["D","E"], forvar: 'j' },
                 [
                   node( 'fluff', { handle: 'loopyFluff', data: { name: c => `FLUFF ${c.it.i} / ${c.it.j}` } } ),
                   el( 'span', { handle: 'loopySpan', textContent: c => `${c.it.i}${c.it.j}` } ),
@@ -1488,11 +1488,11 @@ const testMoreLoop = () => {
   reset();
   body(
     [
-      el( 'section', { foreach: c => c.get( 'a1' ), forval: 'i' }, 
+      el( 'section', { foreach: c => c.get( 'a1' ), forvar: 'i' }, 
           [
-            el( 'div', { foreach: c => c.get( 'a2' ), forval: 'j' },
+            el( 'div', { foreach: c => c.get( 'a2' ), forvar: 'j' },
                 [
-                  el( 'span', { foreach: c => c.get( 'a3' ), forval: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ),
+                  el( 'span', { foreach: c => c.get( 'a3' ), forvar: 'k', textContent: c => `[k ${c.idx.k}/${c.it.k}] / [j ${c.idx.j}/${c.it.j}] / [i ${c.idx.i}/${c.it.i}]`, } ),
                 ] ) 
           ] )
     ]
@@ -1664,18 +1664,18 @@ const testIfLoop = () => {
   body(
     [
       el( 'span', { foreach: c => ["E","F"], 
-                    forval: 'i', 
+                    forvar: 'i', 
                     textContent: c => `[i ${c.idx.i}/${c.it.i}]`, 
                     if: c => c.get('doita') } ), 
       el( 'div', { foreach: c => ["E","F"], 
-                   forval: 'i', 
+                   forvar: 'i', 
                    textContent: c => `[i ${c.idx.i}/${c.it.i}]`,
                    if: c => c.get('doitb') } ), 
       node( 'fluff', { foreach: c => ["E","F"], 
-                      forval: 'j', 
+                      forvar: 'j', 
                       if: c => c.get('doita') } ), 
       node( 'fluff', { foreach: c => ["E","F"], 
-                      forval: 'j', 
+                      forvar: 'j', 
                       if: c => c.get('doitb') } ), 
     ]
   );

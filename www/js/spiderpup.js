@@ -1,3 +1,206 @@
+/*
+ABOUT -----------------------------
+
+ Convert a json data structure into a 
+ Single Application Page on top of very simple html
+ that includes a head and empty body.
+
+INIT -------------------------------
+
+ The init takes a json data structure and
+ default filename.
+
+ The json data structure is a hash of filenames to
+ namespace objects. The default filename corresponds
+ to the namespace object that is used to attach the
+ body component to the document.
+
+ Init builds an object version of the data strcture using
+ the following object classes: Namespace, Recipe, BodyRecipe,
+ Builder and Instance.
+
+   * parses and adds to the data structure
+   * attaches styles, css links and script tags to the head
+   * instantiates a body instance object
+   * calls refresh on the body instance object
+
+ NAMESPACE DATA STRUCTURE --------------------------
+
+   a namespace has the following fields:
+     recipes    -> { name       -> recipe }
+     namespaces -> { alias      -> namespace }
+     functions  -> { name       -> function }
+     data       -> { field      -> value or function }
+     html       -> {
+         head -> {
+           script -> javascript text
+           title  -> string
+           style  -> css text
+           css -> single or list of filenames
+           javascript -> single or list of filenames
+         }
+         body -> {
+           onLoad   -> function
+           on       -> { eventname -> function }
+           contents -> [ element|component instance node...]
+           listen   -> function
+         }
+        }
+
+ COMPONENT (RECIPE) DATA STRUCTURE -----------------------
+ 
+  a component (recipe) node has the following fields:
+    functions  -> { name -> function }
+    data       -> { field -> value }
+    onLoad     -> function
+    on         -> { event -> function }
+    listen     -> function
+    contents   -> [content node] (may only have one content node)
+ 
+ ELEMENT DATA STRUCTURE -----------------------
+
+ an element node has the following fields:
+   tag              -> element tagname
+   contents         -> [element or component instance, element or component instance, ... ]
+   handle           -> handle name for instance.el hash
+   if|elsif|foreach -> function
+   else             -> true
+   forvar           -> looping variable name
+   on               -> { element event name -> event function }
+   fill             -> true|<name> where true is the default fill for a 
+                       component and a name connects to fill_contents
+   attrs            -> { attributename -> value or function }
+  fields computed/added at compile time:
+     type            -> 'element'
+     isElement       -> true
+     id              -> serialized field
+     recipe          -> recipe object this is content of
+  fields computed/added at generate time:
+
+ COMPONENT INSTANCE DATA STRUCTURE -----------------------
+
+ a component instance node has the following fields:
+   tag              -> name of recipe
+   contents         -> [element or component instance, element or component instance, ... ]
+   handle           -> handle name for instance.comp hash
+   if|elsif|foreach -> function
+   else             -> true
+   forvar           -> looping variable name
+   on               -> { component event name -> event function }
+   attrs            -> { attributename -> value or function }
+   fill_contents    -> { filltargetname -> [ element or component instances ] }
+  fields computed/added at compile time:
+     type            -> 'component'
+     isComponent     -> true
+     id              -> serialized field
+     recipe          -> a link to the recipe that it is attached to
+ 
+ THE BODY INSTANCE
+
+  the body is a special recipe. if the default namespace has html->body,
+  an instance object will be created for it and attached to the
+  html document.body element, and the _refresh method on the instance
+  will be called.
+
+ REFRESHING AN INSTANCE
+
+   The instance data structure is created on refresh. foreach iterations
+   each have their own instance data structures. instances in foreach iterations
+   beyond the first iteration may be destroyed and recreated as refresh is 
+   called to a parend instance.
+
+
+ INSTANCE DATA STRUCTURE -----------------------------------------
+   recipe   -> recipe object
+   parent   -> parent instance, or if the body instance, the default namespace
+   name     -> string `instance of recipe foo` or `instance of recipe foo in (parent name)`
+   rootNode -> (if not the body instance) component instance object
+   el       -> { handle -> html element }
+   comp     -> { handle -> instance object }
+   _loop_level -> number (temporary foreach var)
+   idx      -> { iterator name -> iterator index }  (temporary foreach var)
+   it       -> { iterator name -> iterator value }  (temporary foreach var)
+   on       -> { event name -> function }
+   broadcast -> function( act, msg )
+   _propagateBroadcast -> function( act, msg )
+   handleEvent -> function( event, result )
+   event -> function(event,result)  ->  initiates the event
+   broadcastListener -> function to handle broadcasts
+   fun  -> { functionname -> function }
+   refresh -> function that refreshes this instance and all 
+              child instances under it
+   _refresh -> refresh function( node, element )
+   _refresh_content -> function( content, elelement ) - refreshes the content instance node
+   _refresh_component -> function( component, element, recipe )
+   _new_el -> function(node,key,attachToEl,attachAfterEl)
+   _refresh_element -> function(node,element)
+   _resolve_onLoad -> function
+   _key2instance -> { key string -> instance object }
+   _key -> function( node, idxOverride ) - returns a key for the node
+                                           the node is inside this instance
+   _attachElHandle -> function( el, handle ) attaches an element to this
+                      instance by given handle
+   _attachCompHandle -> function( component, handle ) attaches a
+                      component to this instance by given handle
+   top -> the body instance this instance is ultimetly contained in
+   type -> 'instance'
+   isInstance -> true
+   id -> serialized id
+   data -> { fieldname -> value } * inherited from parent if the fieldname is not defined in the component instance node
+   set         -> function
+   get         -> function
+   has         -> function
+   _check      -> function
+   rootEl      -> html element that is the top container for this component instance
+
+ HTML ELEMENT FIELDS ADDED -----------------------------------
+   hasInit -> true when this element has undergone init process
+   (event handlers) -> as per recipe element node definitions
+   instance -> (just for rootEl of instance), the instance object
+   style
+     display -> 'none' (removed when element is to be displayed)
+   dataSet
+     key -> result of _key
+     ifCondition -> true|false if the condition test has been met
+     elseIfCondition -> 'n/a' if condition above it has been met
+                        so test was not performed, 
+                        otherwise true|false for result of condition
+     else            -> true when no condition met, false otherwise
+     fill            -> if this is a container that takes fill
+
+ element events
+   these are handled on the element itself with the instance as 
+   the first parameter and event as the second
+
+ broadcasts
+   easy, broadcasts are heard by all listeners
+
+ component events
+   these are a bit tricker. events bubble up from one component
+   instance to its parent. the event should be patterend off of the 
+   element event with a stopPropagation and preventDefault possibly,
+   however the difficulty comes in when one recipe basically inherets
+   from an other by having its root content node be an other recipe
+
+
+ UPDATES
+   when refresh is called on an instance, all instances inside it
+   have their refresh called.
+
+   an instance refresh starts with their rootEl html element refresh.
+   refresh sets up vent listeners handles, updates classes, 
+   textContent|innerHTML|fill, and attributes, calling functions for
+   those values if functions provide them, or using the values provided
+   otherwise.
+
+   once the root element has been refreshed, the content that it contains
+   is also refreshed.
+
+   if this is the first time the instance was refreshed, onLoad is called
+   as the last part of the rfresh
+
+ */
+
 // -------- LAUNCH ------
 
 window.onload = ev => {
@@ -21,7 +224,7 @@ function init( fileSpaces, defaultFilename ) {
 
   const bodyR = new BodyRecipe();
   bodyR.setup( pageNS );
-  bodyR.installTitle();
+  bodyR.installHead();
 
   const bodyInst = bodyR.createInstance(bodyR.rootBuilder);
   bodyInst.attachTo(document.body);
@@ -202,8 +405,54 @@ class BodyRecipe extends Recipe {
 
     this.head = html.head || {};
   }
-  installTitle() {
+  installHead() {
     this.head.title && (document.title = this.head.title);
+
+    const head = document.head;
+
+    // explicit style
+    let style = this.head.style
+    if (style) {
+      const stylel = document.createElement( 'style' );
+      stylel.setAttribute( 'type', 'text/css' );
+      if (stylel.styleSheet) { // IE
+        stylel.styleSheet.cssText = style;
+      } else {
+        stylel.appendChild(document.createTextNode(style));
+      }
+      head.appendChild( stylel );
+    }
+
+    // explicit javascript
+    let script = this.head.script
+    if (script) {
+      const scriptel = document.createElement( 'script' );
+      scriptel.setAttribute( 'type', 'text/javascript' );
+      scriptel.appendChild(document.createTextNode(script));
+      head.appendChild( scriptel );
+    }
+
+    // css files
+    const css = this.head.css;
+    const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
+    cssFiles.forEach( file => {
+      const link = document.createElement( 'link' );
+      link.setAttribute( 'rel', 'stylesheet' );
+      link.setAttribute( 'media', 'screen' );
+      link.setAttribute( 'href', file );
+      head.appendChild( link );
+    } );
+
+    // js files
+    const js = this.head.javascript;
+    const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
+    jsFiles.forEach( file => {
+      const scr = document.createElement( 'script' );
+      scr.setAttribute( 'type', 'module' );
+      scr.setAttribute( 'src', file );
+      head.appendChild( scr );
+    } );
+    
   }
 }  //class BodyRecipe
 
@@ -247,7 +496,7 @@ class Builder extends Node {
             } );
         }
       });
-    [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forval' ]
+    [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forvar', 'handle' ]
       .forEach( fun => 
         layerAbove[fun] && (this[fun] = layerAbove[fun]) );
 
@@ -314,6 +563,10 @@ class Builder extends Node {
     const el = document.createElement( this.tag );
     el.dataset.SP_ID = this.id;
 
+    if (this.handle) {
+      inst.el[this.handle] = el;
+    }
+
     // attach event listeners
     this.on && Object.keys( this.on )
       .forEach( evname => {
@@ -343,6 +596,7 @@ class Instance extends Node {
     this.builder_id2el = {};
     this.it            = {};
     this.idx           = {};
+    this.el            = {};
     this.layer( recipe, builder );
   }
 
@@ -550,7 +804,7 @@ class Instance extends Node {
         // check if this is a loop. if so
         // create elements and maybe child instances for
         // each iteration of the loop
-        if (con_B.foreach && con_B.forval) {
+        if (con_B.foreach && con_B.forvar) {
           const forInstances = forBuilderID2Instances[con_B.id] = [con_I];
           const for_Es = forBuilderID2E[con_B.id] = [con_E];
           const list = forBuilderID2List[con_B.id] = con_B.foreach(this);
@@ -579,8 +833,8 @@ class Instance extends Node {
             for_Es.push( for_E );
             el.append( for_E );
           }
-        } else if (con_B.foreach || con_B.forval) {
-          this.recipe.error( 'foreach and forval must both be present' );
+        } else if (con_B.foreach || con_B.forvar) {
+          this.recipe.error( 'foreach and forvar must both be present' );
         }
 
       } else {
@@ -608,8 +862,8 @@ class Instance extends Node {
           const for_Es = forBuilderID2E[con_B.id];
           const forInstances = forBuilderID2Instances[con_B.id] = [];
           for (let i=0; i<list.length; i++ ) {
-            this.it[ con_B.forval ] = list[i];
-            this.idx[ con_B.forval ] = i;
+            this.it[ con_B.forvar ] = list[i];
+            this.idx[ con_B.forvar ] = i;
             if (instance_R) {
               const for_I = forInstances[i];
               for_I.refresh();

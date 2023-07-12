@@ -430,11 +430,11 @@ recipes:
 http://localhost:3000/examples/loops.html
 
 An element can be looped. For this to happen, a 'foreach' function
-that returns an array, and a 'forval' value to label the iteration
+that returns an array, and a 'forvar' value to label the iteration
 must be defined. That element will be placed once for each item in the
 'foreach' array. Each time the element is placed, the state is updated
-in two places. The array value is placed in `state.it[forval]` and the 
-index is placed in `state.idx[forval]` as shown in the following example.
+in two places. The array value is placed in `state.it[forvar]` and the 
+index is placed in `state.idx[forvar]` as shown in the following example.
 
 YAML file *.../spiderpup/www/recipes/examples/loops.yaml*.
 ```
@@ -444,7 +444,7 @@ html:
     - div:
         - h1: 
             foreach: s => [ "world", "galaxy", "universe" ]
-            forval: whereami
+            forvar: whereami
             calculate:
               textContent: s => 'hello ' + s.it.whereami + ' (' + s.idx.whereami + ')'
 ```

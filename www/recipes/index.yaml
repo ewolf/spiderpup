@@ -134,7 +134,7 @@ recipes:
               - ul:
                   - li:
                       foreach: c => c.get('items')
-                      forval: item
+                      forvar: item
                       contents:
                         - a:
                             if: c => Array.isArray(c.it.item)

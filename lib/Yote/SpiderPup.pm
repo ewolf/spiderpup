@@ -46,7 +46,7 @@ sub encode_attrs {
 
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
-        if ($field =~ /^(data|elseif|fill|foreach|forval|functions|listen|if|handle|onLoad|preLoad)$/) {
+        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|onLoad|preLoad)$/) {
             $node->{$field} = $val;
         }
         elsif ($field eq 'else') {

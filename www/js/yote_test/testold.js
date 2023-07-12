@@ -287,29 +287,29 @@ function testLoops() {
   const def = makeFilespace(
     [
       el( 'div', [ //0
-        el( 'span', { foreach: 1, forval: 'numb', textContent: 2 } )
+        el( 'span', { foreach: 1, forvar: 'numb', textContent: 2 } )
       ] ),
 
       el( 'div', [ //1
-        node( 'echo', { foreach: 3, forval: 'numb', data:{ echo: 'c2'} } )
+        node( 'echo', { foreach: 3, forvar: 'numb', data:{ echo: 'c2'} } )
       ] ),
 
       el( 'div', [ //2
         node( 'echo', { foreach: 3,
-                        forval: 'numb',
+                        forvar: 'numb',
                         if: 4,
                         data:{ echo: 'c2'} } ),
       ] ),
       el( 'div', [ //3
         el( 'span', { foreach: 3,
-                      forval: 'numb',
+                      forvar: 'numb',
                       if: 5,
                       textContent: 2 } ),
       ] ),
       el( 'hr' ),  //4
       el( 'div', [ // 5 foreach with internal content
         node( 'echo', { foreach: 3,
-                        forval: 'numb',
+                        forvar: 'numb',
                         data: { echo: 'c2' },
                       }, [
                         el( 'span', { textContent: 6 } ),
@@ -317,11 +317,11 @@ function testLoops() {
       ] ),
       el( 'div', [ //6 foreach els in foreach els
         el( 'div', { foreach: 3,
-                     forval: 'numb',
+                     forvar: 'numb',
                    }, [
                      el( 'span', { textContent: 7 } ),
                      el( 'span', {
-                       forval: 'innie',
+                       forvar: 'innie',
                        foreach: 9,
                        textContent: 8,
                      } ),
@@ -331,11 +331,11 @@ function testLoops() {
       // foreach compos in foreach els
       el( 'div', [ //7 foreach els in foreach els
         el( 'div', { foreach: 3,
-                     forval: 'numb',
+                     forvar: 'numb',
                    }, [
                      el( 'span', { textContent: 7 } ),
                      node( 'echo', {
-                       forval: 'innie',
+                       forvar: 'innie',
                        foreach: 9,
                        data: { echo: 'c8' },
                      } ),
@@ -584,11 +584,11 @@ function testLoop() {
               body: {
                 contents: [
                   el( 'div', [ //0
-                    el( 'span', { foreach: 1, forval: 'numb', textContent: 2 } )
+                    el( 'span', { foreach: 1, forvar: 'numb', textContent: 2 } )
                   ] ),
 
                   el( 'div', [ //1
-                    node( 'echo', { foreach: 3, forval: 'numb', data:{ echo: 'c2'} } )
+                    node( 'echo', { foreach: 3, forvar: 'numb', data:{ echo: 'c2'} } )
                   ] ),
 
                 ] }, //body
@@ -736,29 +736,29 @@ function testLoop() {
 
 //                             el( 'section', [ //8 foreach land
 //                               el( 'div', [ //0
-//                                 el( 'span', { foreach: 14, forval: 'numb', textContent: 15 } )
+//                                 el( 'span', { foreach: 14, forvar: 'numb', textContent: 15 } )
 //                               ] ),
 
 //                               el( 'div', [ //1
-//                                 node( 'echo', { foreach: 16, forval: 'numb', data:{ echo: 'c15'} } )
+//                                 node( 'echo', { foreach: 16, forvar: 'numb', data:{ echo: 'c15'} } )
 //                               ] ),
 
 //                               el( 'div', [ //2
 //                                 node( 'echo', { foreach: 16,
-//                                                 forval: 'numb',
+//                                                 forvar: 'numb',
 //                                                 if: 17,
 //                                                 data:{ echo: 'c15'} } ),
 //                               ] ),
 //                               el( 'div', [ //3
 //                                 el( 'span', { foreach: 16,
-//                                               forval: 'numb',
+//                                               forvar: 'numb',
 //                                               if: 18,
 //                                               textContent: 15 } ),
 //                               ] ),
 //                               el( 'hr' ),  //4
 //                               el( 'div', [ // 5 foreach with internal content
 //                                 node( 'echo', { foreach: 16,
-//                                                 forval: 'numb',
+//                                                 forvar: 'numb',
 //                                                 data: { echo: 'c15' },
 //                                               }, [
 //                                                 el( 'span', { textContent: 19 } ),
@@ -766,11 +766,11 @@ function testLoop() {
 //                               ] ),
 //                               el( 'div', [ //6 foreach els in foreach els
 //                                 el( 'div', { foreach: 16,
-//                                              forval: 'numb',
+//                                              forvar: 'numb',
 //                                            }, [
 //                                              el( 'span', { textContent: 20 } ),
 //                                              el( 'span', {
-//                                                forval: 'innie',
+//                                                forvar: 'innie',
 //                                                foreach: 22,
 //                                                textContent: 21,
 //                                              } ),
@@ -780,11 +780,11 @@ function testLoop() {
 //                               // foreach compos in foreach els
 //                               el( 'div', [ //7 foreach els in foreach els
 //                                 el( 'div', { foreach: 16,
-//                                              forval: 'numb',
+//                                              forvar: 'numb',
 //                                            }, [
 //                                              el( 'span', { textContent: 20 } ),
 //                                              node( 'echo', {
-//                                                forval: 'innie',
+//                                                forvar: 'innie',
 //                                                foreach: 22,
 //                                                data: { echo: 'c21' },
 //                                              } ),
@@ -795,20 +795,20 @@ function testLoop() {
 //                               el( 'div', [
 //                                 node( 'echo',
 //                                       { foreach: 16,
-//                                         forval: 'i',
+//                                         forvar: 'i',
 //                                         data: { echo: 'c23' },
 //                                       },
 //                                       [
 //                                         el( 'span', { textContent: 27 } ),
 //                                         node( 'echo',
 //                                               {
-//                                                 forval: 'j',
+//                                                 forvar: 'j',
 //                                                 foreach: 22,
 //                                                 data: { echo: 'c24' },
 //                                               },
 //                                               [
 //                                                 node( 'echo', {
-//                                                   forval: 'k',
+//                                                   forvar: 'k',
 //                                                   foreach: 14,
 //                                                   //debug: true,
 //                                                   data: { echo: 'c25' },
@@ -822,7 +822,7 @@ function testLoop() {
 //                                 el( 'span',
 //                                     {
 //                                       foreach: 22,
-//                                       forval: 'clickfor',
+//                                       forvar: 'clickfor',
 //                                       handle: 'forclickholder',
 //                                       textContent: 31
 //                                     },
@@ -852,7 +852,7 @@ function testLoop() {
 //                                   el( 'span',
 //                                       {
 //                                         foreach: 22,
-//                                         forval: 'clickfor',
+//                                         forvar: 'clickfor',
 //                                         handle: 'forclickholder',
 //                                         textContent: 31
 //                                       },

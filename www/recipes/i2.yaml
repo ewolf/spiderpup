@@ -178,7 +178,7 @@ recipes:
           on_click: (c,ev) => { ev.stopPropagation(); ev.preventDefault(); }
           contents:
             - clickOption:
-                forval: opt
+                forvar: opt
                 foreach: c => c.get( 'options' ) || []
                 data:
                   label: c => c.it.opt.label

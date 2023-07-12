@@ -549,7 +549,7 @@ recipes:
               on_click: s => s.fun.inc()
           - div:
               foreach: s => s.fun.list()
-              forval: alpha
+              forvar: alpha
               textContent: s => s.it.alpha
 
   chapters:
@@ -680,7 +680,7 @@ recipes:
                     textContent: s => s.fun.curr().link
                 - div:
                     foreach: s => s.fun.curr().files || []
-                    forval: sampleFile
+                    forvar: sampleFile
                     contents:
                       - p: s => s.it.sampleFile.file
                       - pre: s => s.it.sampleFile.code
