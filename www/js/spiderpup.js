@@ -519,11 +519,7 @@ class Builder extends Node {
           const current = this[htype] ||= {};
           Object.keys (above)
             .forEach( fld => {
-              if (htype === 'attrs' && fld === 'class') {
-                current[fld] = [above[fld], current[fld]].join( " " );
-              } else {
-                current[fld] = above[fld];
-              }
+              current[fld] = above[fld];
             } );
         }
       });
@@ -732,7 +728,7 @@ class Instance extends Node {
 
   // class Instance
   _refresh( el, builder ) {
-
+    console.log( `REFRESHING builder ${builder.tag}/${builder.id}, recipe ${builder.recipe.name}` );
     // fill in elements attributes ---------------------------
     const attrs = builder.attrs;
     attrs && Object.keys(attrs)
@@ -743,6 +739,7 @@ class Instance extends Node {
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
         } else if (attr === 'class' ) {
+          el.className = '';
           val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
         } else if (attr === 'style') {
           console.warn( 'could unify style styles in perl' );
@@ -755,9 +752,13 @@ class Instance extends Node {
           }
           else if (typeof val !== 'object') {
             styles = {};
-            val.split( /;/ )
-              .forEach( kvp => kvp.split( /\*:\s*/ )
-                        .forEach( p => styles[p[0]] = p[1] ) );
+            val.split( /\s*;\s*/ )
+              .forEach( kvp => {
+                const parts = kvp.split( /\s*:\s*/ );
+                if (parts) {
+                  styles[parts[0]] = parts[1];
+                }
+              } )
           }
           Object.keys( styles )
             .forEach( style => el.style[ style ] = styles[style] );
@@ -976,6 +977,7 @@ class Instance extends Node {
             }
           }
           else { // element builder
+            console.log( `CALL REFRESH FOR ${con_B.id}` );
             this._refresh( con_E, con_B );
           }
         }

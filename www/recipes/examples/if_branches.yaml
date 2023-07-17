@@ -20,35 +20,33 @@ recipes:
       value: 0
       name: ''
     functions:
-      inc: s => s.set( 'value', s.get('incVal') + s.get('value') )
+      inc: s => s.data.value = s.data.incVal + s.data.value
       dec: >
         s => {
-           s.set( 'value', s.get('value') - s.get('incVal') )
-           if (s.get( 'value' ) < 0) s.set('value',0)
+           s.data.value = s.data.value - s.data.incVal;
+           if (s.data.value < 0) s.data.value = 0;
         }
 
     contents:
       - div:
-          style: display: inline-block
-          calculate:
-            class: s => s.get('value') < 10 ? 'low' : s.get('value') > 35 ? 'high' : 'good'
+          style: display: inline-block; padding: 1em;
+          class: s => s.data.value < 10 ? 'low' : s.data.value > 35 ? 'high' : 'good'
           contents:
+            - button:
+                textContent: '+'
+                on_click: s => s.fun.inc(s)
             - button:
                 textContent: '-'
                 on_click: s => s.fun.dec(s)
             - span:
                 style: margin: 0 5px
-                calculate:
-                  textContent: s => s.get('name') + ': ' + s.get('value')
+                textContent: s => s.data.name + ': ' + s.data.value
             - span:
-                if: s => s.get('value') < 10
+                if: s => s.data.value < 10
                 textContent: too low
             - span:
-                elseif: s => s.get('value') > 35
+                elseif: s => s.data.value > 35
                 textContent: too high
             - span:
                 else:
                   textContent: good enough
-            - button:
-                textContent: '+'
-                on_click: s => s.fun.inc(s)
