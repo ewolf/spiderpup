@@ -170,6 +170,7 @@ sub to_json {
     }
     if ($thing =~ /^(\([^\)]*\)|[a-zA-Z]+)\s*=>\s*(.*)/s) {
         # TODO validate javascript?
+        warn "try to validate the javascript";
         my ($args, $body) = ( $1, $2 );
         # snip off any trailing ; (common typo? maybe this, maybe not. TODO: consider removing this or adding a warning)
         $body =~ s/;\s*$//s; 
@@ -197,14 +198,14 @@ sub to_json {
 # 
 #
 sub yaml_to_js {
-    my ($pkg,$yaml_root_directory,$filename, $alphasort) = @_;
+    my ($pkg,$yaml_root_directory,$filename, $alphasort, $include_tests) = @_;
 
 
     my $filespaces = {};
 
     my $js = '';
     eval {
-        my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader );
+        my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader, $include_tests );
         $js = "let filespaces = ".to_json( $filespaces, $alphasort ) . ";\n" .
             'let defaultFilename = '.to_string($default_filename).';';
     };
@@ -216,7 +217,8 @@ sub yaml_to_js {
 }
 
 sub load_namespace {
-    my ( $root_directory, $filename, $filespaces, $root_namespace, $yaml_loader ) = @_;
+    my ( $root_directory, $filename, $filespaces, $root_namespace, $yaml_loader, $include_tests ) = @_;
+
     my $yaml_file = "$root_directory/$filename";
 
 
@@ -238,6 +240,9 @@ sub load_namespace {
 
         if (!$root_namespace) {
             $root_namespace = $namespace;
+
+            # include any tests if there are any, but just for the root namespace
+            $include_tests && $yaml->{test} && ( $namespace->{test} = "() => { $yaml->{test} }" );
         }
 
         # css defined

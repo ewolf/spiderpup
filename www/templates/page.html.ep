@@ -1,6 +1,10 @@
 <html>
   <head>
     <title></title>
+    <script> const params = <%== $params %>;</script>
+    % if ( $tests ) {
+      <script src="/js/tester.js"></script>
+    % }
     <script src="/js/spiderpup.js"></script>
     % if ( $yote ) {
       <script src="/js/yote.js"></script>

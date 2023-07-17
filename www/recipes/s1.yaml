@@ -1,4 +1,15 @@
 ---
+javascript: console.log( params, "HELLO" );
+
 page:
   body: 
     - h1: hello world
+
+test: >-
+  is (document.body.childElementCount, 1, 'one body child' );
+  let h1 = document.body.children[0];
+  is (h1.tagName, 'H1', 'first child is H1' );
+  is (h1.childElementCount, 0, 'no h1 child elements' );
+  is (h1.childNodes.length, 1, 'one h1 text node' );
+  is (h1.childNodes[0].nodeValue, 'hello world', 'H1 text node value' );
+  doneTesting();

@@ -71,11 +71,21 @@ sub serve_html {
         if (-e $filename) {
             return serve_file( $c, $filename );
         }
+        # check for params
         $page =~ s/.html$//;
         if (-e "$root_directory/recipes$page.yaml") {
+            my $phash = $c->req->params->to_hash || {};
+            my $yaml_url = "/_$page";
+            my $tests = 0;
+            if ($phash->{test}) {
+                $yaml_url .= '?test=1';
+                $tests = 1;
+            }
             return $c->render( template => 'page',
+                               tests    => $tests,
+                               params   => Yote::SpiderPup::to_json($phash),
                                yote     => $yote, # to load yote or note
-                               yaml     => "/_$page" );
+                               yaml     => $yaml_url );
         }
         return $c->render(text => "recipe NOTFOUND / $root_directory/recipes$page.yaml / $filename");
     }
@@ -94,7 +104,7 @@ sub serve_recipe {
     $page //= $c->req->url->to_abs->path;
     $page =~ s~^/_/~/~;
 
-    my $js = Yote::SpiderPup->yaml_to_js( $root_directory, "recipes$page.yaml" );
+    my $js = Yote::SpiderPup->yaml_to_js( $root_directory, "recipes$page.yaml", undef, $c->req->param('test') );
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );

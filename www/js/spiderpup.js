@@ -230,6 +230,10 @@ function init( fileSpaces, defaultFilename ) {
   const bodyInst = bodyR.createInstance(bodyR.rootBuilder);
   bodyInst.attachTo(document.body);
   bodyInst.refresh();
+
+  if (pageNS.test) {
+    pageNS.test();
+  }
 }
 
 
@@ -257,6 +261,9 @@ function loadNamespace( filename ) {
   );
 
   NS.setup( NS_node, filename );
+  if (NS_node.test) {
+    NS.test = NS_node.test;
+  }
 
   return NS;
 }
@@ -482,7 +489,6 @@ class Builder extends Node {
   setup( layerAbove, withinRecipe, instanceRecipe ) {
     this.tag = layerAbove.tag;
     if (instanceRecipe) {
-      if (instanceRecipe.name === 'body') debugger;
       console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
     } else {
       console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
@@ -871,32 +877,39 @@ class Instance extends Node {
           const for_Es = forBuilderID2E[key] = [con_E];
           const list = forBuilderID2List[key] = con_B.foreach(this);
 
-          if (Number(con_E.dataset.splastlistlen) > list.length) {
-            forTrim( list.length, con_B, con_E );
+          if (list.length === 0) {
+            con_E.style.display = 'none';
+            forTrim( 1, con_B, con_E ); //remove all but the first
           }
-          con_E.dataset.splastlistlen = list.length;
-          let lastEl = con_E;
-          console.log( forInstances );
-          for (let i=1; i<list.length; i++) {
-            const key = `${con_B.id}_${i}`;
-            let for_E = builderID2el[key];
-            if (!for_E) {
-              if (instance_R) {
-                const forIDKey = `${con_B.id}_${i}`;
-                const for_I = this.childInstances[forIDKey]
-                      ||= instance_R.createInstance(con_B,this);
-                console.log( "PUSHING " + i );
-                forInstances.push( for_I );
-                for_E = inst_B.buildElement(for_I,con_B);
-                builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
-                for_I.attachTo( for_E );
-              } else {
-                for_E = con_B.buildElement(this);
-              }
-              for_E.dataset.spforidx = i;
+          else {
+            if (Number(con_E.dataset.splastlistlen) > list.length) {
+              forTrim( list.length, con_B, con_E );
             }
-            for_Es.push( for_E );
-            el.append( for_E );
+            con_E.dataset.splastlistlen = list.length;
+            let lastEl = con_E;
+            console.log( forInstances );
+
+            for (let i=1; i<list.length; i++) {
+              const key = `${con_B.id}_${i}`;
+              let for_E = builderID2el[key];
+              if (!for_E) {
+                if (instance_R) {
+                  const forIDKey = `${con_B.id}_${i}`;
+                  const for_I = this.childInstances[forIDKey]
+                        ||= instance_R.createInstance(con_B,this);
+                  console.log( "PUSHING " + i );
+                  forInstances.push( for_I );
+                  for_E = inst_B.buildElement(for_I,con_B);
+                  builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
+                  for_I.attachTo( for_E );
+                } else {
+                  for_E = con_B.buildElement(this);
+                }
+                for_E.dataset.spforidx = i;
+              }
+              for_Es.push( for_E );
+              el.append( for_E );
+            }
           }
         } else if (con_B.foreach || con_B.forvar) {
           this.recipe.error( 'foreach and forvar must both be present' );
