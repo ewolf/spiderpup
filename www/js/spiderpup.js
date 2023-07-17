@@ -214,6 +214,7 @@ window.onload = ev => {
 
 const FN_2_NS = {};
 let lastid = 1;
+let bodyInst;
 
 function nextid() {
   return lastid++;
@@ -227,7 +228,7 @@ function init( fileSpaces, defaultFilename ) {
   bodyR.setup( pageNS );
   bodyR.installHead();
 
-  const bodyInst = bodyR.createInstance(bodyR.rootBuilder);
+  bodyInst = bodyR.createInstance(bodyR.rootBuilder);
   bodyInst.attachTo(document.body);
   bodyInst.refresh();
 
@@ -594,7 +595,7 @@ class Builder extends Node {
   // class Builder
   buildElement( inst, builderNode ) {
     const el = document.createElement( this.tag );
-    el.dataset.spid = (builderNode||this).key;
+    el.dataset.spid = (builderNode||this).id;
 
     if (this.handle) {
       inst.el[this.handle] = el;
@@ -812,9 +813,12 @@ class Instance extends Node {
       if (!con_E) {
         if (instance_R) {
           con_I ||= this.childInstances[key]
-            = instance_R.createInstance(con_B,this);
+            ||= instance_R.createInstance(con_B,this);
           inst_B = con_I.instanceBuilder;
           con_E = inst_B.buildElement(con_I, con_B);
+          if (con_B.forvar) {
+            con_E.dataset.spforidx = '0';
+          }
           con_I.attachTo( con_E );
         }
         else { // element not instance
@@ -886,18 +890,20 @@ class Instance extends Node {
               forTrim( list.length, con_B, con_E );
             }
             con_E.dataset.splastlistlen = list.length;
-            let lastEl = con_E;
-            console.log( forInstances );
 
             for (let i=1; i<list.length; i++) {
-              const key = `${con_B.id}_${i}`;
-              let for_E = builderID2el[key];
-              if (!for_E) {
+              const forIDKey = `${con_B.id}_${i}`;
+              let for_E = builderID2el[forIDKey];
+              if (for_E) {
                 if (instance_R) {
-                  const forIDKey = `${con_B.id}_${i}`;
+                  const for_I = this.childInstances[forIDKey];
+                  forInstances.push( for_I );
+                }
+              } 
+              else {
+                if (instance_R) {
                   const for_I = this.childInstances[forIDKey]
                         ||= instance_R.createInstance(con_B,this);
-                  console.log( "PUSHING " + i );
                   forInstances.push( for_I );
                   for_E = inst_B.buildElement(for_I,con_B);
                   builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
@@ -906,9 +912,9 @@ class Instance extends Node {
                   for_E = con_B.buildElement(this);
                 }
                 for_E.dataset.spforidx = i;
+                el.append( for_E );
               }
               for_Es.push( for_E );
-              el.append( for_E );
             }
           }
         } else if (con_B.foreach || con_B.forvar) {
@@ -937,7 +943,7 @@ class Instance extends Node {
         if (list) { // foreach items
 
           const for_Es = forBuilderID2E[key];
-          const forInstances = forBuilderID2Instances[key] ||= [];
+          const forInstances = forBuilderID2Instances[key];
           for (let i=0; i<list.length; i++ ) {
             this.it[ con_B.forvar ] = list[i];
             this.idx[ con_B.forvar ] = i;

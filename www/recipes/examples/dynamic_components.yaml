@@ -1,7 +1,7 @@
 ---
 
 functions:
-  add: s => { s.data.dynos.push( s.data.dynos.length ); s.refresh(); }
+  add: s => { console.log( 'adding' ); s.data.dynos.push( s.data.dynos.length ); console.log( 'refreshing' ); s.refresh(); }
   remove: s => { s.data.dynos.pop(); s.refresh(); }
   
 page:
@@ -23,10 +23,14 @@ page:
               foreach: s => s.data.dynos
               data:
                 count: s => s.it.C
-                
-
 recipes:
   dyno:
     contents:
       - div: (s) => `Hi there: ${s.data.count}`
     
+test: >
+  console.log( bodyInst );
+  const addB = qs( 'button' );
+  //addB.click();
+  console.log( addB );
+  
