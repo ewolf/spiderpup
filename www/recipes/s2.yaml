@@ -6,12 +6,12 @@ page:
   body: 
     - foo:
     - foo:
-        - div: MORE
+        - section: MORE
 
 recipes:
   foo:
     contents:
-      - div:
+      - label:
           - span: FEE
           - span: ' FIE ' 
           - span: 'FOO '

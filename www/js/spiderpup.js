@@ -1,7 +1,7 @@
 /*
 ABOUT -----------------------------
 
- Convert a json data structure into a 
+ Convert a json data structure into a
  Single Application Page on top of very simple html
  that includes a head and empty body.
 
@@ -41,6 +41,7 @@ INIT -------------------------------
          }
          body -> {
            onLoad   -> function
+           preLoad   -> function
            on       -> { eventname -> function }
            contents -> [ element|component instance node...]
            listen   -> function
@@ -48,7 +49,7 @@ INIT -------------------------------
         }
 
  COMPONENT (RECIPE) DATA STRUCTURE -----------------------
- 
+
   a component (recipe) node has the following fields:
     functions  -> { name -> function }
     data       -> { field -> value }
@@ -56,7 +57,7 @@ INIT -------------------------------
     on         -> { event -> function }
     listen     -> function
     contents   -> [content node] (may only have one content node)
- 
+
  ELEMENT DATA STRUCTURE -----------------------
 
  an element node has the following fields:
@@ -67,7 +68,7 @@ INIT -------------------------------
    else             -> true
    forvar           -> looping variable name
    on               -> { element event name -> event function }
-   fill             -> true|<name> where true is the default fill for a 
+   fill             -> true|<name> where true is the default fill for a
                        component and a name connects to fill_contents
    attrs            -> { attributename -> value or function }
   fields computed/added at compile time:
@@ -94,7 +95,7 @@ INIT -------------------------------
      isComponent     -> true
      id              -> serialized field
      recipe          -> a link to the recipe that it is attached to
- 
+
  THE BODY INSTANCE
 
   the body is a special recipe. if the default namespace has html->body,
@@ -106,7 +107,7 @@ INIT -------------------------------
 
    The instance data structure is created on refresh. foreach iterations
    each have their own instance data structures. instances in foreach iterations
-   beyond the first iteration may be destroyed and recreated as refresh is 
+   beyond the first iteration may be destroyed and recreated as refresh is
    called to a parend instance.
 
 
@@ -127,7 +128,7 @@ INIT -------------------------------
    event -> function(event,result)  ->  initiates the event
    broadcastListener -> function to handle broadcasts
    fun  -> { functionname -> function }
-   refresh -> function that refreshes this instance and all 
+   refresh -> function that refreshes this instance and all
               child instances under it
    _refresh -> refresh function( node, element )
    _refresh_content -> function( content, elelement ) - refreshes the content instance node
@@ -163,13 +164,13 @@ INIT -------------------------------
      key -> result of _key
      ifCondition -> true|false if the condition test has been met
      elseIfCondition -> 'n/a' if condition above it has been met
-                        so test was not performed, 
+                        so test was not performed,
                         otherwise true|false for result of condition
      else            -> true when no condition met, false otherwise
      fill            -> if this is a container that takes fill
 
  element events
-   these are handled on the element itself with the instance as 
+   these are handled on the element itself with the instance as
    the first parameter and event as the second
 
  broadcasts
@@ -177,7 +178,7 @@ INIT -------------------------------
 
  component events
    these are a bit tricker. events bubble up from one component
-   instance to its parent. the event should be patterend off of the 
+   instance to its parent. the event should be patterend off of the
    element event with a stopPropagation and preventDefault possibly,
    however the difficulty comes in when one recipe basically inherets
    from an other by having its root content node be an other recipe
@@ -188,7 +189,7 @@ INIT -------------------------------
    have their refresh called.
 
    an instance refresh starts with their rootEl html element refresh.
-   refresh sets up vent listeners handles, updates classes, 
+   refresh sets up vent listeners handles, updates classes,
    textContent|innerHTML|fill, and attributes, calling functions for
    those values if functions provide them, or using the values provided
    otherwise.
@@ -212,7 +213,7 @@ window.onload = ev => {
 // --------  CODE  ------
 
 const FN_2_NS = {};
-let lastid = 0;
+let lastid = 1;
 
 function nextid() {
   return lastid++;
@@ -261,10 +262,9 @@ function loadNamespace( filename ) {
 }
 
 class Node {
-  get id() {
-    this._id ||= nextid();
-    return this._id;
-  }    
+  constructor() {
+    this.id = nextid();
+  }
 }
 
 class Namespace extends Node {
@@ -284,6 +284,7 @@ class Namespace extends Node {
     console.error( msg );
     throw new Error( `${msg} in file '${this.name}'` );
   }
+  // class Namespace
   findRecipe( tag ) {
     const parts = tag.split(/[.]/);
     let recipe;
@@ -293,11 +294,14 @@ class Namespace extends Node {
       if (recipe) return recipe;
       const recipeData = this.recipeData[recipeName];
       if (recipeData) {
-        recipe = this.recipes[recipeName] = new Recipe();
-        recipe.setup( this, recipeData, recipeName );
+        recipe = this.recipes[recipeName];
+        if (!recipe) {
+          recipe = this.recipes[recipeName] = new Recipe();
+          recipe.setup( this, recipeData, recipeName );
+        }
         return recipe;
       }
-    } 
+    }
     else if (parts.length === 2) {
       const NS = this.aliasedNS[parts[0]];
       recipe = NS && NS.findRecipe( parts[1] );
@@ -307,16 +311,21 @@ class Namespace extends Node {
       this.error( `recipe '${tag}' not found` );
     }
   }
+  // class Namespace
   setup( node, filename ) {
     this.name = filename;
     this.recipeData = node.recipes || {};
     this.data = node.data || {};
-    this.functios = node.functions || {};
+    this.functions = node.functions || {};
     node.listen && (this.listen = node.listen);
     node.html && (this.html = node.html);
+    node.onLoad && (this._onLoad = node.onLoad);
   }
+  // class Namespace
   onLoad() {
-
+    if (this._onLoad) {
+      return this._onLoad();
+    }
   }
 } //class NameSpace
 
@@ -326,25 +335,27 @@ class Recipe extends Node {
     this.name = recipeName;
     this.namespace = NS;
 
-    [ 'data', 'functions' ]
-      .forEach( k => (this[k] = recipeData[k] || {} ) );
-    [ 'class', 'preLoad' ]
-      .forEach( k => (recipeData[k] && (this[k] = recipeData[k] )) );
+    [ NS, recipeData ]
+      .forEach( src => {
+        [ 'data', 'functions', 'class', 'on', 'onLoad', 'preLoad' ]
+          .forEach( k => (src[k] && (this[k] = src[k] )) );
+      } );
+    console.warn( "class should be additive here" );
+    this.functions ||= {};
+    this.data ||= {};
     this.namedFillBuilders = {};
-    
     this.contents = recipeData.contents;
     this.prepRootBuilder();
-    if (!this.fillBuilder) {
-      this.fillBuilder = this.rootBuilder;
-    }
   }
-  
+
+  // class Recipe
   error( msg ) {
     this.namespace.error( `${msg} in recipe '${this.name}'` );
   }
 
   // this is here for the case of a root component node
   // being an alias for an other component
+  // class Recipe
   prepRootBuilder() {
     const NS = this.namespace;
 
@@ -367,7 +378,7 @@ class Recipe extends Node {
     this.rootBuilder = rootBuilder;
 
     rootBuilder.fillOut();
-    
+
     // if no child builder was specifically called 'fill'
     // give the root builder that honor
     this.fillBuilder ||= rootBuilder;
@@ -375,6 +386,7 @@ class Recipe extends Node {
     return rootBuilder;
   }
 
+  // class Recipe
   createInstance(builder, parentInstance) {
     const inst = new Instance();
     inst.setup( this, builder );
@@ -391,23 +403,24 @@ class Recipe extends Node {
 class BodyRecipe extends Recipe {
   setup(pageNS) {
 
-    this.name = 'body';
-
     const html = pageNS.html || {};
     const body = html.body || {};
 
-    const rootNode = { 
-      contents: [
-        {tag:'body',
-         contents: body.contents || [],
-         ...body}
-      ]
+    const rootNode = {
+      contents: [ {
+        tag:'body',
+        contents: body.contents || [],
+      } ]
     };
 
-    super.setup(pageNS, rootNode);
+    ['preLoad', 'onLoad', 'on', 'listen', 'functions']
+      .forEach( fld => body[fld] && (rootNode[fld] = body[fld]) );
+
+    super.setup(pageNS, rootNode, 'body');
 
     this.head = html.head || {};
   }
+  // class BodyRecipe
   installHead() {
     this.head.title && (document.title = this.head.title);
 
@@ -455,14 +468,25 @@ class BodyRecipe extends Recipe {
       scr.setAttribute( 'src', file );
       head.appendChild( scr );
     } );
-    
+
   }
 }  //class BodyRecipe
 
 class Builder extends Node {
 
+  get key() {
+    return this.forvar ? `${this.id}_0` : this.id;
+  }
+
+  // class Builder
   setup( layerAbove, withinRecipe, instanceRecipe ) {
     this.tag = layerAbove.tag;
+    if (instanceRecipe) {
+      if (instanceRecipe.name === 'body') debugger;
+      console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
+    } else {
+      console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
+    }
     this.instanceRecipe = instanceRecipe;
     this.layer( layerAbove, withinRecipe );
     this.contentBuilders = [];
@@ -477,6 +501,7 @@ class Builder extends Node {
     }
   } //setup
 
+  // class Builder
   layer( layerAbove, recipe ) {
     this.layerAbove = layerAbove;
     this.recipe = recipe;
@@ -489,10 +514,6 @@ class Builder extends Node {
             .forEach( fld => {
               if (htype === 'attrs' && fld === 'class') {
                 current[fld] = [above[fld], current[fld]].join( " " );
-              } else if (htype === 'functions') {
-                const fun = layerAbove.functions[fld];
-                console.warn( "should distinguish methods, functions, mixins" );
-                current[fld] = function() { return fun(...arguments) };
               } else {
                 current[fld] = above[fld];
               }
@@ -500,13 +521,14 @@ class Builder extends Node {
         }
       });
     [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forvar', 'handle' ]
-      .forEach( fun => 
+      .forEach( fun =>
         layerAbove[fun] && (this[fun] = layerAbove[fun]) );
 
     this.contents ||= [];
     this.contents.push( ...(layerAbove.contents||[]) );
   } //layer
 
+  // class Builder
   fillOut() {
     // this may be called multiple times for the same builder
     // during construction if a root node for a recipe refers
@@ -518,6 +540,7 @@ class Builder extends Node {
       .forEach( con => {
         const child_B = new Builder();
         const conRecipe = NS.findRecipe( con.tag );
+
         if (conRecipe) {
           // component node
 
@@ -525,9 +548,9 @@ class Builder extends Node {
           const toFill = child_B.fillContents = {}; // name -> [ ... BuilderList ]
 
           if (con.fill_contents) {
-            Object.keys(con.fill_contents) 
+            Object.keys(con.fill_contents)
               .forEach( fillName => {
-                const toFillBuilders = toFill[fillName] = 
+                const toFillBuilders = toFill[fillName] =
                 con.fill_contents[fillName]
                   .map( fill_con => {
                     const fill_B = new Builder();
@@ -554,7 +577,7 @@ class Builder extends Node {
 
         } else {
           // element node
-          child_B.setup( con, R );          
+          child_B.setup( con, R );
           child_B.fillOut();
         }
 
@@ -562,9 +585,10 @@ class Builder extends Node {
       } );
   } //fillOut
 
+  // class Builder
   buildElement( inst, builderNode ) {
     const el = document.createElement( this.tag );
-    el.dataset.SP_ID = (builderNode||this).id;
+    el.dataset.spid = (builderNode||this).key;
 
     if (this.handle) {
       inst.el[this.handle] = el;
@@ -576,7 +600,7 @@ class Builder extends Node {
         const onfun = this.on[evname];
         const evfun = function() {
           const prom = onfun( inst, ...arguments );
-          Promise.resolve( prom )
+          return Promise.resolve( prom )
             .then( () => {
               if ( inst.check() ) inst.refresh();
             } );
@@ -586,9 +610,9 @@ class Builder extends Node {
 
     return el;
   }
-   
+
 } // class Builder
- 
+
 
 class Instance extends Node {
 
@@ -601,15 +625,18 @@ class Instance extends Node {
     this.idx           = {};
     this.el            = {}; // handle -> element
     this.comp          = {}; // handle -> component
+    this.fun           = {}; // name   -> function
     this.layer( recipe, builder );
   }
 
+  // class Instance
   check() {
     const changed = this.changed;
     this.changed = false;
     return changed;
   }
 
+  // class Instance
   makeData() {
     const inst = this;
     return new Proxy( {}, {
@@ -625,38 +652,57 @@ class Instance extends Node {
         return value;
       }
     } );
-    
+
   }
 
+  // class Instance
   layer( recipe, builder ) {
     // we want za data
+    const inst = this;
     const data = this.data ||= this.makeData();
+    const fun = this.fun;
+    const onLoads = this.onLoads = [];
+    const preLoads = this.preLoads = [];
     [ recipe, builder ]
       .forEach ( from => {
+        from.onLoad && onLoads.push( from.onLoad.bind(this) );
+        from.preLoad && preLoads.push( from.preLoad.bind(this) );
         from.data && Object.keys( from.data )
           .forEach( fld => {
-            data[fld] = this.dataVal(from.data[fld]);
+            data[fld] = from.data[fld];
           } );
+        from.functions && Object.keys( from.functions )
+          .forEach( funname => {
+            const fromfun = from.functions[funname];
+            fun[funname] = function() {
+              return Promise.resolve( fromfun( inst, ...arguments ) );
+            }
+          } );
+
       } );
   }
 
+  // class Instance
   getFillEl(name) {
     const R = this.recipe;
     if (name) return this.build_id2el[R.namedFillBuilders[name].id];
-    return this.builder_id2el[R.fillBuilder.id];
+    return this.builder_id2el[R.fillBuilder.key];
   }
 
+  // class Instance
   get instanceBuilder() {
     let B = this._instanceBuilder;
     if (!B) {
+      console.log( `INSTANCE BUILDER FOR ${this.recipe.name}` );
       B = this._instanceBuilder = new Builder();
-      B.setup( this.recipe.rootBuilder, this.recipe, this.builder );
+      B.setup( this.recipe.rootBuilder, this.recipe, this.builder.recipe );
       B.instance = this;
-      B.fillOut();
+      B.contentBuilders = this.recipe.rootBuilder.contentBuilders;
     }
     return B;
   }
 
+  // class Instance
   attachTo(el) {
     this.root_EL = el;
   }
@@ -665,10 +711,19 @@ class Instance extends Node {
     return typeof v === 'function' ? v(this) : v;
   }
 
+  // class Instance
   refresh() {
+    if (! this.loaded) {
+      this.preLoads.forEach( pl => pl(this) );
+    }
     this._refresh( this.root_EL, this.recipe.rootBuilder );
+    if (! this.loaded) {
+      this.onLoads.forEach( ol => ol(this) );
+      this.loaded = true;
+    }
   }
 
+  // class Instance
   _refresh( el, builder ) {
 
     // fill in elements attributes ---------------------------
@@ -708,19 +763,19 @@ class Instance extends Node {
     const builderID2el = {};
     Array.from( el.children )
       .forEach( child_E => {
-        if (child_E.dataset.SP_ID) {
-          if (child_E.dataset.SP_FOR_IDX !== undefined) {
-            builderID2el[`${child_E.dataset.SP_ID}_${child_E.dataset.SP_FOR_IDX}`] = child_E;
+        if (child_E.dataset.spid) {
+          if (child_E.dataset.spforidx !== undefined) {
+            builderID2el[`${child_E.dataset.spid}_${child_E.dataset.spforidx}`] = child_E;
           } else {
-            builderID2el[child_E.dataset.SP_ID] = child_E;
+            builderID2el[child_E.dataset.spid] = child_E;
           }
         }
       } );
 
     // little function to remove extra forloop elements
     const forTrim = (startIdx,con_B,con_E) => {
-      for (let i=startIdx; i<con_E.dataset.SP_LAST_LEN; i++) {
-        const key = `${con_E.dataset.SP_ID}_${i}`
+      for (let i=startIdx; i<Number(con_E.dataset.splastlistlen); i++) {
+        const key = `${con_E.dataset.spid}_${i}`
         const for_E = builderID2el[key];
         delete builderID2el[key];
         for_E && for_E.remove();
@@ -740,16 +795,18 @@ class Instance extends Node {
     const forBuilderID2E = {};
 
     (builder.contentBuilders).forEach( con_B => {
-      let con_E = builderID2el[con_B.id];
-      const instance_R = con_B.instanceRecipe;  
-      let inst_B, con_I;
+      const key = con_B.key;
+      let con_E = builderID2el[key];
+      const instance_R = con_B.instanceRecipe;
+      let inst_B;
+
+      let con_I = this.childInstances[key];
 
       // create the element if need be
       if (!con_E) {
         if (instance_R) {
-          con_I = this.childInstances[con_B.id]
-            ||= instance_R.createInstance(con_B,this);
-
+          con_I ||= this.childInstances[key]
+            = instance_R.createInstance(con_B,this);
           inst_B = con_I.instanceBuilder;
           con_E = inst_B.buildElement(con_I, con_B);
           con_I.attachTo( con_E );
@@ -757,11 +814,12 @@ class Instance extends Node {
         else { // element not instance
           con_E = con_B.buildElement(this);
         }
-        builderID2el[con_B.id] = this.builder_id2el[con_B.id] = con_E;
-        
+        builderID2el[key] = this.builder_id2el[key] = con_E;
+
         con_E.style.display = 'none';
         el.append( con_E );
       }
+      inst_B ||= con_I && con_I.instanceBuilder;
 
       // check conditionals if it should be displayed
       let showThis = false;
@@ -770,7 +828,7 @@ class Instance extends Node {
         lastWasConditional = true;
         showThis = lastConditionalWasTrue;
         con_E.dataset.ifCondition = conditionalDone; //for debugging
-      } 
+      }
       else if (con_B.elseif) {
         if (!lastWasConditional) {
           this.recipe.error( 'elseif must be preceeded by if or elseif' );
@@ -783,7 +841,7 @@ class Instance extends Node {
           con_E.dataset.elseIfCondition = conditionalDone; //for debugging
           showThis = lastConditionalWasTrue;
         }
-      } 
+      }
       else if (con_B.else) {
         if (! lastWasConditional ) {
           this.recipe.error( 'else must be preceeded by if or elseif' );
@@ -802,21 +860,23 @@ class Instance extends Node {
       }
 
       if (showThis) {
-        showElementWithID[con_B.id] = true;
+        showElementWithID[key] = true;
         con_E.style.display = null;
-        
+
         // check if this is a loop. if so
         // create elements and maybe child instances for
         // each iteration of the loop
         if (con_B.foreach && con_B.forvar) {
-          const forInstances = forBuilderID2Instances[con_B.id] = [con_I];
-          const for_Es = forBuilderID2E[con_B.id] = [con_E];
-          const list = forBuilderID2List[con_B.id] = con_B.foreach(this);
-          if (con_E.dataset.SP_LAST_LIST_LEN > list.length) {
-            forTrim( list.length - 1, con_B, con_E );
+          const forInstances = forBuilderID2Instances[key] = [con_I];
+          const for_Es = forBuilderID2E[key] = [con_E];
+          const list = forBuilderID2List[key] = con_B.foreach(this);
+
+          if (Number(con_E.dataset.splastlistlen) > list.length) {
+            forTrim( list.length, con_B, con_E );
           }
-          con_E.dataset.SP_LAST_LIST_LEN = list.length;
+          con_E.dataset.splastlistlen = list.length;
           let lastEl = con_E;
+          console.log( forInstances );
           for (let i=1; i<list.length; i++) {
             const key = `${con_B.id}_${i}`;
             let for_E = builderID2el[key];
@@ -825,14 +885,15 @@ class Instance extends Node {
                 const forIDKey = `${con_B.id}_${i}`;
                 const for_I = this.childInstances[forIDKey]
                       ||= instance_R.createInstance(con_B,this);
+                console.log( "PUSHING " + i );
                 forInstances.push( for_I );
                 for_E = inst_B.buildElement(for_I,con_B);
-                builderID2el[forIDKey] = for_E;
-                con_I.attachTo( for_E );
+                builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
+                for_I.attachTo( for_E );
               } else {
                 for_E = con_B.buildElement(this);
               }
-              for_E.dataset.SP_FOR_IDX = i;
+              for_E.dataset.spforidx = i;
             }
             for_Es.push( for_E );
             el.append( for_E );
@@ -844,27 +905,26 @@ class Instance extends Node {
       } else {
         con_E.style.display = 'none';
         // remove foreach beyond zero
-        if (con_E.dataset.SP_LAST_LEN > 1) {
+        if (Number(con_E.dataset.splastlistlen) > 1) {
             forTrim( 1, con_B, con_E );
         }
-        
       }
-      
+
     } );
 
     // refresh seen builders
-
     (builder.contentBuilders)
-      .filter( con_B => showElementWithID[con_B.id] )
+      .filter( con_B => showElementWithID[con_B.key] )
       .forEach( con_B => {
-        const con_E = builderID2el[con_B.id];
+        const key = con_B.key;
+        const con_E = builderID2el[key];
         const instance_R = con_B.instanceRecipe;
 
-        const list = forBuilderID2List[con_B.id];
+        const list = forBuilderID2List[key];
         if (list) { // foreach items
 
-          const for_Es = forBuilderID2E[con_B.id];
-          const forInstances = forBuilderID2Instances[con_B.id] = [];
+          const for_Es = forBuilderID2E[key];
+          const forInstances = forBuilderID2Instances[key] ||= [];
           for (let i=0; i<list.length; i++ ) {
             this.it[ con_B.forvar ] = list[i];
             this.idx[ con_B.forvar ] = i;
@@ -883,9 +943,10 @@ class Instance extends Node {
           }
         }
         else { //single item
+
           if (instance_R) {
             // we didnt check if there is already an instance
-            const con_I = this.childInstances[con_B.id];
+            const con_I = this.childInstances[key];
             con_I.refresh();
 
             // check for fill and fill contents
@@ -894,7 +955,7 @@ class Instance extends Node {
               con_B.defaultFillContents
                 .forEach( fill_con_B => this._refresh( fill_E, fill_con_B ));
             }
-          } 
+          }
           else { // element builder
             this._refresh( con_E, con_B );
           }
@@ -904,4 +965,3 @@ class Instance extends Node {
 
   }
 } // Class Instance
-

@@ -1,14 +1,14 @@
 ---
-body:
-  - greeting:
-  - greeting:
-      data:
-        greeting: I override
+page:
+  body:
+    - greeting:
+    - greeting:
+        data:
+          greeting: I override
 
 recipes:
   greeting:
     data:
       greeting: Hello there
     contents:
-      - div:
-          textContent: s => 'greet ' + s.get( 'greeting' )
+      - div: s => 'greet ' + s.data.greeting

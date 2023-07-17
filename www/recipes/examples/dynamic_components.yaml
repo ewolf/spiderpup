@@ -1,24 +1,32 @@
 ---
 
 functions:
-  add: s => { s.set( 'count', s.get( 'count' ) + 1 ); s.create( 'dyno', { attachTo: 'box' } ) }
+  add: s => { s.data.dynos.push( s.data.dynos.length ); s.refresh(); }
+  remove: s => { s.data.dynos.pop(); s.refresh(); }
   
-body:
-  onLoad: s => s.set( 'count', 0 )
-  contents:
-    - h1: dynamic recipes
-    - h2: add a component with the press of a button
-    - button:
-        on:
-          click: (s,ev) => { s.fun.add(s) }
-        textContent: add
-    - div:
-        attach-el: box
+page:
+  body:
+    preLoad: s => s.data.dynos = [] 
+    contents:
+      - h1: dynamic recipes
+      - h2: add a component with the press of a button
+      - button:
+          on_click: s => s.fun.add()
+          textContent: add
+      - button:
+          on_click: s => s.fun.remove()
+          textContent: remove
+          if: s => s.data.dynos.length
+      - div:
+          - dyno:
+              forvar: C
+              foreach: s => s.data.dynos
+              data:
+                count: s => s.it.C
+                
 
 recipes:
   dyno:
     contents:
-      - div:
-          calculate: 
-            textContent: s => `Hi there: ${s.get('count',0)}`
+      - div: (s) => `Hi there: ${s.data.count}`
     
