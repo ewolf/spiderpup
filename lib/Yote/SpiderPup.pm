@@ -268,7 +268,7 @@ sub load_namespace {
                 $namespace->{$fun} = $yaml->{$fun};
             }
         }
-
+        $namespace->{about} = $yaml->{about} || '';
         $namespace->{recipes} = {};
         for my $recipe_name (keys %{$yaml->{recipes}}) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
@@ -294,8 +294,8 @@ sub load_namespace {
 
         if ($body) {
 
-            if ($page->{title}) {
-                $namespace->{html}{head}{title} = $page->{title};
+            if ($yaml->{title}) {
+                $namespace->{html}{head}{title} = $yaml->{title};
             }
 
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename, $fn );

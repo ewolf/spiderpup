@@ -7,10 +7,10 @@ listen: >-
     if (key === 'pageMode') {
       c.fun.pageMode( msg );
     } else if (key === 'loaded-app') {
-      c.set( 'app', msg );
+      c.data.app = msg;
     } else if (key === 'got-login') {
-      c.set( 'acct', msg );
-      c.set( 'message', 'logged in' );
+      c.data.acct = msg;
+      c.data.message = 'logged in';
       c.fun.pageMode( 'default' );
     } else if (key === 'close-account-options') {
       c.fun.pageMode( 'default' );
@@ -26,18 +26,18 @@ functions:
 
   pageMode: >-
     (c,mode) => {
-      if ( c.get( 'pageMode' ) !== mode ) {
+      if ( c.data.pageMode !== mode ) {
         history.pushState( { pageMode: mode }, undefined, mode === 'default' ? '/i2.html' : `?pageMode=${mode}` );
-        c.set( 'pageMode', mode );
+        c.data.pageMode = mode;
         c.top.refresh();
       }
     }
   logout: >-
     c => {
       yote.logout();
-      c.top.set( 'acct' );
+      c.top.data.acct = undefined;
       c.fun.pageMode( 'default' );
-      c.top.set( 'message', 'logged out' );
+      c.top.data.message = 'logged out';
       c.top.refresh();
     }
     
@@ -46,7 +46,7 @@ onLoad: >-
   c => {
     // listen to page change event
     addEventListener( 'popstate', ev => {
-      c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
+      c.data.pageMode = ( ev.state && ev.state.pageMode || 'default' );
       c.top.refresh();
     } );
 
@@ -61,7 +61,7 @@ onLoad: >-
     } );
 
 
-    yote.fetchAppTryLogin( c.get( 'appName' ) )
+    yote.fetchAppTryLogin( c.data.appName )
       .then( app => {
         if (app) {
           c.broadcast( 'loaded-app', app );
@@ -77,7 +77,7 @@ onLoad: >-
       const usp = new URLSearchParams( window.location.search );
       for (const [key, value] of usp) {
          if (key === 'pageMode') {
-           c.set( 'pageMode', value );
+           c.data.pageMode = value;
          }
       }
   }
@@ -91,42 +91,43 @@ data:
   showing_acct_menu: false
   in_edit: false
 
-body:
-  class: site
-  contents:
-    - siteheader:
-        on_show_login: c => c.fun.pageMode( 'logging-in' )
-        on_show_account_menu: c => c.set( 'showing_acct_menu', true )
+page:
+  body:
+    class: site
+    contents:
+      - siteheader:
+          on_show_login: c => c.fun.pageMode( 'logging-in' )
+          on_show_account_menu: c => c.data.showing_acct_menu' = true
+          
+      - clickMenu:
+          if: c => c.data.showing_acct_menu
+          on_close_click_menu: c => c.data.showing_acct_menu = false
+          data:
+            options:
+              - label: edit account
+                action: c => c => c.fun.pageMode( 'account-settings' )
+              - label: log out
+                action: c => c => c.fun.logout()
+      - main:
+      - message:
 
-    - clickMenu:
-        if: c => c.get( 'showing_acct_menu' )
-        on_close_click_menu: c => c.set( 'showing_acct_menu' )
-        data:
-          options:
-            - label: edit account
-              action: c => c => c.fun.pageMode( 'account-settings' )
-            - label: log out
-              action: c => c => c.fun.logout()
-    - main:
-        - message:
+      - login:
+          if: c => c.data.pageMode === 'logging-in'
+          on_submit: (c, req) => { console.log(req); debugger; }
+      - centerBox:
+          elseif: c => c.data.pageMode === 'account-settings'
+          contents:
+            - accountSetupForm:
+      - centerBox:
+          elseif: c => c.data.app
+          contents:
+            - div: got app can do stuff
+      - div:
+          else: true
+          contents:
+            - div: no app, waiting on stuff
 
-        - login:
-            if: c => c.get( 'pageMode' ) === 'logging-in'
-            on_submit: (c, req) => { console.log(req); debugger; }
-        - centerBox:
-            elseif: c => c.get( 'pageMode' ) === 'account-settings'
-            contents:
-              - accountSetupForm:
-        - centerBox:
-            elseif: c => c.get( 'app' )
-            contents:
-              - div: got app can do stuff
-        - div:
-            else: true
-            contents:
-              - div: no app, waiting on stuff
-
-    - sitefooter:
+      - sitefooter:
 
 recipes:
 
@@ -136,10 +137,10 @@ recipes:
       - div:
           - div:
               class: message space
-              if: c => c.get('message')
-              on_click: c => c.top.set('message')
+              if: c => c.data.message
+              on_click: c => c.top.data.message = ''
               contents:
-                - span: c => c.get('message')
+                - span: c => c.data.message
                 - span: x
 
   centerBox:
@@ -152,10 +153,10 @@ recipes:
   clickOption:
     - div:
         class: click-option
-        textContent: c => c.get('label')
+        textContent: c => c.data.label
         on_click: >-
           (c,ev) => { 
-          const action = c.get('action');
+            const action = c.data.action;
             if (action) {
               action(c,ev);
             }
@@ -179,7 +180,7 @@ recipes:
           contents:
             - clickOption:
                 forvar: opt
-                foreach: c => c.get( 'options' ) || []
+                foreach: c => c.data.options || []
                 data:
                   label: c => c.it.opt.label
                   action: c => c.it.opt.action(c)
@@ -203,12 +204,12 @@ recipes:
           contents:
             - span: logo
             - button:
-                if: c => c.get('app') && ! c.get( 'acct' )
+                if: c => c.data.app && ! c.data.acct
                 textContent: log in
                 on_click: c => c.event( 'show_login' )
-                on_clicku: c => c.get('app').login({ login: 'coyo', password: 'bigshoe' }).then(acct => {c.broadcast( 'got-login', acct ) })
+                on_clicku: c => c.data.app.login({ login: 'coyo', password: 'bigshoe' }).then(acct => {c.broadcast( 'got-login', acct ) })
             - button:
-                elseif: c => c.get('app')
+                elseif: c => c.data.app
                 textContent: Account
                 handle: accountButton
                 on_click: >-
@@ -216,7 +217,7 @@ recipes:
                     ev.stopPropagation();
                     ev.preventDefault();
                     c.event( 'show_account_menu' );
-                    //c.set( 'menuButton', c.el.accountButton );
+                    //c.data.menuButton = c.el.accountButton;
                     //c.event( 'show_account_options' );
                   }
 
@@ -231,12 +232,12 @@ recipes:
     functions:
       login: >-
         (c,login,password) => {
-          c.get('app')
+          c.data.app
             .login( { login, password } )
             .then( acct => { c.fun.clear();
                              c.broadcast( 'got-login', acct );
                            })
-            .catch( err => { c.set( 'err', err ); c.refresh() } );
+            .catch( err => { c.data.err = err; c.refresh() } );
         }
       clear: >-
         c => {
@@ -278,7 +279,7 @@ recipes:
                     on_click: >-
                       (c,ev) => { 
                         ev.preventDefault();
-                        c.parent.set('mode', 'show-create-account');
+                        c.parent.data.mode = 'show-create-account';
                       }
                     textContent: 'create account'
 

@@ -1,6 +1,6 @@
 ---
 
-css: >-
+less: >-
   pre {
     font-family: monospace;
     padding: 1em;
@@ -102,7 +102,7 @@ data:
                       greeting: Hello there
                     contents:
                       - div:
-                          textContent: s => 'greet ' + s.data.get( 'greeting' )
+                          textContent: s => 'greet ' + s.data.greeting
 
   lessons:
     -
@@ -383,16 +383,14 @@ data:
                   greeting: Hello there
                 contents:
                   - div:
-                      textContent: s => 'greet ' + s.data.get( 'greeting' )
+                      textContent: s => 'greet ' + s.data.greeting
 
 
     -
       title: events and state
       about: >-
         This short example shows a button who's text displays how many times
-        it was clicked. `s.data.get` is with a field name and an optional
-        second argument which is a default value to set the field to if it
-        is not yet defined.
+        it was clicked.
 
         There is no component here; the body also gets a state object
         associated with it.
@@ -408,13 +406,14 @@ data:
           file: YAML file *.../spiderpup/www/recipes/examples/events.yaml*
           code: >-
             ---
-
+            data:
+             count: 0
             html:
               body:
                 - h1: Hello Events
                 - button:
-                    textContent: s => 'clicked ' + s.data.get('count',0) + ' times'
-                    on_click: (s,ev) => s.data.set( 'count', 1 + s.data.get( 'count' ) )
+                    textContent: s => 'clicked ' + s.data.count + ' times'
+                    on_click: (s,ev) => s.data.count++
     -
       title: recipes and functions
       about: >-
@@ -447,8 +446,8 @@ data:
                   value: 0
                   name: ''
                 functions:
-                  inc: s => s.data.set( 'value', 1 + s.data.get('value') )
-                  dec: s => s.data.get( 'value' ) > 0 && s.data.set( 'value', s.data.get('value') - 1 )
+                  inc: s => s.data.value++
+                  dec: s => s.data.value > 0 && s.data.value--
                 contents:
                   - div:
                       - button:
@@ -457,8 +456,7 @@ data:
                             click: s => s.fun.dec(s)
                       - span:
                           style: margin: 0 5px
-                          calculate:
-                            textContent: s => s.data.get('name') + ': ' + s.data.get('value')
+                          textContent: s => s.data.name + ': ' + s.data.value
                       - button:
                           textContent: '+'
                           on:
@@ -524,48 +522,21 @@ page:
           source: chapters
 
 recipes:
-  try:
-    data:
-      count: 3
-      alpha:
-        - a
-        - b
-        - c
-        - d
-        - e
-        - f
-        - g
-    functions:
-      list: s => s.data.get('alpha').slice( 0, s.data.get( 'count' ) )
-      dec: s => s.data.get('count') > 0 && s.data.set( 'count', s.data.get('count') - 1 )
-      inc: s => s.data.get('count') < s.data.get('alpha').length && s.data.set( 'count', s.data.get('count') + 1 )
-    contents:
-      - div:
-          - button:
-              textContent: dec
-              on_click: s => s.fun.dec()
-          - button:
-              textContent: inc
-              on_click: s => s.fun.inc()
-          - div:
-              foreach: s => s.fun.list()
-              forvar: alpha
-              textContent: s => s.it.alpha
-
   chapters:
     data:
       currPosition: 0
-      count: s => s.data.get(s.data.get('source')).length
+      count: s => s.data[s.data.source].length
+      curr: s => s.data[s.data.source][s.data.currPosition]
+
     functions:
-      curr: s => s.data.get(s.data.get('source'))[s.data.get('currPosition')]
       checkDisabled: >-
         s => {
-          if (s.data.get('currPosition') === 0) {
+          if (s.data.currPosition === 0) {
              s.el.previousButton.setAttribute( 'disabled', 'disabled' );
           } else {
              s.el.previousButton.removeAttribute( 'disabled' );
           }
-          if (s.data.get('currPosition') === (s.data.get( 'count' )-1)) {
+          if (s.data.currPosition === (s.data.count-1)) {
              s.el.nextButton.setAttribute( 'disabled', 'disabled' );
           } else {
              s.el.nextButton.removeAttribute( 'disabled' );
@@ -574,9 +545,7 @@ recipes:
 
       incOrDec: >-
         (s,doInc) => {
-           let pos = s.data.get( 'currPosition' );
-           doInc ? pos++ : pos--;
-           s.data.set( 'currPosition', pos );
+           doInc ? s.data.currPosition++ : s.data.currPosition--;
            s.fun.checkDisabled();
            s.fun.setLessons();
         }
@@ -584,7 +553,7 @@ recipes:
       setLessons: >-
         s => {
           const lstate = s.comp.lessons;
-          lstate.fun.setLessons( s.fun.curr().lessons );
+          lstate.fun.setLessons( s.data.curr.lessons );
         }
 
     onLoad: >-
@@ -600,37 +569,37 @@ recipes:
                   handle: previousButton
                   textContent: previous chapter
                   on_click: s => s.fun.incOrDec()
-              - span: s => `showing ${1 + s.data.get('currPosition')} of ${s.data.get( 'count' )}`
+              - span: s => `showing ${1 + s.data.currPosition} of ${s.data.count}`
               - button:
                   handle: nextButton
                   textContent: next chapter
                   on_click: s => s.fun.incOrDec(true)
           - section:
               contents:
-                - h2: s => s.fun.curr().title
-                - p: s => s.fun.curr().about
+                - h2: s => s.data.curr.title
+                - p: s => s.data.curr.about
                 - lessons:
                     handle: lessons
                     data:
-                      chapterLessons: s => s.fun.curr().lessons
+                      chapterLessons: s => s.data.curr.lessons
                       currLesson: 0
-                      lessonCount: s => s.fun.curr().lessons.length;
+                      lessonCount: s => s.data.curr.lessons.length;
                       fooy: () => 123
                       issa: true
                       nyet: false
   lessons:
     functions:
 
-      curr: s => s.data.get('chapterLessons')[s.data.get('currLesson')]
+      curr: s => s.data.chapterLessons[s.data.currLesson]
 
       checkDisabled: >-
         s => {
-          if (s.data.get('currLesson') === 0) {
+          if (s.data.currLesson === 0) {
              s.el.previousButton.setAttribute( 'disabled', 'disabled' );
           } else {
              s.el.previousButton.removeAttribute( 'disabled' );
           }
-          if (s.data.get('currLesson') === (s.data.get( 'lessonCount' )-1)) {
+          if (s.data.currLesson === (s.datalessonCount-1)) {
              s.el.nextButton.setAttribute( 'disabled', 'disabled' );
           } else {
              s.el.nextButton.removeAttribute( 'disabled' );
@@ -639,18 +608,18 @@ recipes:
 
       incOrDecLesson: >-
         (s,doInc) => {
-           let pos = s.data.get( 'currLesson' );
+           let pos = s.data.currLesson;
            doInc ? pos++ : pos--;
-           s.data.set( 'currLesson', pos );
+           s.data.currLesson = pos;
            s.el.previousButton.disabled = false;
            s.el.nextButton.disabled = false;
            s.fun.checkDisabled();
         }
       setLessons: >-
         (s,lessons) => {
-          s.data.set( 'currLesson', 0 );
-          s.data.set( 'chapterLessons', lessons );
-          s.data.set( 'lessonCount', lessons.length );
+          s.data.currLesson = 0;
+          s.data.chapterLessons = lessons;
+          s.data.lessonCount = lessons.length;
           s.fun.checkDisabled();
         }
 
@@ -665,7 +634,7 @@ recipes:
                   on_click: s => s.fun.incOrDecLesson()
               - span:
                   beep: bap
-                  textContent: s => `showing ${1 + s.data.get('currLesson')} of ${s.data.get( 'lessonCount' )}`
+                  textContent: s => `showing ${1 + s.data.currLesson} of ${s.data.lessonCount}`
               - button:
                   handle: nextButton
                   textContent: next
@@ -673,13 +642,13 @@ recipes:
                   on_click: s => s.fun.incOrDecLesson(true)
           - section:
               contents:
-                - h2: s => s.fun.curr().title
-                - p: s => s.fun.curr().about
+                - h2: s => s.data.curr.title
+                - p: s => s.data.curr.about
                 - a:
-                    href: s => s.fun.curr().link
-                    textContent: s => s.fun.curr().link
+                    href: s => s.data.curr.link
+                    textContent: s => s.data.curr.link
                 - div:
-                    foreach: s => s.fun.curr().files || []
+                    foreach: s => s.data.curr.files || []
                     forvar: sampleFile
                     contents:
                       - p: s => s.it.sampleFile.file

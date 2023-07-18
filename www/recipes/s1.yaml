@@ -1,6 +1,18 @@
 ---
 javascript: console.log( params, "HELLO" );
 
+less: >-
+  body {
+    background: wheat;
+    h1 {
+      background: silver;
+      text-align: center;
+      padding: 12px;
+    }
+  }
+
+title: Hello Page
+
 page:
   body: 
     - h1: hello world

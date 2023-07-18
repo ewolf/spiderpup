@@ -1,0 +1,19 @@
+title: rando
+page:
+  body:
+    data:
+      rando: () => Math.random();
+    contents:
+      - h1: random number
+      - div: the number is
+      - div: s => s.data.rando
+      - div:
+          textContent: low
+          if: s => s.data.rando < .5
+      - div:
+          textContent: high
+          else: true
+      - button:
+          textContent: next
+          on_click: s => s.data.rando = Math.random()
+        

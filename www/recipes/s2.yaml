@@ -1,6 +1,6 @@
-page:
+title: embed stuff in recipe instances too      
 
-  title: foooooo
+page:
   
   style: .ilb { display: inline-block; border: solid 4px blue; }
   body: 
