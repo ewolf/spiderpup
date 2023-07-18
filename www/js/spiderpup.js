@@ -421,7 +421,7 @@ class BodyRecipe extends Recipe {
       } ]
     };
 
-    ['preLoad', 'onLoad', 'on', 'listen', 'functions']
+    ['preLoad', 'onLoad', 'on', 'data', 'listen', 'functions']
       .forEach( fld => body[fld] && (rootNode[fld] = body[fld]) );
 
     super.setup(pageNS, rootNode, 'body');
@@ -512,6 +512,7 @@ class Builder extends Node {
   layer( layerAbove, recipe ) {
     this.layerAbove = layerAbove;
     this.recipe = recipe;
+    //  data only makes sence for instance builders, not element builders
     [ 'attrs', 'data', 'on', 'functions' ]
       .forEach ( htype => {
         if (htype in layerAbove) {
@@ -652,7 +653,7 @@ class Instance extends Node {
           inst.changed = true;
           return Reflect.set(target, name, value, receiver);
         }
-        return value;
+        return true;
       }
     } );
 
@@ -662,7 +663,8 @@ class Instance extends Node {
   layer( recipe, builder ) {
     // we want za data
     const inst = this;
-    const data = this.data ||= this.makeData();
+    const _data = this._data = {};
+    const data = this.data = this.makeData();
     const fun = this.fun;
     const onLoads = this.onLoads = [];
     const preLoads = this.preLoads = [];
@@ -672,7 +674,10 @@ class Instance extends Node {
         from.preLoad && preLoads.push( from.preLoad.bind(this) );
         from.data && Object.keys( from.data )
           .forEach( fld => {
-            data[fld] = from.data[fld];
+            const valOrFun = from.data[fld];
+            _data[fld] = typeof valOrFun === 'function' ?
+              function() { return valOrFun( inst, ...arguments ); }
+              : valOrFun;
           } );
         from.functions && Object.keys( from.functions )
           .forEach( funname => {
@@ -716,6 +721,15 @@ class Instance extends Node {
 
   // class Instance
   refresh() {
+    console.log( `REFRESHING builder ${this.builder.tag}/${this.builder.id}, recipe ${this.builder.recipe.name}` );
+
+    // calculate data from _data
+    Object.keys( this._data )
+      .forEach( fld => {
+        const val = this.dataVal( this._data[fld] );
+        this.data[fld] = val;
+      } );
+
     if (! this.loaded) {
       this.preLoads.forEach( pl => pl(this) );
     }
@@ -728,7 +742,6 @@ class Instance extends Node {
 
   // class Instance
   _refresh( el, builder ) {
-    console.log( `REFRESHING builder ${builder.tag}/${builder.id}, recipe ${builder.recipe.name}` );
     // fill in elements attributes ---------------------------
     const attrs = builder.attrs;
     attrs && Object.keys(attrs)
@@ -948,9 +961,16 @@ class Instance extends Node {
           for (let i=0; i<list.length; i++ ) {
             this.it[ con_B.forvar ] = list[i];
             this.idx[ con_B.forvar ] = i;
+            console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
             if (instance_R) {
               const for_I = forInstances[i];
+              for_I.it[ con_B.forvar ] = list[i];
+              for_I.idx[ con_B.forvar ] = i;
+              console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
               for_I.refresh();
+
+              // put fill contents in
+              console.warn( "need to put named fill contents in for looped instances" );
               if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                 const fill_E = for_I.getFillEl();
                 con_B.defaultFillContents
@@ -970,6 +990,7 @@ class Instance extends Node {
             con_I.refresh();
 
             // check for fill and fill contents
+            console.warn( "need to put named fill contents in" );
             if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
               const fill_E = con_I.getFillEl();
               con_B.defaultFillContents
