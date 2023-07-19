@@ -2,9 +2,8 @@
 
 title: example
 
-page:
-  body:
-    - testapp:
+body:
+  - testapp:
 
 recipes:
   testapp:

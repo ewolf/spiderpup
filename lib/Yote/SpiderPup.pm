@@ -296,8 +296,7 @@ sub load_namespace {
         }
 
 
-        my $page = $yaml->{page};
-        my $body = $page->{body};
+        my $body = $yaml->{body};
 
         if ($body) {
 

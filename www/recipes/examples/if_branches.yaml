@@ -1,37 +1,51 @@
 ---
 
-css: >-
-  .low { border: solid red 8px }
-  .good { border: solid green 8px }
-  .high { border: solid purple 8px }
+less: >-
+  body {
+    .high { border: solid red 8px }
+    .good { border: solid green 8px }
+    .low { border: solid purple 8px }
+  }
 
 title: pressure settings
 
-page:    
-  body:
-    - NumberAdjuster:
-        data:
-          value: 15
-          incVal: 5
-          tooLow: 10
-          tooHigh: 35
-          name: 'pressure A'
-    - NumberAdjuster:
-        data:
-          value: 20
-          incVal: 10
-          tooLow: 10
-          tooHigh: 50
-          name: 'pressure B'
+#
+# Set up the page with number adjustings
+# with different settings.
+#
+body:
+
+  - h1: Pressure Controls
+
+  - h2: Click the pressure up and down and see how these react
+
+  - NumberAdjuster:
+      data:
+        value: 15
+        incVal: 5
+        tooLow: 10
+        tooHigh: 35
+        name: 'pressure A'
+
+  - NumberAdjuster:
+      data:
+        value: 20
+        incVal: 10
+        tooLow: 10
+        tooHigh: 50
+        name: 'pressure B'
+
+  - NumberAdjuster:
+      # uses default values
           
 recipes:
   NumberAdjuster:
+    # default settings
     data:
       incVal: 1
       value: 0
-      name: ''
+      name: 'nameless one'
     functions:
-      inc: s => s.data.value = s.data.incVal + s.data.value
       dec: >
         s => {
            s.data.value = s.data.value - s.data.incVal;
@@ -45,19 +59,24 @@ recipes:
           contents:
             - button:
                 textContent: '+'
-                on_click: s => s.fun.inc()
+                on_click: s => s.data.value += s.data.incVal
             - button:
                 textContent: '-'
                 on_click: s => s.fun.dec()
             - span:
                 style: margin: 0 5px
                 textContent: s => s.data.name + ': ' + s.data.value
-            - span:
+            - warning:
                 if: s => s.data.value <= s.data.tooLow
                 textContent: too low
-            - span:
+            - warning:
                 elseif: s => s.data.value >= s.data.tooHigh
                 textContent: too high
             - span:
+                style: background: \#EFE
                 else:
                 textContent: good enough
+  warning:
+    style: background: orange;
+    contents:
+      - span:

@@ -1,9 +1,9 @@
 ---
 
-page:
-  body: 
-    - h1: hello world
-    - h2: this is spiderpup
+body: 
+  - h1: hello world
+  - h2: this is spiderpup
+
 about: >
   This shows how spiderpup builds html tags from its description.
   Simple tags witout properties, like body in this example, can

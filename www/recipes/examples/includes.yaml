@@ -3,11 +3,10 @@
 import:
   foo: examples/impy
 
-page:
-  body:
-    - foo.myform:
-        functions:
-          foo: () => alert('include.yaml foo overrides impy')
+body:
+  - foo.myform:
+      functions:
+        foo: () => alert('include.yaml foo overrides impy')
 
 about:
   spiderpup recipes may include other recipes. Included recipes

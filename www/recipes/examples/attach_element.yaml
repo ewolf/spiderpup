@@ -1,15 +1,18 @@
 ---
 
-page:
-  body:
-    - h1: hello handles
-    - div:
-        - input:
-            type: text
-            handle: textfield
-            on_change: c => c.refresh()
-        - button:
-            textContent: click
-            on_click: c => c.refresh()
-        - div:
-            textContent: c => c.el.textfield.value ? `you typed "${c.el.textfield.value}"` : ''
+body:
+  - h1: hello handles
+  - div:
+      - input:
+          type: text
+          handle: textfield
+          on_change: s => s.refresh()
+      - button:
+          textContent: click
+          on_click: s => s.refresh()
+      - div:
+          textContent: s => s.el.textfield.value ? `you typed "${s.el.textfield.value}"` : ''
+
+about: >
+  data isn't the only way to save state. elements on the page can be given a handle and
+  referenced.

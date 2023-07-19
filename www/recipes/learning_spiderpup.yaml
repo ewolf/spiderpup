@@ -88,23 +88,22 @@ onLoad: >
 
 title: learning spiderpup
 
-page:
-  body:
-    - h1: learning spiderpup
-    - p: This file teaches how to write spiderpup YAML by example.
-    - p: To see the examples, start spiderpup and then you can click the links.
-    - pre:
-        textContent: >
-          $ cd spiderpup/scripts
+body:
+  - h1: learning spiderpup
+  - p: This file teaches how to write spiderpup YAML by example.
+  - p: To see the examples, start spiderpup and then you can click the links.
+  - pre:
+      textContent: >
+        $ cd spiderpup/scripts
 
-          $ morbo spiderpup
+        $ morbo spiderpup
 
-    - h2: spiderpup static basics
-    - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable recipes.
-    - chapters:
+  - h2: spiderpup static basics
+  - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable recipes.
+  - chapters:
 
 recipes:
-  xork:
+  zork:
     - div:
   row:
     - zork:

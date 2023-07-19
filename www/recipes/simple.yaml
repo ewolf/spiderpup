@@ -1,14 +1,13 @@
+---
 
+title: foooooo
 
-page:
-
-  title: foooooo
-
-  body: 
-    style: 
-      - background-color: mintcream
-    contents:
-      - div: BEEP
-      - div:
-          - span: BEP
+body: 
+  style: 
+    - background-color: mintcream
+  contents:
+    - div: BEEP
+    - div:
+        - span: BEP
     
+            

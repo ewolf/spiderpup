@@ -4,33 +4,41 @@ functions:
   add: s => { console.log( 'adding' ); s.data.dynos.push( s.data.dynos.length ); console.log( 'refreshing' ); s.refresh(); }
   remove: s => { s.data.dynos.pop(); s.refresh(); }
   
-page:
-  body:
-    preLoad: s => s.data.dynos = [] 
-    contents:
-      - h1: dynamic recipes
-      - h2: add a component with the press of a button
-      - button:
-          on_click: s => s.fun.add()
-          textContent: add
-      - button:
-          on_click: s => s.fun.remove()
-          textContent: remove
-          if: s => s.data.dynos.length
-      - div:
-          - dyno:
-              forvar: C
-              foreach: s => s.data.dynos
-              data:
-                count: s => s.it.C
+body:
+  preLoad: s => s.data.dynos = [] 
+  contents:
+    - h1: dynamic recipes
+    - h2: add a component with the press of a button
+    - button:
+        on_click: s => s.fun.add()
+        textContent: add
+    - button:
+        on_click: s => s.fun.remove()
+        textContent: remove
+        if: s => s.data.dynos.length
+    - div:
+        - dyno:
+            forvar: C
+            foreach: s => s.data.dynos
+            data:
+              count: s => s.it.C
 recipes:
   dyno:
     contents:
       - div: s => `Hi there: ${s.data.count}`
     
-test: >
-  console.log( bodyInst );
+test: >-
+  html_structure( document.body,
+                  [ 'body',
+                    ['h1','dynamic recipes'],
+                    ['h2','add a component with the press of a button'],
+                    ['button','add'],
+                    ['button','remove',{ display: 'none' }],
+                    ['div',{ display: 'none' }],
+                  ],
+                  'doc body');
   const addB = qs( 'button' );
   //addB.click();
   console.log( addB );
-  
+  doneTesting();
+

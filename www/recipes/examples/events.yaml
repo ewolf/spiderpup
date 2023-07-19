@@ -1,13 +1,15 @@
 ---
 
-page:
-  body:
-    - h1: Hello Events
-      - button:
-          textContent: s => 'clicked ' + s.get('count',0) + ' times'
-          on_click: (s,ev) => s.set( 'count', 1 + s.get( 'count' ) )
+data:
+  count: 0
+
+body:
+  - h1: Hello Events
+  - button:
+      textContent: s => 'clicked ' + s.data.count + ' times'
+      on_click: s => s.data.count++
         
-about:
+about: >
   This short example shows a button who's text displays how many times
   it was clicked.
   

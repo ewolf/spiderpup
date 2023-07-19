@@ -14,20 +14,20 @@ recipes:
       value: 0
       name: ''
     functions:
-      inc: c => c.set( 'value', 1 + c.get('value') )
-      dec: c => c.get( 'value' ) > 0 && c.set( 'value', c.get('value') - 1 )
+      inc: s => s.data.value++
+      dec: s => s.data.value > 0 && s.data.value--
     contents:
       - div:
-          - h1: c => c.id
+          - h1: s => s.id
           - button:
               textContent: '-'
-              on_click: c => c.fun.dec()
+              on_click: s => s.fun.dec()
           - span:
               style: margin: 0 5px
-              textContent: c => c.get('name') + ': ' + c.get('value')
+              textContent: s => s.data.name + ': ' + s.data.value
           - button:
               textContent: '+'
-              on_click: c => c.fun.inc()
+              on_click: s => s.fun.inc()
 
 about: >-
   Each component manages its own state and have functions.

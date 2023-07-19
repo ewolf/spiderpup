@@ -1,8 +1,18 @@
 ---
-page:
-  body:
-    - div:
-        - h1: 
-            foreach: s => [ "world", "galaxy", "universe" ]
-            forvar: where
-            textContent: s => 'hello ' + s.it.where + '(' + s.idx.where + ')'
+body:
+  - div:
+      - h1: 
+          foreach: s => [ "world", "galaxy", "universe" ]
+          forvar: where
+          textContent: s => 'hello ' + s.it.where + ' (' + s.idx.where + ')'
+test: >-
+  SP.tester.html_structure( document.body,
+                  [ 'body',
+                    ['div', 
+                      [ 'h1', 'hello world (0)' ],
+                      [ 'h1', 'hello galaxy (1)' ],
+                      [ 'h1', 'hello universe (2)' ],
+                    ],
+                  ], 'body structure' );
+  SP.tester.doneTesting();
+

@@ -1,12 +1,11 @@
 title: embed stuff in recipe instances too      
 
-page:
-  
-  style: .ilb { display: inline-block; border: solid 4px blue; }
-  body: 
-    - foo:
-    - foo:
-        - section: MORE
+less: .ilb { display: inline-block; border: solid 4px blue; }
+
+body: 
+  - foo:
+  - foo:
+      - section: MORE
 
 recipes:
   foo:

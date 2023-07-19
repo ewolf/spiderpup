@@ -1,3 +1,4 @@
+window.SP ||= {};
 SP.xhr = {};
 
 SP.xhr.openFile = file => {

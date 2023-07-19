@@ -6,12 +6,11 @@ css: >-
     margin: 5px;
   }
 
-page:
-  body:
-    - with-specified-internal:
-        - span: MIDDLE
-    - no-specified-internal:
-        - span: AFTER FINISH
+body:
+  - with-specified-internal:
+      - span: MIDDLE
+  - no-specified-internal:
+      - span: AFTER FINISH
 
 recipes:
   with-specified-internal:

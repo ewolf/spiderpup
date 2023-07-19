@@ -20,7 +20,7 @@ recipes:
                 count: 1
           - div:
               calculate: 
-                textContent: s => { const a = s.comp.A.data.get( 'count' ), b = s.comp.B.data.get( 'count' ); return a + ' + ' + b + ' = ' + (a+b) }
+                textContent: s => { const a = s.comp.A.data.count, b = s.comp.B.data.count; return a + ' + ' + b + ' = ' + (a+b) }
               
   counter:
     data:
@@ -28,11 +28,11 @@ recipes:
     contents:
       - button:
           calculate:
-            textContent: s => s.data.get( 'count' )
+            textContent: s => s.data.count
           on:
             click: >-
               (s,ev) => {
-                 s.data.set( 'count', 1 + s.data.get( 'count' ) )
+                 s.data.count++
                  s.parent.refresh();
               }
           

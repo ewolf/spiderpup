@@ -74,6 +74,7 @@ function is_deeply( a, b, msg ) {
     if (bkeys.length !== akeys.length) {
       msg && fail( msg );
       messages.push( 'objects have different keys' );
+      console.log( akeys, bkeys, `${msg}: objects with different keys` );
       return false;
     }
     for (let i=0; i<bkeys.length; i++) {
@@ -122,7 +123,7 @@ function html_structure( el, node, msg ) {
   attrs = attrs || {};
   const elAttrs = {};
   for (const node of el.attributes) {
-    if (node.nodeName != 'data-spid') {
+    if (! node.nodeName.match( /^data-sp(id|lastlistlen|foridx)/) ) {
       elAttrs[node.nodeName] = node.nodeValue;
     }
   }
@@ -175,9 +176,24 @@ function doneTesting() {
   } else if( fails.length === 0) {
     attach( `ALL ${testcount} tests pass`, 'h2' );
   } else {
+    attach( 'see console for more messages', 'h3' );
     attach( `Failed ${fails.length} out of ${testcount} tests`, 'h2' );
   }
 
   attach( "TEST RESULTS", 'h1' );
   
 }
+
+window.SP ||= {};
+
+SP.tester = {
+  attach,
+  doneTesting,
+  fail,
+  html_structure,
+  is,
+  is_deeply,
+  like,
+  pass,
+  sleep,
+};

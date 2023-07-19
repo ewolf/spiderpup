@@ -1,11 +1,10 @@
 ---
 
-page:
-  body:
-    - greeting:
-    - greeting:
-        data:
-          greeting: I override
+body:
+  - greeting:
+  - greeting:
+      data:
+        greeting: I override
 
 recipes:
   greeting:

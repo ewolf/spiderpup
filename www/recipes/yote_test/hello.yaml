@@ -81,11 +81,11 @@ javascript: >-
 
 functions:
   pageMode: >-
-    (c,mode) => {
-      if ( c.get( 'pageMode' ) !== mode ) {
+    (s,mode) => {
+      if ( s.data.pageMode !== mode ) {
         history.pushState( { pageMode: mode }, undefined, mode === 'default' ? '/yote_test/hello.html' : `?pageMode=${mode}` );
-        c.set( 'pageMode', mode );
-        c.refresh();
+        s.data.pageMode = mode;
+        s.refresh();
       }
     }
   greetings: (body,ev) => alert( `hello there from ${ev.target}` )
@@ -95,58 +95,58 @@ data:
   pageMode: default
 
 onLoad: >-
-  c => {
+  s => {
     // listen to page change event
-    //c.namespace.logins.functions.tease();
+    //s.namespace.logins.functions.tease();
     addEventListener( 'popstate', ev => {
-      c.set( 'pageMode', ( ev.state && ev.state.pageMode || 'default' ) );
-      c.refresh();
+      s.data.pageMode = ev.state && ev.state.pageMode || 'default'
+      s.refresh();
     } );
 
     does();
     stilldoes();
-    yote.fetchAppTryLogin( c.get( 'appName' ) )
+    yote.fetchAppTryLogin( s.data.appName )
       .then( app => {
         if (app) {
-          c.broadcast( 'app', app );
+          s.broadcast( 'app', app );
           if (app.acct) {
-            c.broadcast( 'login', app.acct );
+            s.broadcast( 'login', app.acct );
           }
         }
       });
       
       // connect the widgets together
-      //c.comp.header.fun.attach( c.comp.loginBodyWidget );
+      //s.comp.header.fun.attach( s.comp.loginBodyWidget );
       // try to look at the url. maybe it wants login?
       const usp = new URLSearchParams( window.location.search );
       for (const [key, value] of usp) {
          if (key === 'pageMode') {
-           c.set( 'pageMode', value );
+           s.data.pageMode = value
          }
       }
-      c.comp.header.fun.attach(c.comp.loginBodyWidget)
+      s.comp.header.fun.attach(s.comp.loginBodyWidget)
   }
 
 listen: >-
-  (c,msg,data) => {
+  (s,msg,data) => {
     switch( msg ) {
       case "login":
-        c.set( msg, data );
-        c.fun.pageMode( 'default' );
+        s.data.msg = data
+        s.fun.pageMode( 'default' );
         break;
       case "app":
-        c.set( msg, data );
+        s.data.msg = data
         break;
       case "pageMode":
         // maybe navigate to a new url
         // catch that and have that in the history?
         // so there is no reload
-        c.fun.pageMode( data );
-        //c.set( msg, data );
+        s.fun.pageMode( data );
+        //s.data.msg = data
         break;
       case "logout":
-        c.set( 'login', undefined );
-        c.fun.pageMode( 'default' );
+        s.data.login = undefined
+        s.fun.pageMode( 'default' );
         break;
     }
   }
@@ -156,10 +156,10 @@ title: fun example
 body:
   style: background: wheat;
   on_keyup: >-
-    (c,ev) => { 
+    s => { 
        if (ev.key === 'Escape') { 
-          c.broadcast( 'keyup', 'Escape');
-          c.broadcast( 'pageMode', 'default' );
+          s.broadcast( 'keyup', 'Escape');
+          s.broadcast( 'pageMode', 'default' );
       } 
     }
   contents:
@@ -167,23 +167,24 @@ body:
         handle: header
     - main:
         - div:
-            - h1: c => c.get( 'pageMode' )
+            - h1: s => s.data.pageMode
 
             - logins.loginBodyWidget:
                 handle: loginBodyWidget
-                if: c => c.get( 'pageMode' ) === 'login-control'
+                if: s => s.data.pageMode === 'login-control'
             - div:
-                if: c => c.get( 'login' ) && c.get( 'pageMode' ) !== 'login-control'
+                if: s => s.data.login && s.data.pageMode !== 'login-control'
                 textContent: logged in stuff
             - div:
-                if: c => c.get( 'app' ) && c.get( 'pageMode' ) !== 'login-control'
+                if: s => s.data.app && s.data.pageMode !== 'login-control'
                 contents:
                   - div:
                       - form:
                           on_submit: >-
-                            (c,ev) => { ev.preventDefault();
-                               yote.apps.test.echo( c.el.something.value )
-                                 .then( r => alert( 'hello world ' + r ) ); }
+                            s => {
+                                ev.preventDefault();
+                                yote.apps.test.echo( s.el.something.value )
+                                   .then( r => alert( 'hello world ' + r ) ); }
                           contents:
                             - input:
                                 placeholder: say something
@@ -204,7 +205,7 @@ body:
                   - hr:
                   - demo:
             - div:
-                if: c => ! c.get('app')
+                if: s => ! s.data.app
                 textContent: app not yet loaded
 
 recipes:
@@ -213,33 +214,30 @@ recipes:
     data:
       clicks: 0
       title: no title set
-    functions:
-      inc: c => c.set( 'clicks', 1 + c.get( 'clicks' ) )
-      dec: c => c.set( 'clicks', c.get( 'clicks' ) -1 )
     contents:
       - div:
           class: counter
           contents:
-            - h2: c => c.get( 'title' )
+            - h2: s => s.data.title
             - div:
                 - button:
                     textContent: '<'
-                    on_click: c => c.fun.dec()
-                - span: c => `${c.get('clicks')} clicks`
+                    on_click: s => s.data.clicks++
+                - span: s => `${s.data.clicks} clicks`
                 - button:
                     textContent: '>'
-                    on_click: c => c.fun.inc()
+                    on_click: s => s.data.clicks++
   demo:
     data:
       yamlText: ''
       loaded: false
     onLoad: >-
-      c => {
+      s => {
         yote.apps.test.fetch_yaml()
            .then( txt => {
-              c.set( 'yamlText', txt );
-              c.set( 'loaded', true );
-              c.refresh();
+              s.data.yamlText = txt;
+              s.data.loaded = true;
+              s.refresh();
           } );
       }
     contents:
@@ -247,26 +245,26 @@ recipes:
           class: demo
           contents:
             - form:
-                if: c => c.get( 'loaded' ) 
+                if: s => s.data.loaded' ) 
                 on_submit: >-
-                  (c,ev) => {
+                  s => {
                     ev.preventDefault();
-                    c.set( 'loaded', false );
-                    yote.apps.test.install_yaml(c.el.yaml.value)
+                    s.data.loaded = false
+                    yote.apps.test.install_yaml(s.el.yaml.value)
                       .then( r => { 
-                         c.set( 'loaded', true );
-                         c.refresh();
+                         s.data.loaded = true;
+                         s.refresh();
                       } )
                   }
                 contents:
                   - h3: Spiderpup Yaml
                   - textarea:
                       handle: yaml
-                      textContent: c => c.get( 'yamlText' )
-                      on_keyup: (c,ev) => c.set( 'yamlText', ev.target.value )
+                      textContent: s => s.data.yamlText
+                      on_keyup: s => s.data.yamlText = ev.target.value
                   - button: generate output
             - div:
-                if: c => c.get( 'loaded' ) 
+                if: s => s.data.loaded' ) 
                 contents:
                   - h3: Yaml output
                   - iframe:

@@ -1,6 +1,17 @@
-page:
-  body:
-    - div:
-        foreach: () => [1,2,3,4,5]
-        forvar: I
-        textContent: s => s.idx.I + ') ' + (2 * s.it.I)
+---
+
+body:
+  - div:
+      foreach: () => [1,2,3,4,5]
+      forvar: I
+      textContent: s => s.idx.I + ') ' + (2 * s.it.I)
+
+test: >-
+  html_structure( document.body,
+                  [ 'body',
+                    [ 'div', '0) 2' ],
+                    [ 'div', '1) 4' ],
+                    [ 'div', '2) 6' ],
+                    [ 'div', '3) 8' ],
+                    [ 'div', '4) 10' ] ], 'body structure' );
+  doneTesting();

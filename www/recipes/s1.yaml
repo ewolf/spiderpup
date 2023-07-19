@@ -16,14 +16,14 @@ less: >-
 
 title: Hello Page
 
-page:
-  body: 
-    - h1: 
-        class: bigger
-        textContent: hello world
+body: 
+  - h1: 
+      class: bigger
+      textContent: hello world
 
 test: >-
-  html_structure( document.body, 
+  const tester = SP.tester;
+  tester.html_structure( document.body, 
                   [ 'body', ['h1', 'hello world', { class: 'bigger' }]], 
                   'body structure' );
-  doneTesting();
+  tester.doneTesting();

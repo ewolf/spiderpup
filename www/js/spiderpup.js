@@ -317,7 +317,7 @@ const SP = window.SP ||= {};
         .forEach( src => {
           [ 'class', 'onLoad', 'preLoad' ]
             .forEach( k => (src[k] && (this[k] = src[k] )) );
-          [ 'data', 'functions', 'on' ]
+          [ 'data', 'functions', 'on', 'attrs' ]
             .forEach( type => {
               const thisData = recipe[type] ||= {};
               const inData = src[type];
@@ -547,17 +547,20 @@ const SP = window.SP ||= {};
       this.layerAbove = layerAbove;
       this.recipe = recipe;
       //  data only makes sence for instance builders, not element builders
-      [ 'attrs', 'data', 'on', 'functions' ]
-        .forEach ( htype => {
-          if (htype in layerAbove) {
-            const above = layerAbove[htype];
-            const current = this[htype] ||= {};
-            Object.keys (above)
-              .forEach( fld => {
-                current[fld] = above[fld];
-              } );
-          }
-        });
+      [ recipe, layerAbove ]
+      .forEach ( source => {
+        [ 'attrs', 'data', 'on', 'functions' ]
+          .forEach ( htype => {
+            if (htype in source) {
+              const above = source[htype];
+              const current = this[htype] ||= {};
+              Object.keys (above)
+                .forEach( fld => {
+                  current[fld] = above[fld];
+                } );
+            }
+          });
+      } );
       [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forvar', 'handle' ]
         .forEach( fun =>
           layerAbove[fun] && (this[fun] = layerAbove[fun]) );
