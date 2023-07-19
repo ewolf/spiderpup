@@ -12,3 +12,5 @@ include:
 
 body:
   - div: You can include javascript and css files in the header.
+
+about: you can include any arbitrary css and javascript files

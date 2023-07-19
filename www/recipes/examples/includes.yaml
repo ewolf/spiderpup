@@ -3,8 +3,12 @@
 import:
   foo: examples/impy
 
-body:
-  - foo.myform:
-      functions:
-        foo: () => alert('include.yaml foo overrides impy')
+page:
+  body:
+    - foo.myform:
+        functions:
+          foo: () => alert('include.yaml foo overrides impy')
 
+about:
+  spiderpup recipes may include other recipes. Included recipes
+  must be in the www/recipes directory.

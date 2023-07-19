@@ -1,8 +1,22 @@
 ---
 
-body:
-  - h1: Hello Events
-  - button:
-      textContent: s => 'clicked ' + s.get('count',0) + ' times'
-      on_click: (s,ev) => s.set( 'count', 1 + s.get( 'count' ) )
+page:
+  body:
+    - h1: Hello Events
+      - button:
+          textContent: s => 'clicked ' + s.get('count',0) + ' times'
+          on_click: (s,ev) => s.set( 'count', 1 + s.get( 'count' ) )
         
+about:
+  This short example shows a button who's text displays how many times
+  it was clicked.
+  
+  There is no component here; the body also gets a state object
+  associated with it.
+  
+  Whenever an event function is run and if there is a change to its
+  data, the page contents are recalculated.
+
+  Notice that the first argument to an event handler is always the
+  state, followed by the event object.
+

@@ -90,11 +90,6 @@ INIT -------------------------------
    on               -> { component event name -> event function }
    attrs            -> { attributename -> value or function }
    fill_contents    -> { filltargetname -> [ element or component instances ] }
-  fields computed/added at compile time:
-     type            -> 'component'
-     isComponent     -> true
-     id              -> serialized field
-     recipe          -> a link to the recipe that it is attached to
 
  THE BODY INSTANCE
 
@@ -118,7 +113,6 @@ INIT -------------------------------
    rootNode -> (if not the body instance) component instance object
    el       -> { handle -> html element }
    comp     -> { handle -> instance object }
-   _loop_level -> number (temporary foreach var)
    idx      -> { iterator name -> iterator index }  (temporary foreach var)
    it       -> { iterator name -> iterator value }  (temporary foreach var)
    on       -> { event name -> function }
@@ -131,43 +125,11 @@ INIT -------------------------------
    refresh -> function that refreshes this instance and all
               child instances under it
    _refresh -> refresh function( node, element )
-   _refresh_content -> function( content, elelement ) - refreshes the content instance node
-   _refresh_component -> function( component, element, recipe )
-   _new_el -> function(node,key,attachToEl,attachAfterEl)
-   _refresh_element -> function(node,element)
-   _resolve_onLoad -> function
-   _key2instance -> { key string -> instance object }
-   _key -> function( node, idxOverride ) - returns a key for the node
-                                           the node is inside this instance
-   _attachElHandle -> function( el, handle ) attaches an element to this
-                      instance by given handle
-   _attachCompHandle -> function( component, handle ) attaches a
-                      component to this instance by given handle
    top -> the body instance this instance is ultimetly contained in
-   type -> 'instance'
-   isInstance -> true
    id -> serialized id
    data -> { fieldname -> value } * inherited from parent if the fieldname is not defined in the component instance node
-   set         -> function
-   get         -> function
-   has         -> function
    _check      -> function
    rootEl      -> html element that is the top container for this component instance
-
- HTML ELEMENT FIELDS ADDED -----------------------------------
-   hasInit -> true when this element has undergone init process
-   (event handlers) -> as per recipe element node definitions
-   instance -> (just for rootEl of instance), the instance object
-   style
-     display -> 'none' (removed when element is to be displayed)
-   dataSet
-     key -> result of _key
-     ifCondition -> true|false if the condition test has been met
-     elseIfCondition -> 'n/a' if condition above it has been met
-                        so test was not performed,
-                        otherwise true|false for result of condition
-     else            -> true when no condition met, false otherwise
-     fill            -> if this is a container that takes fill
 
  element events
    these are handled on the element itself with the instance as
@@ -204,13 +166,11 @@ INIT -------------------------------
 
 // -------- LAUNCH ------
 
-const SP = window.SP = {};
+const SP = window.SP ||= {};
 {
   window.onload = ev => {
     init( filespaces, defaultFilename );
   }
-
-
 
   // --------  CODE  ------
 
@@ -222,21 +182,25 @@ const SP = window.SP = {};
     return lastid++;
   }
 
-  function init( fileSpaces, defaultFilename ) {
+  function init( fileSpaces, defaultFilename, attachPoint ) {
     const pageNS = loadNamespace( defaultFilename );
-    activateNamespaces();
 
     const bodyR = new BodyRecipe();
+
     bodyR.setup( pageNS );
-    bodyR.installHead();
 
-    bodyInst = bodyR.createInstance(bodyR.rootBuilder);
-    bodyInst.attachTo(document.body);
-    bodyInst.refresh();
+    Promise.resolve(bodyR.installHead())
+      .then( () => {
+        activateNamespaces();
 
-    if (pageNS.test) {
-      pageNS.test();
-    }
+        bodyInst = bodyR.createInstance(bodyR.rootBuilder);
+        bodyInst.attachTo(attachPoint || document.body);
+        bodyInst.refresh();
+
+        if (pageNS.test) {
+          pageNS.test();
+        }
+      } );
   }
 
   SP.init = init;
@@ -244,7 +208,7 @@ const SP = window.SP = {};
   // calls the onLoad handlers for
   // all the loaded namespaces
   function activateNamespaces() {
-    Object.values( FN_2_NS ).forEach( NS => NS.onLoad() );
+    Object.values( FN_2_NS ).forEach( NS => NS.onLoad && NS.onLoad() );
   }
 
   function loadNamespace( filename ) {
@@ -334,14 +298,9 @@ const SP = window.SP = {};
       this.about = node.about;
       node.listen && (this.listen = node.listen);
       node.html && (this.html = node.html);
-      node.onLoad && (this._onLoad = node.onLoad);
+      node.onLoad && (this.onLoad = node.onLoad);
     }
-    // class Namespace
-    onLoad() {
-      if (this._onLoad) {
-        return this._onLoad();
-      }
-    }
+
   } //class NameSpace
 
   class Recipe extends Node {
@@ -465,6 +424,7 @@ const SP = window.SP = {};
 
       this.head = html.head || {};
     }
+
     // class BodyRecipe
     installHead() {
       this.head.title && (document.title = this.head.title);
@@ -493,27 +453,59 @@ const SP = window.SP = {};
         head.appendChild( scriptel );
       }
 
-      // css files
-      const css = this.head.css;
-      const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
-      cssFiles.forEach( file => {
-        const link = document.createElement( 'link' );
-        link.setAttribute( 'rel', 'stylesheet' );
-        link.setAttribute( 'media', 'screen' );
-        link.setAttribute( 'href', file );
-        head.appendChild( link );
-      } );
+      return new Promise( (res,rej) => {
+        let files = 0;
+        let ready = false;
 
-      // js files
-      const js = this.head.javascript;
-      const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
-      jsFiles.forEach( file => {
-        const scr = document.createElement( 'script' );
-        scr.setAttribute( 'type', 'module' );
-        scr.setAttribute( 'src', file );
-        head.appendChild( scr );
-      } );
+        const promCheck = () => {
+          if (ready && files === 0) {
+            res();
+          }
+        }
 
+        const loadList = file => {
+          files++;
+          file.onload = function() {
+            files--;
+            promCheck();
+          }
+        };
+
+        // css files
+        const css = this.head.css;
+        const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
+        cssFiles.forEach( file => {
+          const link = document.createElement( 'link' );
+          link.setAttribute( 'rel', 'stylesheet' );
+          link.setAttribute( 'media', 'screen' );
+          head.appendChild( link );
+          link.setAttribute( 'href', file );
+        } );
+        
+        // js files
+        const js = this.head.javascript;
+        const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
+        jsFiles.forEach( file => {
+          const scr = document.createElement( 'script' );
+          head.appendChild( scr );
+          loadList( scr );
+          scr.setAttribute( 'src', file );
+        } );
+        
+        // js modules files
+        const mods = this.head['javascript-module'];
+        const modFiles = Array.isArray( mods ) ? mods : mods ? [mods] : [];
+        modFiles.forEach( file => {
+          const scr = document.createElement( 'script' );
+          scr.setAttribute( 'type', 'module' );
+          head.appendChild( scr );
+          loadList( scr );
+          scr.setAttribute( 'src', file );
+        } );
+        
+        ready = true;
+        promCheck();
+      } );
     }
   }  //class BodyRecipe
 
@@ -526,7 +518,7 @@ const SP = window.SP = {};
     // class Builder
     setup( layerAbove, withinRecipe, instanceRecipe ) {
       this.tag = layerAbove.tag;
-      this.name = `${withinRecipe.name}:${this.tag}`;
+      this.name = `${this.tag} in ${withinRecipe.name}`;
       if (instanceRecipe) {
         console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
       } else {
@@ -655,13 +647,12 @@ const SP = window.SP = {};
 
   } // class Builder
 
-
   class Instance extends Node {
 
     setup( recipe, builder ) {
       this.recipe = recipe;
       this.builder = builder;
-      this.name = `<inst ${recipe.name}:${this.id}>`;
+      this.name = `<inst#${this.id} of ${recipe.name}>`;
       this.childInstances = {}; // id -> instance
       this.builder_id2el = {};
       this.it            = {};
@@ -746,7 +737,7 @@ const SP = window.SP = {};
             } );
 
         } );
-    }
+    } //layer
 
     // class Instance
     getFillEl(name) {
@@ -796,16 +787,17 @@ const SP = window.SP = {};
         this.preLoads.forEach( pl => pl(this) );
       }
 
-      this._refresh( this.root_EL, this.recipe.rootBuilder );
+      this._refresh_root_el( this.root_EL, this.recipe.rootBuilder );
 
       if (! this.loaded) {
         this.onLoads.forEach( ol => ol(this) );
         this.loaded = true;
       }
-    }
+    } //refresh
 
     // class Instance
-    _refresh( el, builder ) {
+    _refresh_root_el( el, rootBuilder ) {
+
       // calculate data from _data
       Object.keys( this._data )
         .forEach( fld => {
@@ -816,7 +808,12 @@ const SP = window.SP = {};
             this.data[fld] = val;
           }
         } );
+      
+      this._refresh_el( el, rootBuilder );
+    } //_refresh_root_el
 
+    // class Instance
+    _refresh_el( el, builder ) {
       // fill in elements attributes ---------------------------
       const attrs = builder.attrs;
       attrs && Object.keys(attrs)
@@ -850,10 +847,17 @@ const SP = window.SP = {};
             }
             Object.keys( styles )
               .forEach( style => el.style[ style ] = styles[style] );
+          } else if (attr === 'disabled' || attr === 'checked' || attr === 'selected') {
+            val ? el.setAttribute( attr, attr ) : el.removeAttribute( attr );
           } else {
             el.setAttribute( attr, val );
           }
         } );
+      this._refresh_el_children( el, builder.contentBuilders );
+    } //_refresh_el
+
+    //class Instance
+    _refresh_el_children( el, builders ) {
 
       // catalog child elements ---------------------------
       const builderID2el = {};
@@ -880,148 +884,170 @@ const SP = window.SP = {};
         }
       };
 
-      // ensure child elements for builders (in branch to show or not) ----
+
       const showElementWithID = {};
       let lastWasConditional = false,
           conditionalDone = false,
           lastConditionalWasTrue = false;
+
       // hang on to for instances
       const forBuilderID2List = {};
       const forBuilderID2Instances = {};
       const forBuilderID2E = {};
 
-      (builder.contentBuilders).forEach( con_B => {
-        const key = con_B.key;
-        let con_E = builderID2el[key];
-        const instance_R = con_B.instanceRecipe;
-        let inst_B;
+      // first loop make sure each builder has an element associated with it
+      // that element may be hidden. instance builders also will have an instance
+      // associated with them; looped instance builders will have an instance
+      // for one loop wether or not there are zero or more than one in the loop
+      //
+      // this loop also figures out if/elseif/else branching and which builders
+      // need to be shown or hidden. 
+      // for hidden branches - the element is hidden
+      // for hidden looped branches - the first element in the loop is hidden 
+      //           and the rest are removed. the first instance is retained
+      //           and the rest destroyed
+      // for shown branches - element is unhidden
+      // for shown looped branches - first element in loop is unhidden
+      //           and loop instances and elements beyond the first are created
+      //           and loop instances and elements that go beyond the current list
+      //           are destroyed
+      builders
+        .forEach( con_B => {
+          const key = con_B.key;
+          let con_E = builderID2el[key];
+          const instance_R = con_B.instanceRecipe;
+          let inst_B;
 
-        let con_I = this.childInstances[key];
+          let con_I = this.childInstances[key];
 
-        // create the element if need be
-        if (!con_E) {
-          if (instance_R) {
-            con_I ||= this.childInstances[key]
-              ||= instance_R.createInstance(con_B,this);
-            inst_B = con_I.instanceBuilder;
-            con_E = inst_B.buildElement(con_I, con_B);
-            if (con_B.forvar) {
-              con_E.dataset.spforidx = '0';
-            }
-            con_I.attachTo( con_E );
-          }
-          else { // element not instance
-            con_E = con_B.buildElement(this);
-          }
-          builderID2el[key] = this.builder_id2el[key] = con_E;
-
-          con_E.style.display = 'none';
-          el.append( con_E );
-        }
-        inst_B ||= con_I && con_I.instanceBuilder;
-
-        // check conditionals if it should be displayed
-        let showThis = false;
-        if (con_B.if) {
-          lastConditionalWasTrue = conditionalDone = con_B.if(this);
-          lastWasConditional = true;
-          showThis = lastConditionalWasTrue;
-          con_E.dataset.ifCondition = conditionalDone; //for debugging
-        }
-        else if (con_B.elseif) {
-          if (!lastWasConditional) {
-            this.recipe.error( 'elseif must be preceeded by if or elseif' );
-          }
-          if (conditionalDone) {
-            lastConditionalWasTrue = false;
-            con_E.dataset.elseIfCondition = 'n/a'; //for debugging
-          } else {
-            lastConditionalWasTrue = conditionalDone = con_B.elseif(this);
-            con_E.dataset.elseIfCondition = conditionalDone; //for debugging
-            showThis = lastConditionalWasTrue;
-          }
-        }
-        else if (con_B.else) {
-          if (! lastWasConditional ) {
-            this.recipe.error( 'else must be preceeded by if or elseif' );
-          }
-          if (conditionalDone) {
-            lastConditionalWasTrue = false;
-            con_E.dataset.else = false;
-          } else {
-            lastConditionalWasTrue = true;
-            con_E.dataset.else = true;
-            showThis = lastConditionalWasTrue;
-          }
-        }
-        else { // no conditional
-          showThis = true;
-        }
-
-        if (showThis) {
-          showElementWithID[key] = true;
-          con_E.style.display = null;
-
-          // check if this is a loop. if so
-          // create elements and maybe child instances for
-          // each iteration of the loop
-          if (con_B.foreach && con_B.forvar) {
-            const forInstances = forBuilderID2Instances[key] = [con_I];
-            const for_Es = forBuilderID2E[key] = [con_E];
-            const list = forBuilderID2List[key] = con_B.foreach(this);
-
-            if (list.length === 0) {
-              con_E.style.display = 'none';
-              forTrim( 1, con_B, con_E ); //remove all but the first
-            }
-            else {
-              if (Number(con_E.dataset.splastlistlen) > list.length) {
-                forTrim( list.length, con_B, con_E );
+          // create the element if need be
+          if (!con_E) {
+            if (instance_R) {
+              con_I ||= this.childInstances[key]
+                ||= instance_R.createInstance(con_B,this);
+              inst_B = con_I.instanceBuilder;
+              con_E = inst_B.buildElement(con_I, con_B);
+              if (con_B.forvar) {
+                con_E.dataset.spforidx = '0';
               }
-              con_E.dataset.splastlistlen = list.length;
+              con_I.attachTo( con_E );
+              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
+            }
+            else { // element not instance
+              con_E = con_B.buildElement(this);
+            }
+            builderID2el[key] = this.builder_id2el[key] = con_E;
 
-              for (let i=1; i<list.length; i++) {
-                const forIDKey = `${con_B.id}_${i}`;
-                let for_E = builderID2el[forIDKey];
-                if (for_E) {
-                  if (instance_R) {
-                    const for_I = this.childInstances[forIDKey];
-                    forInstances.push( for_I );
-                  }
-                } 
-                else {
-                  if (instance_R) {
-                    const for_I = this.childInstances[forIDKey]
-                          ||= instance_R.createInstance(con_B,this);
-                    forInstances.push( for_I );
-                    for_E = inst_B.buildElement(for_I,con_B);
-                    builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
-                    for_I.attachTo( for_E );
-                  } else {
-                    for_E = con_B.buildElement(this);
-                  }
-                  for_E.dataset.spforidx = i;
-                  el.append( for_E );
+            con_E.style.display = 'none';
+            el.append( con_E );
+          }
+          inst_B ||= con_I && con_I.instanceBuilder;
+
+          // check conditionals if it should be displayed
+          let showThis = false;
+          if (con_B.if) {
+            lastConditionalWasTrue = conditionalDone = con_B.if(this);
+            lastWasConditional = true;
+            showThis = lastConditionalWasTrue;
+            con_E.dataset.ifCondition = conditionalDone; //for debugging
+          }
+          else if (con_B.elseif) {
+            if (!lastWasConditional) {
+              this.recipe.error( 'elseif must be preceeded by if or elseif' );
+            }
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+              con_E.dataset.elseIfCondition = 'n/a'; //for debugging
+            } else {
+              lastConditionalWasTrue = conditionalDone = con_B.elseif(this);
+              con_E.dataset.elseIfCondition = conditionalDone; //for debugging
+              showThis = lastConditionalWasTrue;
+            }
+          }
+          else if (con_B.else) {
+            if (! lastWasConditional ) {
+              this.recipe.error( 'else must be preceeded by if or elseif' );
+            }
+            if (conditionalDone) {
+              lastConditionalWasTrue = false;
+              con_E.dataset.else = false;
+            } else {
+              lastConditionalWasTrue = true;
+              con_E.dataset.else = true;
+              showThis = lastConditionalWasTrue;
+            }
+          }
+          else { // no conditional
+            showThis = true;
+          }
+
+          if (showThis) {
+            showElementWithID[key] = true;
+            con_E.style.display = null;
+
+            // check if this is a loop. if so
+            // create elements and maybe child instances for
+            // each iteration of the loop
+            if (con_B.foreach && con_B.forvar) {
+              const forInstances = forBuilderID2Instances[key] = [con_I];
+              const for_Es = forBuilderID2E[key] = [con_E];
+              const list = forBuilderID2List[key] = con_B.foreach(this);
+
+              if (list.length === 0) {
+                con_E.style.display = 'none';
+                forTrim( 1, con_B, con_E ); //remove all but the first
+              }
+              else {
+                if (Number(con_E.dataset.splastlistlen) > list.length) {
+                  forTrim( list.length, con_B, con_E );
                 }
-                for_Es.push( for_E );
+                con_E.dataset.splastlistlen = list.length;
+
+                for (let i=1; i<list.length; i++) {
+                  const forIDKey = `${con_B.id}_${i}`;
+                  let for_E = builderID2el[forIDKey];
+                  if (for_E) {
+                    if (instance_R) {
+                      const for_I = this.childInstances[forIDKey];
+                      forInstances.push( for_I );
+                    }
+                  } 
+                  else {
+                    if (instance_R) {
+                      const for_I = this.childInstances[forIDKey]
+                            ||= instance_R.createInstance(con_B,this);
+                      forInstances.push( for_I );
+                      for_E = inst_B.buildElement(for_I,con_B);
+                      builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
+                      builderID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                      for_I.attachTo( for_E );
+                      for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                    } else {
+                      for_E = con_B.buildElement(this);
+                    }
+                    for_E.dataset.spforidx = i;
+                    el.append( for_E );
+                  }
+                  for_Es.push( for_E );
+                }
               }
+            } else if (con_B.foreach || con_B.forvar) {
+              this.recipe.error( 'foreach and forvar must both be present' );
             }
-          } else if (con_B.foreach || con_B.forvar) {
-            this.recipe.error( 'foreach and forvar must both be present' );
+
+          } else {
+            con_E.style.display = 'none';
+            // remove foreach beyond zero
+            if (Number(con_E.dataset.splastlistlen) > 1) {
+              forTrim( 1, con_B, con_E );
+            }
           }
 
-        } else {
-          con_E.style.display = 'none';
-          // remove foreach beyond zero
-          if (Number(con_E.dataset.splastlistlen) > 1) {
-            forTrim( 1, con_B, con_E );
-          }
-        }
+        } );
 
-      } );
-
-      // refresh seen builders
-      (builder.contentBuilders)
+      // this element is complete except for child elements. 
+      // refresh the child elements and any fill content
+      builders
         .filter( con_B => showElementWithID[con_B.key] )
         .forEach( con_B => {
           const key = con_B.key;
@@ -1048,19 +1074,16 @@ const SP = window.SP = {};
                 console.warn( "need to put named fill contents in for looped instances" );
                 if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                   const fill_E = for_I.getFillEl();
-                  con_B.defaultFillContents
-                    .forEach( fill_con_B => this._refresh( fill_E, fill_con_B ));
+                  this._refresh_el_children( fill_E, con_B.defaultFillContents );
                 }
-
               } else {
-                this._refresh( for_Es[i], con_B );
+                this._refresh_el( for_Es[i], con_B );
               }
             }
           }
           else { //single item
 
             if (instance_R) {
-              // we didnt check if there is already an instance
               const con_I = this.childInstances[key];
               con_I.refresh();
 
@@ -1068,18 +1091,15 @@ const SP = window.SP = {};
               console.warn( "need to put named fill contents in" );
               if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                 const fill_E = con_I.getFillEl();
-                con_B.defaultFillContents
-                  .forEach( fill_con_B => this._refresh( fill_E, fill_con_B ));
+                this._refresh_el_children( fill_E, con_B.defaultFillContents );
               }
             }
             else { // element builder
               console.log( `CALL REFRESH FOR ${con_B.id}` );
-              this._refresh( con_E, con_B );
+              this._refresh_el( con_E, con_B );
             }
           }
-
         } );
-
-    }
+    } //_refresh_el_children
   } // Class Instance
 }

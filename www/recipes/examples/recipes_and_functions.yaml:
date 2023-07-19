@@ -28,3 +28,11 @@ recipes:
           - button:
               textContent: '+'
               on_click: c => c.fun.inc()
+
+about: >-
+  Each component manages its own state and have functions.
+  The functions can be called from the state object's `fun` object.
+  When called, the state is automatically passed to them as the first argument.
+  
+  This example shows a simple control to set a positive number for
+  pressure and temperature settings.

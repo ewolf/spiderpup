@@ -26,3 +26,9 @@ recipes:
     - div:
         - span: 'hello '
         - span: there
+
+about: >-
+  Recipes are resuable snippets that can contain
+  other recipes inside them. The recipes act like
+  html tags. In this example, the 'main' component
+  has the 'greeting' component included twice inside of it.

@@ -6,11 +6,12 @@ css: >-
     margin: 5px;
   }
 
-body:
-  - with-specified-internal:
-      - span: MIDDLE
-  - no-specified-internal:
-      - span: AFTER FINISH
+page:
+  body:
+    - with-specified-internal:
+        - span: MIDDLE
+    - no-specified-internal:
+        - span: AFTER FINISH
 
 recipes:
   with-specified-internal:
@@ -24,5 +25,10 @@ recipes:
         - span: start
         - span: finish
 
-        
-  
+about:
+  This shows where a defined component places any contents given to it.
+  The 'with-specified-internal' component has a span inside of it
+  with the 'internalContent' property. Any contents given to the
+  component are placed within that span. The 'no-specified-internal'
+  component does not have a child with 'internalContent' so any
+  content given to it is placed at the end.

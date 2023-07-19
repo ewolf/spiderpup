@@ -4,6 +4,7 @@ less: >
   .mainstyle {
     background-color: wheat;
   }
+
 page:      
   body:
     - div:
@@ -13,3 +14,10 @@ page:
           - h2: 
               textContent: this is spiderpup
               style: background-color: lightblue;
+
+about: >-
+  This example shows tags that contain properties and children.
+  The div tag placed inside the body is given the 'class' property
+  and the 'contents' property to hold child tags placed in it.
+  The h2 tag inside of it is given an explicit 'style'
+  and 'textContent' properties.

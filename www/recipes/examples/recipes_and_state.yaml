@@ -1,0 +1,24 @@
+---
+
+page:
+  body:
+    - greeting:
+    - greeting:
+        data:
+          greeting: I override
+
+recipes:
+  greeting:
+    data:
+      greeting: Hello there
+    contents:
+      - div: s => 'greet ' + s.data.greeting
+
+about: >
+  Each instance of component has its own state object.
+  That state object has a data field that is populated with
+  a copy of the data from the component definition section.
+  That data can be overridden at component placement.
+  
+  The instance state is always passed to functions as the
+  only argument.

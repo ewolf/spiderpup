@@ -12,6 +12,9 @@ less: >-
     padding: 1em;
   }
 
+include:
+  javascript: /js/xhr.js
+
 data:
   chapters:
     -
@@ -21,138 +24,19 @@ data:
       lessons:
         -
           title: hello world
-          about: >
-            This shows how spiderpup builds html tags from its description.
-            Simple tags witout properties, like body in this example, can
-            have a list of child tags placed inside of it. Simple tags
-            without child tags can be given text to place inside of them.
-          link: http://localhost:3000/examples/hello_world.html
-          files:
-            -
-              file: YAML file .../spiderpup/www/recipes/examples/hello_world.yaml
-              code: >-
-                ---
-
-                html:
-                  body:
-                    - h1: hello world
-                    - h2: this is spiderpup
+          files: hello_word
         -
           title: hello again
-          about: >-
-            This example shows tags that contain properties and children.
-            The div tag placed inside the body is given the 'class' property
-            and the 'contents' property to hold child tags placed in it.
-            The h2 tag inside of it is given an explicit 'style'
-            and 'textContent' properties.
-          link: http://localhost:3000/examples/hello_again.html
-          files:
-            -
-              file: YAML file .../spiderpup/www/recipes/examples/hello_again.yaml
-              code: >-
-                ---
-
-                html:
-                  head:
-                    title: hello again
-                    style: >
-                      .mainstyle {
-                      background-color: wheat;
-                    }
-                body:
-                  - div:
-                      class: mainstyle
-                      contents:
-                        - h1: hello world
-                        - h2:
-                            textContent: this is spiderpup
-                            style: background-color: lightblue;
-    -
-      title: state basics
-      about: >-
-        State is kept for the page and for each component placed
-        on it. State data is used to calculate how the page appears.
-      lessons:
+          files: hello_again
         -
-          title: recipes and state data
-          about: >
-            Each instance of component has its own state object.
-            That state object has a data field that is populated with
-            a copy of the data from the component definition section.
-            That data can be overridden at component placement.
-
-            The instance state is always passed to functions as the
-            only argument.
-          link: http://localhost:3000/examples/recipes_and_state.html
+          title: additional css and javascript
           files:
-            -
-              file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_state.yaml*
-              code: >-
-                ---
+            - head_additional
+            - /css/examples/extra/head_additional_1.css
+            - /css/examples/extra/head_additional_2.css
+            - /js/examples/extra/head_additional_A.js
+            - /js/examples/extra/head_additional_B.js
 
-                html:
-                  body:
-                     - greeting:
-                     - greeting:
-                         data:
-                           greeting: I override
-                recipes:
-                  greeting:
-                    data:
-                      greeting: Hello there
-                    contents:
-                      - div:
-                          textContent: s => 'greet ' + s.data.greeting
-
-  lessons:
-    -
-        title: hello world
-        about: >
-          This shows how spiderpup builds html tags from its description.
-          Simple tags witout properties, like body in this example, can
-          have a list of child tags placed inside of it. Simple tags
-          without child tags can be given text to place inside of them.
-        link: http://localhost:3000/examples/hello_world.html
-        files:
-          -
-            file: YAML file .../spiderpup/www/recipes/examples/hello_world.yaml
-            code: >-
-              ---
-
-              html:
-                body:
-                  - h1: hello world
-                  - h2: this is spiderpup
-    -
-      title: hello again
-      about: >-
-         This example shows tags that contain properties and children.
-         The div tag placed inside the body is given the 'class' property
-         and the 'contents' property to hold child tags placed in it.
-         The h2 tag inside of it is given an explicit 'style'
-         and 'textContent' properties.
-      link: http://localhost:3000/examples/hello_again.html
-      files:
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/hello_again.yaml
-          code: >-
-            ---
-
-            html:
-              head:
-                title: hello again
-                style: >
-                  .mainstyle {
-                  background-color: wheat;
-                 }
-            body:
-              - div:
-                class: mainstyle
-                contents:
-                  - h1: hello world
-                  - h2:
-                      textContent: this is spiderpup
-                      style: background-color: lightblue;
     -
       title: recipes
       about: >-
@@ -160,347 +44,47 @@ data:
         other recipes inside them. The recipes act like
         html tags. In this example, the 'main' component
         has the 'greeting' component included twice inside of it.
-      link: http://localhost:3000/examples/recipes.html
-      files:
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/recipes.yaml
-          code: >-
-            ---
-
-             html:
-               head:
-                 title: hello again
-               body:
-                 - header:
-                 - main:
-                 - footer:
-                     recipes:
-                       header:
-                         - div:
-                             - h1: I am the title
-                             - h2: subtitle yay
-                       footer:
-                         - div:
-                             style: position: absolute; bottom: 0; font-size: x-large
-                             textContent: THIS IS THE END
-                       main:
-                         - div:
-                             # greet twice
-                             - greeting:
-                             - greeting:
-
-                       greeting:
-                         - div:
-                             - span: 'hello '
-                             - span: there
+      lessons:
+        - 
+          title: basic recipes
+          files: recipes
+        - 
+          title: embeded sections
+          files: internal
+        - 
+          title: include recipes from other yaml files
+          files: 
+            - includes
+            - impy
+            - more_impy
     -
-      title: internal content
-      about: >-
-        This shows where a defined component places any contents given to it.
-        The 'with-specified-internal' component has a span inside of it
-        with the 'internalContent' property. Any contents given to the
-        component are placed within that span. The 'no-specified-internal'
-        component does not have a child with 'internalContent' so any
-        content given to it is placed at the end.
-      link: http://localhost:3000/examples/internal.html
-      files:
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/internal.yaml
-          code: >-
-            ---
-
-            html:
-              head:
-                style: span { margin: 5px }
-              body:
-                - with-specified-internal:
-                  - span: IN THE
-                  - span: MIDDLE
-                - no-specified-internal:
-                  - span: AFTER FINISH
-            recipes:
-              with-specified-internal:
-                - div:
-                    - span: first
-                    - span:
-                        internalContent: 1
-                    - span: last
-              no-specified-internal:
-                - div:
-                    - span: start
-                    - span: finish
-    -
-      title: includes
-      about: >-
-        spiderpup recipes may include other recipes. Included recipes
-        must be in the www/recipes directory.
-      link: http://localhost:3000/examples/includes.html
-      files:
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/includes.yaml
-          code: >-
-            ---
-
-            import:
-              - foo: examples/impy
-
-            html:
-              body:
-                - foo.myform:
-                    functions:
-                      foo: () => alert('include.yaml foo')
-        -
-          file: YAML file .../spiderpup/www/include/examples/impy.yaml
-          code: >-
-            ---
-
-            import:
-              - bar: examples/more_impy
-
-            recipes:
-              myform:
-                functions:
-                  foo: () => alert( 'impy.yaml foo' )
-                contents:
-                  - form:
-                      - mydiv
-                  - button:
-                      type: button
-                      textContent: click for foo
-                      on_click: s => s.fun.foo()
-              mydiv:
-                - div:
-                    - bar.impydiv
-        -
-          file: YAML file .../spiderpup/www/include/examples/more_impy.yaml
-          code: >-
-            ---
-
-            recipes:
-              impydiv:
-                - div: my impy div
-    -
-      title: default css and javascript
-      about: >-
-        Spiderpup by default tries to load a css and a javascript
-        file that mirrors the target path. For this example the
-        target path is `/examples/default.html`. Spiderpup
-        tries to load `/js/examples/default.js` and `/css/examples/default.css`.
-      link: http://localhost:3000/examples/defaults.html
-      files:
-        -
-          file: CSS file .../spiderpup/www/css/examples/defaults.css
-          code: >-
-            div {
-              background: yellow;
-            }
-        -
-          file: JS file .../spiderpup/www/js/examples/defaults.js
-          code: alert ('default javascript' );
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/defaults.yaml
-          code: >-
-            html:
-              body:
-                - div: /js/examples/defaults.js and /css/examples/defaults.css are loaded automatically
-
-    -
-      title: additional css and javascript
-      about: >-
-        you can include any arbitrary css and javascript files
-
-      link: http://localhost:3000/examples/head_additional.html
-      files:
-        -
-          file: YAML file .../spiderpup/www/recipes/examples/head_additional.yaml
-          code: >-
-            ---
-            html:
-              head:
-                title: header additional
-                css:
-                  - /css/examples/extra/head_additional_1.css
-                  - /css/examples/extra/head_additional_2.css
-                javascript:
-                  - /js/examples/extra/head_additional_A.js
-                  - /js/examples/extra/head_additional_B.js
-              body:
-                - div: You can include javascript and css files in the header.
-        -
-          file: extra css `.../spiderpup/www/css/examples/extended/head_additional_1.css`
-          code: >-
-            div {
-              border: solid 3px black;
-              }
-        -
-          file: extra css `.../spiderpup/www/css/examples/extended/head_additional_2.css`
-          code: >-
-            div {
-              border: solid 3px black;
-              background: lightgreen;
-            }
-        -
-          file: extra js `.../spiderpup/www/js/examples/extended/head_additional_A.js`
-          code: alert( "HELLO ADDITIONAL A" );
-        -
-          file: extra js `.../spiderpup/www/js/examples/extended/head_additional_B.js`
-          code: alert( "HELLO ADDITIONAL B" );
-
-    -
-      title: spiderpup state basics
+      title: state basics
       about: >-
         State is kept for the page and for each component placed
         on it. State data is used to calculate how the page appears.
-      link:
-      files:
-    -
-      title: recipes and state data
-      about: >-
-        Each instance of component has its own state object.
-        That state object has a data field that is populated with
-        a copy of the data from the component definition section.
-        That data can be overridden at component placement.
-
-        The instance state is always passed to functions as the
-        only argument.
-      link: http://localhost:3000/examples/recipes_and_state.html
-      files:
+      lessons:
         -
-          file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_state.yaml*
-          code: >-
-            ---
-
-            html:
-              body:
-                - greeting:
-                - greeting:
-                    data:
-                      greeting: I override
-
-            recipes:
-              greeting:
-                data:
-                  greeting: Hello there
-                contents:
-                  - div:
-                      textContent: s => 'greet ' + s.data.greeting
-
-
-    -
-      title: events and state
-      about: >-
-        This short example shows a button who's text displays how many times
-        it was clicked.
-
-        There is no component here; the body also gets a state object
-        associated with it.
-
-        Whenever an event function is run and if there is a change to its
-        data, the page contents are recalculated.
-
-        Notice that the first argument to an event handler is always the
-        state, followed by the event object.
-      link: http://localhost:3000/examples/events.html
-      files:
+          title: recipes and state
+          files: recipes_and_state
         -
-          file: YAML file *.../spiderpup/www/recipes/examples/events.yaml*
-          code: >-
-            ---
-            data:
-             count: 0
-            html:
-              body:
-                - h1: Hello Events
-                - button:
-                    textContent: s => 'clicked ' + s.data.count + ' times'
-                    on_click: (s,ev) => s.data.count++
-    -
-      title: recipes and functions
-      about: >-
-        Each component manages its own state and have functions.
-        The functions can be called from the state object's `fun` object.
-        When called, the state is automatically passed to them as the first argument.
-
-        This example shows a simple control to set a positive number for
-        pressure and temperature settings.
-
-      link: http://localhost:3000/examples/recipes_and_functions.html
-      files:
+          title: recipes and state data
+          files: recipes_and_state
         -
-          file: YAML file *.../spiderpup/www/recipes/examples/recipes_and_functions.yaml*
-          code: >-
-            ---
+          title: events and state
+          files: events
 
-            html:
-              body:
-                - NumberAdjuster:
-                    data:
-                      name: 'temperature'
-                - NumberAdjuster:
-                    data:
-                      name: 'pressure'
-
-            recipes:
-              NumberAdjuster:
-                data:
-                  value: 0
-                  name: ''
-                functions:
-                  inc: s => s.data.value++
-                  dec: s => s.data.value > 0 && s.data.value--
-                contents:
-                  - div:
-                      - button:
-                          textContent: '-'
-                          on:
-                            click: s => s.fun.dec(s)
-                      - span:
-                          style: margin: 0 5px
-                          textContent: s => s.data.name + ': ' + s.data.value
-                      - button:
-                          textContent: '+'
-                          on:
-                            click: s => s.fun.inc(s)
-
-
-    -
-      title:
-      about: >-
-
-      link:
-      files:
         -
-          file:
-          code: >-
-    -
-      title:
-      about: >-
+          title: recipes and functions
+          files: recipes_and_functions
 
-      link:
-      files:
-        -
-          file:
-          code: >-
-    -
-      title:
-      about: >-
-
-      link:
-      files:
-        -
-          file:
-          code: >-
-
-    # commenting out for cut/paste
-    # -
-    #   title:
-    #   about: >-
-
-    #   link:
-    #   files:
-    #     -
-    #       file:
-    #       code: >-
+onLoad: >
+  s => {
+     const stems = 'hello_world|hello_again|recipes|internal|includes|defaults|head_addition|recipes_and_state|events|recipes_and_functions'
+           .split( '|' )
+           .map ( f => `/recipes/${f}` );
+           console.log( s.data.chapters );
+     //SP.xhr.openFile( '/recipes/s1.yaml' );
+  }
 
 title: learning spiderpup
 
@@ -518,138 +102,160 @@ page:
     - h2: spiderpup static basics
     - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable recipes.
     - chapters:
-        data:
-          source: chapters
 
 recipes:
+  row:
+    - div:
+        style: display: flex; flex-direction: row;
+  col:
+    - div:
+        style: display: flex; flex-direction: column;
   chapters:
     data:
       currPosition: 0
-      count: s => s.data[s.data.source].length
-      curr: s => s.data[s.data.source][s.data.currPosition]
-
-    functions:
-      checkDisabled: >-
-        s => {
-          if (s.data.currPosition === 0) {
-             s.el.previousButton.setAttribute( 'disabled', 'disabled' );
-          } else {
-             s.el.previousButton.removeAttribute( 'disabled' );
-          }
-          if (s.data.currPosition === (s.data.count-1)) {
-             s.el.nextButton.setAttribute( 'disabled', 'disabled' );
-          } else {
-             s.el.nextButton.removeAttribute( 'disabled' );
-          }
-        }
-
-      incOrDec: >-
-        (s,doInc) => {
-           doInc ? s.data.currPosition++ : s.data.currPosition--;
-           s.fun.checkDisabled();
-           s.fun.setLessons();
-        }
-
-      setLessons: >-
-        s => {
-          const lstate = s.comp.lessons;
-          lstate.fun.setLessons( s.data.curr.lessons );
-        }
-
-    onLoad: >-
-      s => {
-        s.fun.checkDisabled();
-      }
-
     contents:
       - div:
-          - h1: HI
+          - h2: browse chapters
           - div:
-              - button:
-                  handle: previousButton
-                  textContent: previous chapter
-                  on_click: s => s.fun.incOrDec()
-              - span: s => `showing ${1 + s.data.currPosition} of ${s.data.count}`
-              - button:
-                  handle: nextButton
-                  textContent: next chapter
-                  on_click: s => s.fun.incOrDec(true)
-          - section:
+              if: s => s.data.chapters  && s.data.chapters.length > 0
               contents:
-                - h2: s => s.data.curr.title
-                - p: s => s.data.curr.about
-                - lessons:
-                    handle: lessons
-                    data:
-                      chapterLessons: s => s.data.curr.lessons
-                      currLesson: 0
-                      lessonCount: s => s.data.curr.lessons.length;
-                      fooy: () => 123
-                      issa: true
-                      nyet: false
-  lessons:
-    functions:
-
-      curr: s => s.data.chapterLessons[s.data.currLesson]
-
-      checkDisabled: >-
-        s => {
-          if (s.data.currLesson === 0) {
-             s.el.previousButton.setAttribute( 'disabled', 'disabled' );
-          } else {
-             s.el.previousButton.removeAttribute( 'disabled' );
-          }
-          if (s.data.currLesson === (s.datalessonCount-1)) {
-             s.el.nextButton.setAttribute( 'disabled', 'disabled' );
-          } else {
-             s.el.nextButton.removeAttribute( 'disabled' );
-          }
-        }
-
-      incOrDecLesson: >-
-        (s,doInc) => {
-           let pos = s.data.currLesson;
-           doInc ? pos++ : pos--;
-           s.data.currLesson = pos;
-           s.el.previousButton.disabled = false;
-           s.el.nextButton.disabled = false;
-           s.fun.checkDisabled();
-        }
-      setLessons: >-
-        (s,lessons) => {
-          s.data.currLesson = 0;
-          s.data.chapterLessons = lessons;
-          s.data.lessonCount = lessons.length;
-          s.fun.checkDisabled();
-        }
-
-    onLoad: s => s.fun.checkDisabled()
-
-    contents:
-      - div:
+                - row:
+                    - button:
+                        textContent: previous
+                        disabled: s => s.data.currPosition === 0
+                        on_click: s => s.data.currPosition && s.data.currPosition--
+                    - div: s => `showing ${1+s.data.currPosition} of ${s.data.chapters.length}`
+                    - button:
+                        textContent: next
+                        disabled: s => s.data.currPosition >= (s.data.chapters.length-1)
+                        on_click: s => s.data.currPosition <= (s.data.chapters.length-1) && s.data.currPosition++
           - div:
-              - button:
-                  handle: previousButton
-                  textContent: previous
-                  on_click: s => s.fun.incOrDecLesson()
-              - span:
-                  beep: bap
-                  textContent: s => `showing ${1 + s.data.currLesson} of ${s.data.lessonCount}`
-              - button:
-                  handle: nextButton
-                  textContent: next
-                  on:
-                  on_click: s => s.fun.incOrDecLesson(true)
-          - section:
-              contents:
-                - h2: s => s.data.curr.title
-                - p: s => s.data.curr.about
-                - a:
-                    href: s => s.data.curr.link
-                    textContent: s => s.data.curr.link
-                - div:
-                    foreach: s => s.data.curr.files || []
-                    forvar: sampleFile
-                    contents:
-                      - p: s => s.it.sampleFile.file
-                      - pre: s => s.it.sampleFile.code
+              else: true
+              textContent: No Chapters
+    
+
+  #   functions:
+  #     checkDisabled: >-
+  #       s => {
+  #         if (s.data.currPosition === 0) {
+  #            s.el.previousButton.setAttribute( 'disabled', 'disabled' );
+  #         } else {
+  #            s.el.previousButton.removeAttribute( 'disabled' );
+  #         }
+  #         if (s.data.currPosition === (s.data.count-1)) {
+  #            s.el.nextButton.setAttribute( 'disabled', 'disabled' );
+  #         } else {
+  #            s.el.nextButton.removeAttribute( 'disabled' );
+  #         }
+  #       }
+
+  #     incOrDec: >-
+  #       (s,doInc) => {
+  #          doInc ? s.data.currPosition++ : s.data.currPosition--;
+  #          s.fun.checkDisabled();
+  #          s.fun.setLessons();
+  #       }
+
+  #     setLessons: >-
+  #       s => {
+  #         const lstate = s.comp.lessons;
+  #         lstate.fun.setLessons( s.data.curr.lessons );
+  #       }
+
+  #   onLoad: >-
+  #     s => {
+  #       s.fun.checkDisabled();
+  #     }
+
+  #   contents:
+  #     - div:
+  #         - h1: HI
+  #         - div:
+  #             - button:
+  #                 handle: previousButton
+  #                 textContent: previous chapter
+  #                 on_click: s => s.fun.incOrDec()
+  #             - span: s => `showing ${1 + s.data.currPosition} of ${s.data.count}`
+  #             - button:
+  #                 handle: nextButton
+  #                 textContent: next chapter
+  #                 on_click: s => s.fun.incOrDec(true)
+  #         - section:
+  #             contents:
+  #               - h2: s => s.data.curr.title
+  #               - p: s => s.data.curr.about
+  #               - lessons:
+  #                   handle: lessons
+  #                   data:
+  #                     chapterLessons: s => s.data.curr.lessons
+  #                     currLesson: 0
+  #                     lessonCount: s => s.data.curr.lessons.length;
+  #                     fooy: () => 123
+  #                     issa: true
+  #                     nyet: false
+  # lessons:
+  #   functions:
+
+  #     curr: s => s.data.chapterLessons[s.data.currLesson]
+
+  #     checkDisabled: >-
+  #       s => {
+  #         if (s.data.currLesson === 0) {
+  #            s.el.previousButton.setAttribute( 'disabled', 'disabled' );
+  #         } else {
+  #            s.el.previousButton.removeAttribute( 'disabled' );
+  #         }
+  #         if (s.data.currLesson === (s.datalessonCount-1)) {
+  #            s.el.nextButton.setAttribute( 'disabled', 'disabled' );
+  #         } else {
+  #            s.el.nextButton.removeAttribute( 'disabled' );
+  #         }
+  #       }
+
+  #     incOrDecLesson: >-
+  #       (s,doInc) => {
+  #          let pos = s.data.currLesson;
+  #          doInc ? pos++ : pos--;
+  #          s.data.currLesson = pos;
+  #          s.el.previousButton.disabled = false;
+  #          s.el.nextButton.disabled = false;
+  #          s.fun.checkDisabled();
+  #       }
+  #     setLessons: >-
+  #       (s,lessons) => {
+  #         s.data.currLesson = 0;
+  #         s.data.chapterLessons = lessons;
+  #         s.data.lessonCount = lessons.length;
+  #         s.fun.checkDisabled();
+  #       }
+
+  #   onLoad: s => s.fun.checkDisabled()
+
+  #   contents:
+  #     - div:
+  #         - div:
+  #             - button:
+  #                 handle: previousButton
+  #                 textContent: previous
+  #                 on_click: s => s.fun.incOrDecLesson()
+  #             - span:
+  #                 beep: bap
+  #                 textContent: s => `showing ${1 + s.data.currLesson} of ${s.data.lessonCount}`
+  #             - button:
+  #                 handle: nextButton
+  #                 textContent: next
+  #                 on:
+  #                 on_click: s => s.fun.incOrDecLesson(true)
+  #         - section:
+  #             contents:
+  #               - h2: s => s.data.curr.title
+  #               - p: s => s.data.curr.about
+  #               - a:
+  #                   href: s => s.data.curr.link
+  #                   textContent: s => s.data.curr.link
+  #               - div:
+  #                   foreach: s => s.data.curr.files || []
+  #                   forvar: sampleFile
+  #                   contents:
+  #                     - p: s => s.it.sampleFile.file
+  #                     - pre: s => s.it.sampleFile.code
