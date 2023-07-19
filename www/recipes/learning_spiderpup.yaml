@@ -11,6 +11,14 @@ less: >-
     bottom-border: solid 1px;
     padding: 1em;
   }
+  .row {
+    display: flex; 
+    flex-direction: row; 
+  }
+  .col {
+    display: flex; 
+    flex-direction: row; 
+  }
 
 include:
   javascript: /js/xhr.js
@@ -102,15 +110,18 @@ body:
   - p: These examples show spiderpup transforming YAML into html. They introduce spiderpup reusable recipes.
   - chapters:
 
+
 recipes:
-  zork:
-    - div:
   row:
-    - zork:
-        style: display: flex; flex-direction: row;
+    - div:
+        class: row
   col:
     - div:
-        style: display: flex; flex-direction: column;
+        class: col
+  coly:
+    - div:
+        class: col
+
   bold:
     - span:
         style: font-weight: bold; font-size: larger;
@@ -120,9 +131,10 @@ recipes:
     contents:
       - div:
           - h2: browse chapters
-          - div:
+          - coly:
               if: s => s.data.chapters  && s.data.chapters.length > 0
               contents:
+                - div: HI
                 - row:
                     - button:
                         textContent: previous

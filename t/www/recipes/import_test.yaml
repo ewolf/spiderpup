@@ -10,8 +10,6 @@ include:
     - js_two.js
   css: css_one.css
 
-listen: c => { if( true ) { return 7.1; } }
-
 css: >-
   body { background: blue; }
 
@@ -22,9 +20,13 @@ less: >-
     }
   }
 
+about: can we import things properly?
+
 page: 
 
   title: test thing
+
+  listen: c => { if( true ) { return 7.1; } }
 
   body:
     - bar.myform:

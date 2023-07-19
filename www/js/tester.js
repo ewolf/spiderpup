@@ -46,17 +46,20 @@ function is_deeply( a, b, msg ) {
     if (!Array.isArray(a)) {
       msg && fail( msg );
       messages.push( 'expected array' );
+      msg && console.log( a, b, `${msg}: type mismatch` );
       return false;
     }
     if (b.length !== a.length) {
       msg && fail( msg );
       messages.push( 'arrays not the same size' );
+      msg && console.log( a, b, `${msg}: arrays with different lengths` );
       return false;
     }
     for (let i=0; i<b.length; i++) {
       if (!is_deeply( a[i], b[i])) {
         msg && fail( msg );
         messages.push( `arrays differ index ${i} expected '${b[i]}' and got '${a[i]}'` );
+        msg && console.log( a, b, `${msg}: arrays with different values` );
         return false;
       }
     }
@@ -74,7 +77,7 @@ function is_deeply( a, b, msg ) {
     if (bkeys.length !== akeys.length) {
       msg && fail( msg );
       messages.push( 'objects have different keys' );
-      console.log( akeys, bkeys, `${msg}: objects with different keys` );
+      msg && console.log( a, b, `${msg}: objects with different keys` );
       return false;
     }
     for (let i=0; i<bkeys.length; i++) {
@@ -83,6 +86,7 @@ function is_deeply( a, b, msg ) {
       const aval = a[key];
       if (!is_deeply( aval, bval)) {
         msg && fail( msg );
+        msg && console.log( a, b, `${msg}: objects with different keys` );
         messages.push( `objects differ on key ${key}. Got '${aval}' and expected '${bval}'` );
         return false;
       }
@@ -93,7 +97,7 @@ function is_deeply( a, b, msg ) {
   else {
     return is(a, b, msg);
   }
-}
+} //is_deeply
 
 function html_structure( el, node, msg ) {
   let [ tag, textContent, attrs, ...contents ] = node;

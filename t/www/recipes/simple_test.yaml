@@ -6,3 +6,6 @@ data:
 page:
   body:
     - div: hello world
+
+this_bit:
+  is: ignored

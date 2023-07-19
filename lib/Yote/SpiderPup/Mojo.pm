@@ -65,7 +65,7 @@ sub serve_html {
 
     my $filename = "$root_directory/html$page";
 
-    $c->app->log->debug( "serving HTML '$filename' $test" );
+    $c->app->log->debug( "serving HTML page '$page' from '$filename' $test" );
 
     if ($page =~ /\.html$/) {
         if (-e $filename) {

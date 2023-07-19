@@ -26,11 +26,13 @@ INIT -------------------------------
 
  NAMESPACE DATA STRUCTURE --------------------------
 
-   a namespace has the following fields:
-     recipes    -> { name       -> recipe }
-     namespaces -> { alias      -> namespace }
+   a namespace has the following fields in JSON:
+
+     recipes               -> { name  -> recipe }
+     alias_namespaces      -> { alias -> namespace }
+     import_into_namespace -> [ list of namespaces ]
      functions  -> { name       -> function }
-     data       -> { field      -> value or function }
+     data       -> { field      -> value or function } <specific to namespace>
      html       -> {
          head -> {
            script -> javascript text
@@ -48,9 +50,34 @@ INIT -------------------------------
          }
         }
 
- COMPONENT (RECIPE) DATA STRUCTURE -----------------------
+   a namespace object has the following fields
+       recipes -> { name -> recipe }
+       namespaces -> { name -> namespace obj }
+       fun     -> { name  -> function }
+       data    -> { field -> value or function }
+       html    -> {
+           script -> javascript text
+           title  -> string
+           style  -> css text
+           css -> single or list of filenames
+           javascript -> single or list of filenames
+         }
+         body -> {
+           onLoad   -> function
+           preLoad   -> function
+           on       -> { eventname -> function }
+           contents -> [ element|component instance node...]
+           listen   -> function
+         }
+        }
 
-  a component (recipe) node has the following fields:
+      
+
+
+
+ RECIPE DATA STRUCTURE -----------------------
+
+  a component (recipe) node has the following fields in JSON:
     functions  -> { name -> function }
     data       -> { field -> value }
     onLoad     -> function
@@ -229,7 +256,14 @@ const SP = window.SP ||= {};
 
     NS = FN_2_NS[filename] = new Namespace();
 
-    const alias_2_FN = NS_node.import_namespaces || {};
+    const import_into_2_FN = NS_node.import_into_namespaces || [];
+    import_into_2_FN
+      .forEach( fn => {
+        const importNS = loadNamespace(alias_2_FN[alias]);
+        
+      } );
+
+    const alias_2_FN = NS_node.alias_namespaces || {};
     const aliases = Object.keys( alias_2_FN );
     aliases.forEach( alias =>
       NS.aliasNamspace( alias, loadNamespace(alias_2_FN[alias]))
@@ -247,45 +281,56 @@ const SP = window.SP ||= {};
     constructor() {
       this.id = nextid();
     }
+    makeData() {
+      const that = this;
+      return new Proxy( {}, {
+        get(target, name, receiver) {
+          if (! Reflect.has(target, name) ) {
+            if ( (! that.loaded) && name in that._data) {
+              // this field has not been loaded before, so load it now
+              const val = that.dataVal( that._data[name] );
+              this.set(target,name,val, receiver);
+              return val;
+            }
+            return undefined;
+          }
+          return Reflect.get(target, name, receiver);
+        },
+        set(target, name, value, receiver) {
+          const original = Reflect.get(target, name, receiver);
+          if (value !== original) {
+            that.changed = true;
+            return Reflect.set(target, name, value, receiver);
+          }
+          return true;
+        }
+      } );
+    }
   }
 
   class Namespace extends Node {
-    // is gonna have
-    //    recipes
-    //    data
-    //    functions
-    constructor() {
-      super();
-      this.aliasedNS = {};
-      this.recipes = {};
-    }
+
     namespace( alias ) {
       return this.aliasedNS[alias];
     }
+
     aliasNamespace( alias, NS ) {
       this.aliasedNS[alias] = NS;
     }
+
     error( msg ) {
       console.error( msg );
       throw new Error( `${msg} in file '${this.name}'` );
     }
+
     // class Namespace
-    findRecipe( tag ) {
-      const parts = tag.split(/[.]/);
+    findRecipe( htmlTagOrRecipeName ) {
+      const parts = htmlTagOrRecipeName.split(/[.]/);
       let recipe;
       if (parts.length === 1) {
-        const recipeName = parts[0];
-        recipe = this.recipes[recipeName];
-        if (recipe) return recipe;
-        const recipeData = this.recipeData[recipeName];
-        if (recipeData) {
-          recipe = this.recipes[recipeName];
-          if (!recipe) {
-            recipe = this.recipes[recipeName] = new Recipe();
-            recipe.setup( this, recipeData, recipeName );
-          }
-          return recipe;
-        }
+        return this.recipes[parts[0]];
+        // not an error if it was not found. means it is
+        // probably an html tag rather than recipe name
       }
       else if (parts.length === 2) {
         const NS = this.aliasedNS[parts[0]];
@@ -296,16 +341,28 @@ const SP = window.SP ||= {};
         this.error( `recipe '${tag}' not found` );
       }
     }
+
     // class Namespace
     setup( node, filename ) {
-      this.name = `namespace ${filename}`;
-      this.recipeData = node.recipes || {};
+      this.aliasedNS = {};
+      const recipes = this.recipes = {};
+      this.name = `[namespace ${filename}]`;
+
+      // build the recipes for this namespace
+      Object.keys( node.recipes )
+        .forEach( recipeName => {
+          const recipeData = node.recipes[recipeName];
+          const recipe = recipes[recipeName] = new Recipe();
+          recipe.setup( this, recipeData, recipeName );
+        } );
+
+      // injest the data
+      
+      
       this.data = node.data || {};
       this.functions = node.functions || {};
       this.about = node.about;
-      node.listen && (this.listen = node.listen);
       node.html && (this.html = node.html);
-      node.onLoad && (this.onLoad = node.onLoad);
     }
 
   } //class NameSpace
@@ -313,9 +370,14 @@ const SP = window.SP ||= {};
   class Recipe extends Node {
 
     setup( NS, recipeData, recipeName ) {
-      this.name = recipeName;
+      this.name = `[recipe: ${recipeName}]`;
       this.namespace = NS;
-      const recipe = this;
+
+      this.onLoad  = recipeData.onLoad;
+      this.preLoad = recipeData.preLoad;
+      this.attrs   = recipeData.attrs;
+      this.fun     = recipeData.functions;
+      
 
       [ recipeData, NS ]
         .forEach( src => {
@@ -682,32 +744,6 @@ const SP = window.SP ||= {};
     }
 
     // class Instance
-    makeData() {
-      const inst = this;
-      return new Proxy( {}, {
-        get(target, name, receiver) {
-          if (! Reflect.has(target, name) ) {
-            if ( (! inst.loaded) && name in inst._data) {
-              // this field has not been loaded before, so load it now
-              const val = inst.dataVal( inst._data[name] );
-              this.set(target,name,val, receiver);
-              return val;
-            }
-            return undefined;
-          }
-          return Reflect.get(target, name, receiver);
-        },
-        set(target, name, value, receiver) {
-          const original = Reflect.get(target, name, receiver);
-          if (value !== original) {
-            inst.changed = true;
-            return Reflect.set(target, name, value, receiver);
-          }
-          return true;
-        }
-      } );
-
-    }
 
     // class Instance
     layer( recipe, builder ) {
@@ -762,7 +798,10 @@ const SP = window.SP ||= {};
     get instanceBuilder() {
       let B = this._instanceBuilder;
       if (!B) {
-        //console.log( `INSTANCE BUILDER FOR ${this.recipe.name}` );
+
+        // this.builder is the component instance
+
+        console.log( this.recipe.rootBuilder, this.recipe, this.builder.recipe, `INSTANCE BUILDER FOR ${this.recipe.name}` );
         B = this._instanceBuilder = new Builder();
         B.setup( this.recipe.rootBuilder, this.recipe, this.builder.recipe );
         B.instance = this;
@@ -805,7 +844,9 @@ const SP = window.SP ||= {};
         this.preLoads.forEach( pl => pl(this) );
       }
 
-      this._refresh_root_el( this.root_EL, this.recipe.rootBuilder );
+//      this._refresh_root_el( this.root_EL, this.recipe.rootBuilder );
+//      this._refresh_root_el( this.root_EL, this.instanceBuilder );
+      this._refresh_root_el();
 
       if (! this.loaded) {
         this.onLoads.forEach( ol => ol(this) );
@@ -814,7 +855,8 @@ const SP = window.SP ||= {};
     } //refresh
 
     // class Instance
-    _refresh_root_el( el, rootBuilder ) {
+//    _refresh_root_el( el, rootBuilder ) {
+    _refresh_root_el() {
 
       // calculate data from _data
       Object.keys( this._data )
@@ -826,10 +868,11 @@ const SP = window.SP ||= {};
             this.data[fld] = val;
           }
         } );
-      
-      this._refresh_el( el, rootBuilder );
+      const el = this.root_EL;
+      const builder = this.instanceBuilder;
+      this._refresh_el( el, builder );
 
-      this._refresh_el_attrs( el, this.instanceBuilder );
+      this._refresh_el_attrs( el, builder );
       //console.log( this.instanceBuilder.attrs, rootBuilder.attrs, `${this.instanceBuilder.name} ${this.instanceBuilder.id} / ${rootBuilder.name} ${rootBuilder.id}` );
 
     } //_refresh_root_el
@@ -1102,6 +1145,7 @@ const SP = window.SP ||= {};
 
               // check for fill and fill contents
               if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
+                if (con_B.tag == 'coly' ) debugger;
                 const fill_E = con_I.getFillEl();
                 this._refresh_el_children( fill_E, con_B.defaultFillContents );
               }

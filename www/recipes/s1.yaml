@@ -1,5 +1,7 @@
 ---
-javascript: console.log( params, "HELLO" );
+javascript: >
+  window.jsmessages ||= [];
+  window.jsmessages.push( "NAMESPACE JAVASCRIPT RAN" );
 
 less: >-
   body {
@@ -14,16 +16,28 @@ less: >-
     }
   }
 
-title: Hello Page
+page:
 
-body: 
-  - h1: 
-      class: bigger
-      textContent: hello world
+  title: Hello Page
+
+  javascript: >
+    window.jsmessages ||= [];
+    window.jsmessages.push( "PAGE JAVASCRIPT RAN" );
+
+  less: >-
+    h1: { border: solid 3px }
+
+  body: 
+    - h1: 
+        class: bigger
+        textContent: hello world
 
 test: >-
   const tester = SP.tester;
   tester.html_structure( document.body, 
                   [ 'body', ['h1', 'hello world', { class: 'bigger' }]], 
                   'body structure' );
+  tester.is( document.title, 'Hello Page', 'title' );
+  tester.is_deeply( window.jsmessages, [ "NAMESPACE JAVASCRIPT RAN", 
+                                         "PAGE JAVASCRIPT RAN" ], 'script messages' );
   tester.doneTesting();

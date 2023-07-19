@@ -20,10 +20,8 @@ my $default_yaml_loader = sub {
 warn "try to validate the javascript snippets";
 warn "CSS::LESSp has an infinite loop case";
 
-
-
 sub build_recipe {
-    my ($name, $recipe_data, $filename) = @_;
+    my ($name, $recipe_data) = @_;
 
     if (ref $recipe_data eq 'ARRAY') {
         $recipe_data = { contents => $recipe_data };
@@ -37,16 +35,16 @@ sub build_recipe {
     }
 
     for my $node_data (@{$recipe_data->{contents}}) {
-        push @$con, build_node( $node_data, $filename );
+        push @$con, build_node( $node_data );
     }
 
-    encode_attrs( $recipe, $recipe_data, $filename );
+    encode_attrs( $recipe, $recipe_data );
 
     return $recipe;
 } #build_recipe
 
 sub encode_attrs {
-    my ($node, $node_data, $filename) = @_;
+    my ($node, $node_data) = @_;
 
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
@@ -74,7 +72,7 @@ sub encode_attrs {
 } #encode_attrs
 
 sub build_node {
-    my ($node_data, $filename) = @_;
+    my ($node_data) = @_;
 
     my $node = {};
 
@@ -99,7 +97,7 @@ sub build_node {
     if ($data->{contents}) {
         my $con = $node->{contents} = [];
         for my $con_data (@{$data->{contents}}) {
-            push @$con, build_node( $con_data, $filename );
+            push @$con, build_node( $con_data );
         }
     }
     
@@ -109,12 +107,12 @@ sub build_node {
         for my $fill_name (keys %{$data->{fill_contents}}) {
             my $con = $fill_con->{$fill_name} = [];
             for my $fill_con_data (@{$fill_data->{$fill_name}}) {
-                push @$con, build_node( $fill_con_data, $filename );
+                push @$con, build_node( $fill_con_data );
             }
         }
     }
 
-    encode_attrs( $node, $data, $filename );
+    encode_attrs( $node, $data );
 
     # get on_click, etc
     # get data, etc
@@ -233,15 +231,18 @@ sub load_namespace {
     # yes, return the name
     return $yaml_file if $filespaces->{$yaml_file};
 
-    if (!$yaml_loader) {
-        $yaml_loader = $default_yaml_loader;
-    }
+    $yaml_loader //= $default_yaml_loader;
 
     my $yaml = $yaml_loader->( $yaml_file );
 
     if ($yaml) {
+
         my $namespace = { 
             namespaces => {},
+            functions  => $yaml->{functions} || {},
+            about      => $yaml->{about} || '',
+            recipes    => {},
+            data       => $yaml->{data} || {},
         };
 
         $filespaces->{$yaml_file} = $namespace;
@@ -250,15 +251,22 @@ sub load_namespace {
             $root_namespace = $namespace;
 
             # include any tests if there are any, but just for the root namespace
-            $include_tests && $yaml->{test} && ( $namespace->{test} = "async function() { $yaml->{test} }" );
+            $include_tests && $yaml->{test} && 
+                ( $namespace->{test} = "async function() { $yaml->{test} }" );
         }
 
-        # css defined
-        my $fn = $filename;
-        $fn =~ s!/!_!g;
-        $fn =~ s![.]!-!g;
+        # check for aliased imports
+        if (my $imports = $yaml->{alias_namespaces}) {
+            for my $ns (keys %$imports) {
+                if ($ns =~ /\./) {
+                    die "namespace may not contain '.' and got '$ns'";
+                }
+                my $imp_filename = $imports->{$ns};
+                $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader );
+            }
+        }
 
-        # check for imports
+        # check for imports directly to namespaces
         if (my $imports = $yaml->{import_namespaces}) {
             for my $ns (keys %$imports) {
                 if ($ns =~ /\./) {
@@ -269,15 +277,10 @@ sub load_namespace {
             }
         }
 
-        # encode functions, onLoad, preLoad
-        $namespace->{functions} = $yaml->{functions} || {};
-        for my $fun (qw( onLoad preLoad listen )) {
-            if ($yaml->{$fun}) {
-                $namespace->{$fun} = $yaml->{$fun};
-            }
-        }
-        $namespace->{about} = $yaml->{about} || '';
-        $namespace->{recipes} = {};
+        
+        #
+        # build the recipes
+        #
         for my $recipe_name (keys %{$yaml->{recipes}}) {
             die "recipe '$recipe_name' in '$yaml_file' may not have a '.' in the name" if $recipe_name =~ /\./;
             my $recipe = $yaml->{recipes}{$recipe_name};
@@ -285,36 +288,20 @@ sub load_namespace {
                 build_recipe( $recipe_name, $yaml->{recipes}{$recipe_name}, $filename );
         }
 
-        $namespace->{data} = $yaml->{data} || {};
 
+        #
+        # Attach css and javascript (both included and directly typed into
+        # the yaml) to the root namespace which is the
+        # one that would provide a body.
+        #
         for my $thing (qw( css javascript javascript-module )) {
             if (ref $yaml->{include}{$thing} eq 'ARRAY') {
-                $namespace->{html}{head}{$thing} = $yaml->{include}{$thing};
+                push @{$root_namespace->{html}{head}{$thing}}, @{$yaml->{include}{$thing}};
             } 
             elsif ($yaml->{include}{$thing}) {
-                $namespace->{html}{head}{$thing} = [$yaml->{include}{$thing}];
+                push @{$root_namespace->{html}{head}{$thing}}, $yaml->{include}{$thing};
             }
         }
-
-
-        my $body = $yaml->{body};
-
-        if ($body) {
-
-            if ($yaml->{title}) {
-                $namespace->{html}{head}{title} = $yaml->{title};
-            }
-
-            $namespace->{html}{body} = build_recipe( 'body', $body, $filename, $fn );
-            for my $targ (qw( listen onLoad preLoad )) {
-                if ($yaml->{$targ}) {
-                    $namespace->{html}{body}{$targ} = $yaml->{$targ};
-                    delete $yaml->{$targ};
-                    delete $namespace->{$targ};
-                }
-            }
-        } #if a body
-
         my @css;
         if ($yaml->{css}) {
             push @css, $yaml->{css};
@@ -330,8 +317,28 @@ sub load_namespace {
             $root_namespace->{html}{head}{script} .= $yaml->{javascript};
         }
 
+
+        my $page = $yaml->{page};
+        my $body = $page->{body};
+
+        if ($body) {
+
+            $page->{javascript} && 
+                ($root_namespace->{html}{head}{script} .= $page->{javascript});
+
+            $page->{title} && 
+                ($namespace->{html}{head}{title} = $page->{title});
+
+            $namespace->{html}{body} = build_recipe( 'body', $body, $filename );
+            for my $targ (qw( listen onLoad preLoad )) {
+                if ($page->{$targ}) {
+                    $namespace->{html}{body}{$targ} = $page->{$targ};
+                }
+            }
+        } #if a body
+
         return $yaml_file;
-    }
+    } #if yaml
 } #load_namespace
 
 1;
