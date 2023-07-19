@@ -17,6 +17,11 @@ my $default_yaml_loader = sub {
     return -e $yaml_file && YAML::LoadFile( $yaml_file );
 };
 
+warn "try to validate the javascript snippets";
+warn "CSS::LESSp has an infinite loop case";
+
+
+
 sub build_recipe {
     my ($name, $recipe_data, $filename) = @_;
 
@@ -36,7 +41,6 @@ sub build_recipe {
     }
 
     encode_attrs( $recipe, $recipe_data, $filename );
-
 
     return $recipe;
 } #build_recipe
@@ -177,7 +181,6 @@ sub to_json {
     }
     if ($thing =~ /^(\([^\)]*\)|[a-zA-Z]+)\s*=>\s*(.*)/s) {
         # TODO validate javascript?
-        warn "try to validate the javascript";
         my ($args, $body) = ( $1, $2 );
         # snip off any trailing ; (common typo? maybe this, maybe not. TODO: consider removing this or adding a warning)
         $body =~ s/;\s*$//s; 
@@ -207,19 +210,18 @@ sub to_json {
 sub yaml_to_js {
     my ($pkg,$yaml_root_directory,$filename, $alphasort, $include_tests) = @_;
 
-
     my $filespaces = {};
 
     my $js = '';
     eval {
         my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader, $include_tests );
+
         $js = "let filespaces = ".to_json( $filespaces, $alphasort ) . ";\n" .
             'let defaultFilename = '.to_string($default_filename).';';
     };
     if ($@) {
         $js = make_error($filename);
     }
-
     return $js;
 }
 
@@ -227,7 +229,6 @@ sub load_namespace {
     my ( $root_directory, $filename, $filespaces, $root_namespace, $yaml_loader, $include_tests ) = @_;
 
     my $yaml_file = "$root_directory/$filename";
-
 
     # yes, return the name
     return $yaml_file if $filespaces->{$yaml_file};
@@ -305,7 +306,6 @@ sub load_namespace {
             }
 
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename, $fn );
-
             for my $targ (qw( listen onLoad preLoad )) {
                 if ($yaml->{$targ}) {
                     $namespace->{html}{body}{$targ} = $yaml->{$targ};
@@ -329,6 +329,7 @@ sub load_namespace {
         if ($yaml->{javascript}) {
             $root_namespace->{html}{head}{script} .= $yaml->{javascript};
         }
+
         return $yaml_file;
     }
 } #load_namespace

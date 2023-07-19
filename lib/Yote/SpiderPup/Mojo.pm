@@ -65,19 +65,18 @@ sub serve_html {
 
     my $filename = "$root_directory/html$page";
 
-    my $css = $filename;
-
     $c->app->log->debug( "serving HTML '$filename' $test" );
 
     if ($page =~ /\.html$/) {
         if (-e $filename) {
             return serve_file( $c, $filename );
         }
-        # check for params
+
         $page =~ s/.html$//;
         if (-e "$root_directory/recipes$page.yaml") {
             my $phash = $c->req->params->to_hash || {};
             my $yaml_url = $test ? "/_test$page" : "/_$page";
+            print STDERR "Serving ($test) $yaml_url from $root_directory/recipes$page.yaml\n";
             return $c->render( template => 'page',
                                tests    => $test,
                                params   => Yote::SpiderPup::to_json($phash),
@@ -99,8 +98,8 @@ sub serve_html {
 sub serve_recipe {
     my ($c,$page) = @_;
     $page //= $c->req->url->to_abs->path;
-    my ($test) = ($page =~ s~^/_(test)?/~/~);
-
+    my ($test) = ($page =~ s~^/_test/~/~);
+    $page =~ s~^/_/~/~;
     $c->app->log->debug( "SERVE '$page', from root '$root_directory', and recipe 'recipes$page.yaml'" );
 
     my $js = Yote::SpiderPup->yaml_to_js( $root_directory, "recipes$page.yaml", undef, $test );
@@ -117,6 +116,9 @@ sub serve_recipe {
 sub prepare_handlers {
     my ($pkg, $spider_root, $mojo_app, $use_yote) = @_;
 
+    warn "need to store the js result and check if the yaml file or cahed file are more recent";
+
+    $mojo_app->log->debug( "Setting root directory to '$spider_root'" );
     $root_directory = $spider_root;
     
     # res -> file upload resource directory
@@ -150,11 +152,11 @@ sub prepare_handlers {
 
     # $routes->any ('/test/*' => \&serve_html );
 
-    # $routes->get ( '/' => sub {
-    #     my $c = shift;
-    #     #    $c->render(text => "rooo");
-    #     serve_html( $c, '/index.html' );
-    # } );
+    $routes->get ( '/' => sub {
+        my $c = shift;
+        #    $c->render(text => "rooo");
+        serve_html( $c, '/index.html' );
+    } );
 
     $routes->get ('/*' => \&serve_html);
 

@@ -168,6 +168,10 @@ INIT -------------------------------
 
 const SP = window.SP ||= {};
 {
+  console.warn( "class handling should be rewritten to additive classes and calculated classes" );
+  console.warn( "need to put named fill contents in" );
+  console.warn( "need to put fill contents in for looped instances" );
+
   window.onload = ev => {
     //console.log( filespaces );
     init( filespaces, defaultFilename );
@@ -333,7 +337,6 @@ const SP = window.SP ||= {};
         } );
 
       //console.log( this.functions, recipe.functions, recipeData.functions, "BURPH" );
-      console.warn( "class should be additive here" );
       this.namedFillBuilders = {};
       this.contents = recipeData.contents;
       this.prepRootBuilder();
@@ -354,7 +357,6 @@ const SP = window.SP ||= {};
     prepRootBuilder() {
       const NS = this.namespace;
 
-      console.warn (" be more clear with these names ");
       const recipeRoot = this.contents[0];
       const rootIsAlsoRecipe = NS.findRecipe( recipeRoot.tag );
 
@@ -1083,7 +1085,6 @@ const SP = window.SP ||= {};
                 for_I.refresh();
 
                 // put fill contents in
-                console.warn( "need to put named fill contents in for looped instances" );
                 if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                   const fill_E = for_I.getFillEl();
                   this._refresh_el_children( fill_E, con_B.defaultFillContents );
@@ -1100,7 +1101,6 @@ const SP = window.SP ||= {};
               con_I.refresh();
 
               // check for fill and fill contents
-              console.warn( "need to put named fill contents in" );
               if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                 const fill_E = con_I.getFillEl();
                 this._refresh_el_children( fill_E, con_B.defaultFillContents );
