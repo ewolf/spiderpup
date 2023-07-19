@@ -3,35 +3,181 @@ const qsa = (sel,el) => Array.from((el||document).querySelectorAll(sel));
 
 
 let testcount = 0;
-let passes = 0;
-let fails = 0;
+const passes = [];
+const fails = [];
+const messages = [];
 
 function pass( msg ) {
   testcount++;
-  console.log( `pass: ${msg}` );
-  passes++;
+  passes.push( msg );
+  messages.push( `PASS : ${msg}` );
 }
 function fail( msg ) {
   testcount++;
-  console.log( `warn: ${msg}` );
-  fails++;
+  fails.push( msg );
+  messages.push( `FAIL : ${msg}` );
+}
+
+function like( a, regex, msg ) {
+  if (String(a).match(regex)) {
+    pass( msg );
+    return true;
+  } else {
+    fails( msg );
+    messages.push( `expected to match ${regex} and got '${a}'` );
+    return false;
+  }
 }
 
 function is( a, b, msg ) {
   if (a===b) {
-    pass( msg );
+    msg && pass( msg );
+    return true;
   } else {
-    console.log( 'expected', b, 'got', a );
-    fail( msg );
+    msg && fail( msg );
+    messages.push( `expected '${b}' and got '${a}'` );
+    return false;
   }
-};
+}
+
+function is_deeply( a, b, msg ) {
+  let fails = 0;
+  if (Array.isArray(b)) {
+    if (!Array.isArray(a)) {
+      msg && fail( msg );
+      messages.push( 'expected array' );
+      return false;
+    }
+    if (b.length !== a.length) {
+      msg && fail( msg );
+      messages.push( 'arrays not the same size' );
+      return false;
+    }
+    for (let i=0; i<b.length; i++) {
+      if (!is_deeply( a[i], b[i])) {
+        msg && fail( msg );
+        messages.push( `arrays differ index ${i} expected '${b[i]}' and got '${a[i]}'` );
+        return false;
+      }
+    }
+    msg && pass( msg );
+    return true;
+  }
+  else if (typeof b === 'object') {
+    if (typeof a !== 'object') {
+      msg && fail( msg );
+      messages.push( 'expected object' );
+      return false;
+    }
+    const akeys = Object.keys( a );
+    const bkeys = Object.keys( b );
+    if (bkeys.length !== akeys.length) {
+      msg && fail( msg );
+      messages.push( 'objects have different keys' );
+      return false;
+    }
+    for (let i=0; i<bkeys.length; i++) {
+      const key = bkeys[i];
+      const bval = b[key];
+      const aval = a[key];
+      if (!is_deeply( aval, bval)) {
+        msg && fail( msg );
+        messages.push( `objects differ on key ${key}. Got '${aval}' and expected '${bval}'` );
+        return false;
+      }
+    }
+    msg && pass( msg );
+    return true;
+  }
+  else {
+    return is(a, b, msg);
+  }
+}
+
+function html_structure( el, node, msg ) {
+  let [ tag, textContent, attrs, ...contents ] = node;
+
+  if (! is(el.tagName, tag.toUpperCase())) {
+    msg && fail( msg );
+    messages.push ( `html_structure. Expected tagName '${tag.toUpperCase()}' and got '${el.tagName}'` );
+    return false;
+  }
+
+  if(Array.isArray( attrs )) {
+    // no attrs
+    contents.unshift( attrs );
+    attrs = {};
+  }
+
+  if (Array.isArray(textContent)) {
+    // no attrs or textContent
+    contents.unshift( textContent );
+    textContent = '';
+  } else if( typeof textContent === 'object') {
+    // got attrs, no textContent
+    attrs = textContent;
+    textContent = '';
+  } 
+
+  attrs = attrs || {};
+  const elAttrs = {};
+  for (const node of el.attributes) {
+    if (node.nodeName != 'data-spid') {
+      elAttrs[node.nodeName] = node.nodeValue;
+    }
+  }
+  if (textContent) {
+    elAttrs.textContent = el.textContent;
+    attrs.textContent = textContent;
+  }
+  if ('style' in elAttrs) {
+    attrs.style = attrs.style || '';
+  }
+  if (! is_deeply( elAttrs, attrs ) ) {
+    msg && fail( msg );
+//    console.log( elAttrs, attrs, "ATTR FAIL" );
+    messages.push ( `html_structure. Attribute mismatch for element '${tag}'` );
+    return false;
+  }
+  if ( el.childElementCount != contents.length ) {
+    msg && fail( msg );
+    messages.push ( `html_structure. Child element count mismatch for element '${tag}'. Got ${el.childElementCount} and was expecting ${contents.length}` );
+    return false;
+  }
+
+  for (let i=0; i<el.childElementCount; i++) {
+    if (! html_structure( el.children[i], contents[i] )) {
+      msg && fail( msg );
+      return false;
+    }
+  }
+  msg && pass( msg );
+  return true;
+} //html_structure
+
+function attach( txt, tag ) {
+  tag = tag || 'div';
+  const el = document.createElement( tag );
+  el.textContent = txt;
+  document.body.prepend( el );
+}
+
+function sleep( ms ) {
+  return new Promise( res => setTimeout( () => res(), ms ) );
+}
 
 function doneTesting() {
+
+  messages.reverse().forEach( msg => attach( msg ) );
+
   if (testcount === 0) {
-    console.log( "No tests to run" );
-  } else if( fails === 0) {
-    console.log( `ALL ${testcount} tests pass` );
+    attach( "No tests to run", 'h2' );
+  } else if( fails.length === 0) {
+    attach( `ALL ${testcount} tests pass`, 'h2' );
   } else {
-    console.log( `Failed ${fails} out of ${testcount} tests` );
+    attach( `Failed ${fails.length} out of ${testcount} tests`, 'h2' );
   }
+
+  attach( "TEST RESULTS", 'h1' );
+  
 }

@@ -55,6 +55,13 @@ sub encode_attrs {
         elsif ($field =~ /^on_(.*)/) {
             $node->{on}{$1} = $val;
         }
+        elsif ($field eq 'style') {
+            my $style = $node->{attrs}{style} = {};
+            for my $kv (split /\s*;\s*/, $val) {
+                my ($k, $v) = split /\s*:\s*/, $kv;
+                $style->{$k} = $v;
+            }
+        }
         elsif( $field ne 'contents' && $field ne 'fill_contents' ) {
             # is considered a property (and contents is handled elsewhere)
             $node->{attrs}{$field} = $val;
@@ -180,7 +187,7 @@ sub to_json {
         }
         return "$args=>$body";
     }
-    if ($thing =~ /^function *\([^\)]*\)\s*\{.*\}/s) {
+    if ($thing =~ /^\s*(async\s+)?function *\([^\)]*\)\s*\{.*\}/s) {
         return $thing;
     }
     if (looks_like_number($thing)) {
@@ -242,7 +249,7 @@ sub load_namespace {
             $root_namespace = $namespace;
 
             # include any tests if there are any, but just for the root namespace
-            $include_tests && $yaml->{test} && ( $namespace->{test} = "() => { $yaml->{test} }" );
+            $include_tests && $yaml->{test} && ( $namespace->{test} = "async function() { $yaml->{test} }" );
         }
 
         # css defined

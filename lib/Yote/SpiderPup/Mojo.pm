@@ -27,7 +27,7 @@ sub serve_file {
         $filename = "$root_directory".$c->req->url->to_abs->path;
     }
 
-    $c->app->log->debug( "**FILE**, $filename" );
+    $c->app->log->debug( "serving file '$filename'" );
 
     if (-e $filename) {
         my $text = read_file( $filename );
@@ -56,16 +56,18 @@ sub serve_file {
 # corresponding css or javascript.
 #
 sub serve_html {
-    my $c = shift;
-    my $page = $c->req->url->to_abs->path;
+    my ($c,$page) = @_;
+    $page //= $c->req->url->to_abs->path;
 
     $page = ($page eq '' || $page eq '/') ? '/index.html' : $page;
+
+    my ($test) = ($page =~ s!^/(test)/!/!);
 
     my $filename = "$root_directory/html$page";
 
     my $css = $filename;
 
-    $c->app->log->debug( "**HTML** $page, $filename" );
+    $c->app->log->debug( "serving HTML '$filename' $test" );
 
     if ($page =~ /\.html$/) {
         if (-e $filename) {
@@ -75,19 +77,14 @@ sub serve_html {
         $page =~ s/.html$//;
         if (-e "$root_directory/recipes$page.yaml") {
             my $phash = $c->req->params->to_hash || {};
-            my $yaml_url = "/_$page";
-            my $tests = 0;
-            if ($phash->{test}) {
-                $yaml_url .= '?test=1';
-                $tests = 1;
-            }
+            my $yaml_url = $test ? "/_test$page" : "/_$page";
             return $c->render( template => 'page',
-                               tests    => $tests,
+                               tests    => $test,
                                params   => Yote::SpiderPup::to_json($phash),
                                yote     => $yote, # to load yote or note
                                yaml     => $yaml_url );
         }
-        return $c->render(text => "recipe NOTFOUND / $root_directory/recipes$page.yaml / $filename");
+        return $c->render(text => "RECIPE NOT FOUND / '$root_directory/recipes$page.yaml' / '$filename'");
     }
 
     # 404
@@ -102,9 +99,11 @@ sub serve_html {
 sub serve_recipe {
     my ($c,$page) = @_;
     $page //= $c->req->url->to_abs->path;
-    $page =~ s~^/_/~/~;
+    my ($test) = ($page =~ s~^/_(test)?/~/~);
 
-    my $js = Yote::SpiderPup->yaml_to_js( $root_directory, "recipes$page.yaml", undef, $c->req->param('test') );
+    $c->app->log->debug( "SERVE '$page', from root '$root_directory', and recipe 'recipes$page.yaml'" );
+
+    my $js = Yote::SpiderPup->yaml_to_js( $root_directory, "recipes$page.yaml", undef, $test );
 
     if ($js) {
         $c->res->headers->content_type( "text/javascript" );
@@ -139,19 +138,23 @@ sub prepare_handlers {
     $routes->get ('/img/*' => \&serve_file);
     $routes->get ('/res/*' => \&serve_file);
     $routes->get ('/css/*' => \&serve_file);
-    $routes->get ('/recipes/*' => sub {
-	my $c = shift;
-	my $filename = "$root_directory".$c->req->url->to_abs->path;
-	serve_file( $c, $filename, 'text/plain' );
-    } );
+    $routes->get ('/recipes/*' => 
+                  sub {
+                      my $c = shift;
+                      my $filename = "$root_directory".$c->req->url->to_abs->path;
+                      serve_file( $c, $filename, 'text/plain' );
+                  } );
 
     $routes->any ('/_/*' => \&serve_recipe);
+    $routes->any ('/_test/*' => \&serve_recipe);
 
-    $routes->get ( '/' => sub {
-        my $c = shift;
-        #    $c->render(text => "rooo");
-        serve_html( $c, '/index.html' );
-    } );
+    # $routes->any ('/test/*' => \&serve_html );
+
+    # $routes->get ( '/' => sub {
+    #     my $c = shift;
+    #     #    $c->render(text => "rooo");
+    #     serve_html( $c, '/index.html' );
+    # } );
 
     $routes->get ('/*' => \&serve_html);
 

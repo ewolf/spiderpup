@@ -169,7 +169,7 @@ INIT -------------------------------
 const SP = window.SP ||= {};
 {
   window.onload = ev => {
-    console.log( filespaces );
+    //console.log( filespaces );
     init( filespaces, defaultFilename );
   }
 
@@ -178,6 +178,7 @@ const SP = window.SP ||= {};
   const FN_2_NS = {};
   let lastid = 1;
   let bodyInst;
+  let useTest = false;
 
   function nextid() {
     return lastid++;
@@ -185,6 +186,7 @@ const SP = window.SP ||= {};
 
   function init( fileSpaces, defaultFilename, attachPoint ) {
     const pageNS = loadNamespace( defaultFilename );
+    useTest = pageNS.test;
 
     const bodyR = new BodyRecipe();
 
@@ -198,7 +200,7 @@ const SP = window.SP ||= {};
         bodyInst.attachTo(attachPoint || document.body);
         bodyInst.refresh();
 
-        if (pageNS.test) {
+        if (useTest) {
           pageNS.test();
         }
       } );
@@ -218,7 +220,7 @@ const SP = window.SP ||= {};
 
     const NS_node = filespaces[filename];
     if (!NS_node) {
-      return error (`unable to load namespace '${filename}'`);
+      throw new Error(`unable to load namespace '${filename}'`);
     }
 
     NS = FN_2_NS[filename] = new Namespace();
@@ -518,13 +520,13 @@ const SP = window.SP ||= {};
 
     // class Builder
     setup( layerAbove, withinRecipe, instanceRecipe ) {
+      this.attrs = {};
       this.tag = layerAbove.tag;
       this.name = `${this.tag} in ${withinRecipe.name}`;
       if (instanceRecipe) {
-        console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
+        //console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
       } else {
-        if (this.tag === 'bold') debugger;
-        console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
+        //console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
       }
       this.instanceRecipe = instanceRecipe;
       this.layer( layerAbove, withinRecipe );
@@ -625,7 +627,6 @@ const SP = window.SP ||= {};
 
     // class Builder
     buildElement( inst, builderNode ) {
-      if (this.tag === 'bold') debugger;
       const el = document.createElement( this.tag );
       el.dataset.spid = (builderNode||this).id;
 
@@ -758,7 +759,6 @@ const SP = window.SP ||= {};
       if (!B) {
         //console.log( `INSTANCE BUILDER FOR ${this.recipe.name}` );
         B = this._instanceBuilder = new Builder();
-        console.log( this.recipe.rootBuilder.tag, "TA" );
         B.setup( this.recipe.rootBuilder, this.recipe, this.builder.recipe );
         B.instance = this;
         B.contentBuilders = this.recipe.rootBuilder.contentBuilders;
@@ -825,7 +825,7 @@ const SP = window.SP ||= {};
       this._refresh_el( el, rootBuilder );
 
       this._refresh_el_attrs( el, this.instanceBuilder );
-      console.log( this.instanceBuilder.attrs, rootBuilder.attrs, `${this.instanceBuilder.name} ${this.instanceBuilder.id} / ${rootBuilder.name} ${rootBuilder.id}` );
+      //console.log( this.instanceBuilder.attrs, rootBuilder.attrs, `${this.instanceBuilder.name} ${this.instanceBuilder.id} / ${rootBuilder.name} ${rootBuilder.id}` );
 
     } //_refresh_root_el
 
@@ -840,30 +840,13 @@ const SP = window.SP ||= {};
 
           if (attr.match( /^(textContent|innerHTML)$/)) {
             el[attr] = val;
+            //console.log( el, `UPDATED textContent to ${val}` );
           } else if (attr === 'class' ) {
             el.className = '';
             val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
           } else if (attr === 'style') {
-            console.warn( 'could unify style styles in perl' );
-            let styles = val;
-            if (Array.isArray(val)) {
-              styles = {};
-              val.forEach( h => {
-                Object.keys( h ).forEach( k => styles[k] = h[k] );
-              } );
-            }
-            else if (typeof val !== 'object') {
-              styles = {};
-              val.split( /\s*;\s*/ )
-                .forEach( kvp => {
-                  const parts = kvp.split( /\s*:\s*/ );
-                  if (parts) {
-                    styles[parts[0]] = parts[1];
-                  }
-                } )
-            }
-            Object.keys( styles )
-              .forEach( style => el.style[ style ] = styles[style] );
+            Object.keys( val )
+              .forEach( style => el.style[ style ] = val[style] );
           } else if (attr === 'disabled' || attr === 'checked' || attr === 'selected') {
             val ? el.setAttribute( attr, attr ) : el.removeAttribute( attr );
           } else {

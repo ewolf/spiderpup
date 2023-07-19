@@ -104,8 +104,10 @@ page:
     - chapters:
 
 recipes:
-  row:
+  xork:
     - div:
+  row:
+    - zork:
         style: display: flex; flex-direction: row;
   col:
     - div:

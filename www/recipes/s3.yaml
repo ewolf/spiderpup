@@ -12,3 +12,25 @@ recipes:
       - button:
           textContent: s => s.data.count
           on_click: s => s.data.count++
+
+test: >-
+  html_structure( document.body,
+                  [ 'body',
+                    ['button','0']],
+                  'doc body');
+  const butt = qs( 'button' );
+  const l = butt.click();
+  await sleep(100);
+  console.log( "clicked" );
+  html_structure( document.body,
+                  [ 'body',
+                    ['button','1']],
+                  'doc body after button press once');
+  butt.click();
+  await sleep(100);
+  console.log( "clicked" );
+  html_structure( document.body,
+                  [ 'body',
+                    ['button','2']],
+                  'doc body after button press twice');
+  doneTesting();

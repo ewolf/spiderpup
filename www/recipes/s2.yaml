@@ -19,3 +19,24 @@ recipes:
               class: ilb
               fill: true
           - span: ' END'
+
+test: >-
+  html_structure( document.body, 
+                  [ 'body', 
+                    [ 'label',
+                      [ 'span', 'FEE' ],
+                      [ 'span', ' FIE ' ],
+                      [ 'span', 'FOO ' ],
+                      [ 'div', { class: 'ilb' } ],
+                      [ 'span', ' END' ]],
+                    [ 'label',
+                      [ 'span', 'FEE' ],
+                      [ 'span', ' FIE ' ],
+                      [ 'span', 'FOO ' ],
+                      [ 'div', { class: 'ilb' },
+                        ['section', 'MORE']],
+                      [ 'span', ' END' ]]],
+                  'body structure' );
+    doneTesting();
+
+  
