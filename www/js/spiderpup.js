@@ -169,6 +169,7 @@ INIT -------------------------------
 const SP = window.SP ||= {};
 {
   window.onload = ev => {
+    console.log( filespaces );
     init( filespaces, defaultFilename );
   }
 
@@ -329,7 +330,7 @@ const SP = window.SP ||= {};
             } );
         } );
 
-      console.log( this.functions, recipe.functions, recipeData.functions, "BURPH" );
+      //console.log( this.functions, recipe.functions, recipeData.functions, "BURPH" );
       console.warn( "class should be additive here" );
       this.namedFillBuilders = {};
       this.contents = recipeData.contents;
@@ -522,6 +523,7 @@ const SP = window.SP ||= {};
       if (instanceRecipe) {
         console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
       } else {
+        if (this.tag === 'bold') debugger;
         console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
       }
       this.instanceRecipe = instanceRecipe;
@@ -579,8 +581,8 @@ const SP = window.SP ||= {};
             // component node
 
             child_B.setup( con, R, conRecipe );
-            const toFill = child_B.fillContents = {}; // name -> [ ... BuilderList ]
 
+            const toFill = child_B.fillContents = {}; // name -> [ ... BuilderList ]
             if (con.fill_contents) {
               Object.keys(con.fill_contents)
                 .forEach( fillName => {
@@ -588,7 +590,8 @@ const SP = window.SP ||= {};
                         con.fill_contents[fillName]
                         .map( fill_con => {
                           const fill_B = new Builder();
-                          fill_B.setup( fill_con, R );
+                          const fill_R = NS.findRecipe( fill_con.tag );
+                          fill_B.setup( fill_con, R, fill_R );
                           toFillBuilders.push(fill_B);
                           fill_B.fillOut();
                           return fill_B;
@@ -600,7 +603,8 @@ const SP = window.SP ||= {};
               const toFillBuilders = child_B.defaultFillContents =
                     con.contents.map( fill_con => {
                       const fill_B = new Builder();
-                      fill_B.setup( fill_con, R );
+                      const fill_R = NS.findRecipe( fill_con.tag );
+                      fill_B.setup( fill_con, R, fill_R );
                       fill_B.fillOut();
                       return fill_B;
                     } );
@@ -621,6 +625,7 @@ const SP = window.SP ||= {};
 
     // class Builder
     buildElement( inst, builderNode ) {
+      if (this.tag === 'bold') debugger;
       const el = document.createElement( this.tag );
       el.dataset.spid = (builderNode||this).id;
 
@@ -707,15 +712,16 @@ const SP = window.SP ||= {};
       const fun = this.fun;
       const onLoads = this.onLoads = [];
       const preLoads = this.preLoads = [];
+      this.attrs = builder.attrs;
       [ builder, recipe ]
         .forEach ( from => {
           from.data && Object.keys( from.data )
             .forEach( fld => {
               if ( ! (fld in _data) ) {
                 const valOrFun = from.data[fld];
-                console.log( `layering '${fld}' in inst.name from from.name` );
+                //console.log( `layering '${fld}' in inst.name from from.name` );
                 _data[fld] = typeof valOrFun === 'function' ?
-                  function() { console.log(`calling function for ${fld} in ${inst.name}`);
+                  function() { //console.log(`calling function for ${fld} in ${inst.name}`);
                                return valOrFun( inst, ...arguments ); }
                 : valOrFun;
               }
@@ -750,11 +756,18 @@ const SP = window.SP ||= {};
     get instanceBuilder() {
       let B = this._instanceBuilder;
       if (!B) {
-        console.log( `INSTANCE BUILDER FOR ${this.recipe.name}` );
+        //console.log( `INSTANCE BUILDER FOR ${this.recipe.name}` );
         B = this._instanceBuilder = new Builder();
+        console.log( this.recipe.rootBuilder.tag, "TA" );
         B.setup( this.recipe.rootBuilder, this.recipe, this.builder.recipe );
         B.instance = this;
         B.contentBuilders = this.recipe.rootBuilder.contentBuilders;
+
+        // layer attributes
+        Object.keys( this.attrs || {} )
+          .forEach( attr => {
+            B.attrs[attr] = this.attrs[attr];
+          } );
       }
       return B;
     }
@@ -775,7 +788,7 @@ const SP = window.SP ||= {};
 
     // class Instance
     refresh() {
-      console.log( `REFRESHING builder ${this.builder.tag}/${this.builder.id}, recipe ${this.builder.recipe.name}` );
+      //console.log( `REFRESHING builder ${this.builder.tag}/${this.builder.id}, recipe ${this.builder.recipe.name}` );
 
       if (! this.loaded) {
         // initial data settings
@@ -810,12 +823,16 @@ const SP = window.SP ||= {};
         } );
       
       this._refresh_el( el, rootBuilder );
+
+      this._refresh_el_attrs( el, this.instanceBuilder );
+      console.log( this.instanceBuilder.attrs, rootBuilder.attrs, `${this.instanceBuilder.name} ${this.instanceBuilder.id} / ${rootBuilder.name} ${rootBuilder.id}` );
+
     } //_refresh_root_el
 
-    // class Instance
-    _refresh_el( el, builder ) {
+    _refresh_el_attrs( el, builder ) {
       // fill in elements attributes ---------------------------
       const attrs = builder.attrs;
+
       attrs && Object.keys(attrs)
         .forEach( attr => {
 
@@ -853,12 +870,19 @@ const SP = window.SP ||= {};
             el.setAttribute( attr, val );
           }
         } );
+    }
+
+    // class Instance
+    _refresh_el( el, builder ) {
+      this._refresh_el_attrs( el, builder );
       this._refresh_el_children( el, builder.contentBuilders );
     } //_refresh_el
 
     //class Instance
     _refresh_el_children( el, builders ) {
 
+      if (builders.length === 0) return;
+      
       // catalog child elements ---------------------------
       const builderID2el = {};
       Array.from( el.children )
@@ -914,6 +938,7 @@ const SP = window.SP ||= {};
       builders
         .forEach( con_B => {
           const key = con_B.key;
+
           let con_E = builderID2el[key];
           const instance_R = con_B.instanceRecipe;
           let inst_B;
@@ -926,6 +951,7 @@ const SP = window.SP ||= {};
               con_I ||= this.childInstances[key]
                 ||= instance_R.createInstance(con_B,this);
               inst_B = con_I.instanceBuilder;
+
               con_E = inst_B.buildElement(con_I, con_B);
               if (con_B.forvar) {
                 con_E.dataset.spforidx = '0';
@@ -1062,12 +1088,12 @@ const SP = window.SP ||= {};
             for (let i=0; i<list.length; i++ ) {
               this.it[ con_B.forvar ] = list[i];
               this.idx[ con_B.forvar ] = i;
-              console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
+              //console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
               if (instance_R) {
                 const for_I = forInstances[i];
                 for_I.it[ con_B.forvar ] = list[i];
                 for_I.idx[ con_B.forvar ] = i;
-                console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
+                //console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
                 for_I.refresh();
 
                 // put fill contents in
@@ -1095,7 +1121,7 @@ const SP = window.SP ||= {};
               }
             }
             else { // element builder
-              console.log( `CALL REFRESH FOR ${con_B.id}` );
+              //console.log( `CALL REFRESH FOR ${con_B.id}` );
               this._refresh_el( con_E, con_B );
             }
           }

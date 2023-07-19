@@ -110,6 +110,9 @@ recipes:
   col:
     - div:
         style: display: flex; flex-direction: column;
+  bold:
+    - span:
+        style: font-weight: bold; font-size: larger;
   chapters:
     data:
       currPosition: 0
@@ -129,6 +132,9 @@ recipes:
                         textContent: next
                         disabled: s => s.data.currPosition >= (s.data.chapters.length-1)
                         on_click: s => s.data.currPosition <= (s.data.chapters.length-1) && s.data.currPosition++
+                - col: 
+                    - bold: About
+                    - span: s => s.data.chapters[s.data.currPosition].about
           - div:
               else: true
               textContent: No Chapters
