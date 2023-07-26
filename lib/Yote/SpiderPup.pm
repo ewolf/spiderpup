@@ -48,7 +48,7 @@ sub encode_attrs {
 
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
-        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|onLoad|preLoad)$/) {
+        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|postLoad|preLoad)$/) {
             $node->{$field} = $val;
         }
         elsif ($field eq 'else') {
@@ -56,6 +56,9 @@ sub encode_attrs {
         }
         elsif ($field =~ /^on_(.*)/) {
             $node->{on}{$1} = $val;
+        }
+        elsif ($field =~ /^when_(.*)/) {
+            $node->{when}{$1} = $val;
         }
         elsif ($field eq 'style') {
             my $style = $node->{attrs}{style} = {};
@@ -101,8 +104,7 @@ sub build_node {
         }
     }
     
-    if ($data->{fill_contents}) {
-        my $fill_data = $data->{fill_contents};
+    if (my $fill_data = $data->{fill_contents}) {
         my $fill_con = $node->{fill_contents} = {};
         for my $fill_name (keys %{$data->{fill_contents}}) {
             my $con = $fill_con->{$fill_name} = [];
@@ -330,7 +332,7 @@ sub load_namespace {
                 ($namespace->{html}{head}{title} = $page->{title});
 
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename );
-            for my $targ (qw( listen onLoad preLoad )) {
+            for my $targ (qw( listen postLoad preLoad )) {
                 if ($page->{$targ}) {
                     $namespace->{html}{body}{$targ} = $page->{$targ};
                 }

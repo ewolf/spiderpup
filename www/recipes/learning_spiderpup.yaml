@@ -118,9 +118,6 @@ recipes:
   col:
     - div:
         class: col
-  coly:
-    - div:
-        class: col
 
   bold:
     - span:
@@ -131,7 +128,7 @@ recipes:
     contents:
       - div:
           - h2: browse chapters
-          - coly:
+          - col:
               if: s => s.data.chapters  && s.data.chapters.length > 0
               contents:
                 - div: HI

@@ -31,8 +31,8 @@ INIT -------------------------------
      recipes               -> { name  -> recipe }
      alias_namespaces      -> { alias -> namespace }
      import_into_namespace -> [ list of namespaces ]
-     functions  -> { name       -> function }
-     data       -> { field      -> value or function } <specific to namespace>
+     functions  -> { name  -> function }
+     data       -> { field -> value } <specific to namespace>
      html       -> {
          head -> {
            script -> javascript text
@@ -42,19 +42,20 @@ INIT -------------------------------
            javascript -> single or list of filenames
          }
          body -> {
-           onLoad   -> function
-           preLoad   -> function
-           on       -> { eventname -> function }
-           contents -> [ element|component instance node...]
+           postLoad -> function
+           preLoad  -> function
+           when     -> { eventname -> function }
+           contents -> [ element|component instance nodes...]
            listen   -> function
          }
         }
 
-   a namespace object has the following fields
-       recipes -> { name -> recipe }
-       namespaces -> { name -> namespace obj }
+     Namespace object with the following fields
+
+       recipes -> { name -> recipe object }
+       namespaces -> { name -> namespace object }
        fun     -> { name  -> function }
-       data    -> { field -> value or function }
+       data    -> { field -> value }
        html    -> {
            script -> javascript text
            title  -> string
@@ -66,7 +67,7 @@ INIT -------------------------------
            onLoad   -> function
            preLoad   -> function
            on       -> { eventname -> function }
-           contents -> [ element|component instance node...]
+           contents -> [ element|component instance nodes...]
            listen   -> function
          }
         }
@@ -219,13 +220,10 @@ const SP = window.SP ||= {};
     const pageNS = loadNamespace( defaultFilename );
     useTest = pageNS.test;
 
-    const bodyR = new BodyRecipe();
-
-    bodyR.setup( pageNS );
+    const bodyR = pageNS.bodyRecipe;
 
     Promise.resolve(bodyR.installHead())
       .then( () => {
-        activateNamespaces();
 
         bodyInst = bodyR.createInstance(bodyR.rootBuilder);
         bodyInst.attachTo(attachPoint || document.body);
@@ -238,12 +236,6 @@ const SP = window.SP ||= {};
   }
 
   SP.init = init;
-
-  // calls the onLoad handlers for
-  // all the loaded namespaces
-  function activateNamespaces() {
-    Object.values( FN_2_NS ).forEach( NS => NS.onLoad && NS.onLoad() );
-  }
 
   function loadNamespace( filename ) {
     let NS = FN_2_NS[filename];
@@ -347,6 +339,7 @@ const SP = window.SP ||= {};
       this.aliasedNS = {};
       const recipes = this.recipes = {};
       this.name = `[namespace ${filename}]`;
+      this.filename = filename;
 
       // build the recipes for this namespace
       Object.keys( node.recipes )
@@ -357,12 +350,30 @@ const SP = window.SP ||= {};
         } );
 
       // injest the data
+      this.data = this.makeData();
+      Object.keys( node.data )
+        .forEach( fld => this.data[fld] = node.data[fld] );
       
-      
-      this.data = node.data || {};
-      this.functions = node.functions || {};
+      this.fun = node.functions || {};
       this.about = node.about;
-      node.html && (this.html = node.html);
+      
+      if (node.html) {
+        const body = html.body || {};
+
+        const rootNode = {
+          contents: [ {
+            tag:'body',
+            contents: body.contents || [],
+          } ]
+        };
+
+        ['preLoad', 'onLoad', 'on', 'data', 'listen', 'functions']
+          .forEach( fld => body[fld] && (rootNode[fld] = body[fld]) );
+
+        const bodyRecipe = this.bodyRecipe = new BodyRecipe();
+        bodyRecipe.head = html.head || {};
+        bodyRecipe.setup( this, rootNode, 'body' );
+      }
     }
 
   } //class NameSpace
@@ -370,38 +381,26 @@ const SP = window.SP ||= {};
   class Recipe extends Node {
 
     setup( NS, recipeData, recipeName ) {
-      this.name = `[recipe: ${recipeName}]`;
+      this.name = `[recipe: '${recipeName}' of ${NS.name}]`;
       this.namespace = NS;
 
+      this.class   = recipeData.class;
       this.onLoad  = recipeData.onLoad;
       this.preLoad = recipeData.preLoad;
+      this.data    = recipeData.data;
+      this.on      = recipeData.on;
       this.attrs   = recipeData.attrs;
       this.fun     = recipeData.functions;
-      
-
-      [ recipeData, NS ]
-        .forEach( src => {
-          [ 'class', 'onLoad', 'preLoad' ]
-            .forEach( k => (src[k] && (this[k] = src[k] )) );
-          [ 'data', 'functions', 'on', 'attrs' ]
-            .forEach( type => {
-              const thisData = recipe[type] ||= {};
-              const inData = src[type];
-              if (inData) {
-                Object.keys( inData )
-                  .forEach( fld => {
-                    if ( ! (fld in thisData) ) {
-                      thisData[fld] = inData[fld];
-                    }
-                  } );
-              }
-            } );
-        } );
 
       //console.log( this.functions, recipe.functions, recipeData.functions, "BURPH" );
       this.namedFillBuilders = {};
-      this.contents = recipeData.contents;
-      this.prepRootBuilder();
+      this.contents = recipeData.contents; // used for prepping root builder
+      const rootBuilder = this.prepRootBuilder();
+      rootBuilder.fillOut();
+
+      // if no child builder was specifically called 'fill'
+      // give the root builder that honor
+      this.fillBuilder ||= rootBuilder;
     }
 
     namespace( alias ) {
@@ -413,34 +412,33 @@ const SP = window.SP ||= {};
       this.namespace.error( `${msg} in recipe '${this.name}'` );
     }
 
+    // makes new builder.
     // this is here for the case of a root component node
     // being an alias for an other component
     // class Recipe
     prepRootBuilder() {
+
       const NS = this.namespace;
 
-      const recipeRoot = this.contents[0];
-      const rootIsAlsoRecipe = NS.findRecipe( recipeRoot.tag );
+      const recipeRootNode = this.contents[0];
+      const rootIsAlsoRecipe = NS.findRecipe( recipeRootNode.tag );
 
       let rootBuilder;
 
       if (rootIsAlsoRecipe) {
+        // (this) recipe coly - recipeRootNode is col/class: overflow
         rootBuilder = rootIsAlsoRecipe.prepRootBuilder();
-        rootBuilder.layer( recipeRoot, this );
+        // rootbuilder is now componentbuilder with tag
+        rootBuilder.layer( recipeRootNode, this );
+        // rootbuilder is now componentbuilder with tag
       } else {
-        rootBuilder = new Builder();
-        rootBuilder.setup( recipeRoot, this );
+        // recipe col - recipeRootNode is div/class: col... 
+        rootBuilder = new ComponentBuilder();
+        rootBuilder.setup( recipeRootNode, this );
+        // rootbuilder is now componentbuilder with tag: div
       }
 
       rootBuilder.recipe = this;
-
-      this.rootBuilder = rootBuilder;
-
-      rootBuilder.fillOut();
-
-      // if no child builder was specifically called 'fill'
-      // give the root builder that honor
-      this.fillBuilder ||= rootBuilder;
 
       return rootBuilder;
     }
@@ -472,26 +470,6 @@ const SP = window.SP ||= {};
 
 
   class BodyRecipe extends Recipe {
-    setup(pageNS) {
-
-      const html = pageNS.html || {};
-      const body = html.body || {};
-
-      const rootNode = {
-        contents: [ {
-          tag:'body',
-          contents: body.contents || [],
-        } ]
-      };
-
-      ['preLoad', 'onLoad', 'on', 'data', 'listen', 'functions']
-        .forEach( fld => body[fld] && (rootNode[fld] = body[fld]) );
-
-      super.setup(pageNS, rootNode, 'body');
-
-      this.head = html.head || {};
-    }
-
     // class BodyRecipe
     installHead() {
       this.head.title && (document.title = this.head.title);
@@ -576,6 +554,29 @@ const SP = window.SP ||= {};
     }
   }  //class BodyRecipe
 
+  class ComponentBuilder extends Node {
+    setup( rootNode, recipe ) {
+      this.attrs = {};
+      this.tag = rootNode.tag;
+      this.name = `${this.tag} in ${recipe.name}`;
+      this.recipe = recipe;
+      this.layer( rootNode, recipe ); //????
+      this.contentBuilders = [];
+      if (this.fill) {
+        if (this.fill === true) {
+          this.recipe.fillBuilder = this;
+          //        this.isDefaultFillBuilder = true;
+        } else {
+          this.recipe.namedFillBuilders[this.fill] = this;
+          //        this.fillBuilderName = this.fill;
+        }
+      }
+    } //setup
+    layer( rootNode, recipe ) {
+      
+    }
+  }
+
   class Builder extends Node {
 
     get key() {
@@ -610,7 +611,7 @@ const SP = window.SP ||= {};
     layer( layerAbove, recipe ) {
       this.layerAbove = layerAbove;
       this.recipe = recipe;
-      //  data only makes sence for instance builders, not element builders
+      //  data only makes sense for instance builders, not element builders
       [ recipe, layerAbove ]
       .forEach ( source => {
         [ 'attrs', 'data', 'on', 'functions' ]

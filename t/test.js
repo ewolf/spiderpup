@@ -64,7 +64,7 @@ const testsToDo = [
      test body/namespace function
 
      test preLoad
-     test onLoad
+     test postLoad
 
      test handles for elements
      test handles for recipes
@@ -433,7 +433,7 @@ function def_namespace( args ) {
   Object.keys( args ).forEach( key => {
     if (key.match( /^(title|include)/ ) ) {
       def.TEST.html.head[key] = args[key];
-    } else if (key.match( /^(listen|onLoad|preLoad)/ ) ) {
+    } else if (key.match( /^(listen|postLoad|preLoad)/ ) ) {
       def.TEST.html.body[key] = args[key];
     } else {
       def.TEST[key] = args[key];
@@ -1341,7 +1341,7 @@ const testHandles = () => {
           res(); }, 100 );
       } );
     },
-    onLoad: c => {  
+    postLoad: c => {  
       c.comp.stuff;
       calls.push( c.el.button.tagName );
       
@@ -1383,7 +1383,7 @@ const testHandles = () => {
     },
   } );
   
-  // onload happens, which
+  // postLoad happens, which
   //   * pushes ['BUTTON']
   // and clicks the button which calls shout that
   // makes a broadcast which is
@@ -2148,7 +2148,7 @@ const testFillEvents = () => {
     recipes: {
       inner: {
         contents: [ el( 'span', 'INNY' ) ],
-        onLoad: c => { console.log( c.name + " doing ONLOAD" );c.fun.log( "START ONLOAD" ); c.event( 'innerLoad', 'INNER LOAD <'+c.id+'>' ); c.event( 'bubbleCaught', 'BUBBLE UP' ); },
+        postLoad: c => { console.log( c.name + " doing POSTLOAD" );c.fun.log( "START POSTLOAD" ); c.event( 'innerLoad', 'INNER LOAD <'+c.id+'>' ); c.event( 'bubbleCaught', 'BUBBLE UP' ); },
       },
 
       holder: {
@@ -2176,8 +2176,8 @@ const testFillEvents = () => {
 
   // innerLoadEvent
   //   so 'inner' component is placed a number of times, each calling its
-  //   onLoad event. the innermost inner is loaded first
-  //     which logs START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+  //   postLoad event. the innermost inner is loaded first
+  //     which logs START POSTLOAD  (for instance of recipe inner in instance of recipe html)',
   //     then to thee holder
   // 
 
@@ -2186,10 +2186,10 @@ const testFillEvents = () => {
   console.log( inst.id, inst.get( 'logs' ), "LOGS" );
 
   is_deeply( inst.get('logs'), [
-    'START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+    'START POSTLOAD  (for instance of recipe inner in instance of recipe html)',
     'INNER LOAD  (for instance of recipe inner in instance of recipe html)',
     'BUBBLE UP  (for instance of recipe inner in instance of recipe html)',
-    'START ONLOAD  (for instance of recipe inner in instance of recipe html)',
+    'START POSTLOAD  (for instance of recipe inner in instance of recipe html)',
     'INNER LOAD  (for instance of recipe inner in instance of recipe html)',
     'BUBBLE UP  (for instance of recipe inner in instance of recipe html)'
   ], 'log order' );

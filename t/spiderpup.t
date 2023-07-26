@@ -176,7 +176,7 @@ my $loader = sub {
             'spano' => {
                 data => { items => [ "A", "B", undef ] },
                 contents => [ 'span' ],
-                onLoad => 'function() { console.log( "got load" ) }',
+                postLoad => 'function() { console.log( "got load" ) }',
                 preLoad => 'function() { console.log( "starting load" ) }',
                 listen => 'function() { console.log( "heard something" ) }',
             },
@@ -200,7 +200,7 @@ is_deeply( $namespaces,
                                            } ],
                            'data' => { 'items' => [ "A", "B", undef ] },
                            'listen' => 'function() { console.log( "heard something" ) }',
-                           'onLoad' => 'function() { console.log( "got load" ) }',
+                           'postLoad' => 'function() { console.log( "got load" ) }',
                            'preLoad' => 'function() { console.log( "starting load" ) }',
                        }
                    },
@@ -219,7 +219,7 @@ $loader = sub {
         page => {
             body => {
                 preLoad => '() => { console.log( "starting to load" ) }',
-                onLoad => '() => { console.log( "loaded" ) }',
+                postLoad => '() => { console.log( "loaded" ) }',
                 'listen' => '() => console.log("I HEAR U")',
                 'contents' => [
                     { 'div' => {
@@ -246,7 +246,7 @@ $loader = sub {
 $namespaces = {};
 Yote::SpiderPup::load_namespace( '', '', $namespaces, undef, $loader );
 my $js = Yote::SpiderPup::to_json( $namespaces, 1 );
-is ($js, '{"/":{"about":"","data":{},"functions":{"beep":function() { alert("BEEP") },"leep":c=>{return alert("leep")}},"html":{"body":{"contents":[{"attrs":{"textContent":"first"},"handle":"FIRSTY","if":c=>{return true},"tag":"div"},{"attrs":{"textContent":"second"},"elseif":()=>{return true},"on":{"click":function() { alert("CLEEK") }},"tag":"div"},{"attrs":{"textContent":c=>{return "third "+c.it.doh+" = "+c.idx.doh"}},"else":1,"foreach":[1,2,3,4],"forvar":"doh","tag":"div"}],"listen":()=>{return console.log("I HEAR U")},"onLoad":()=>{ console.log( "loaded" ) },"preLoad":()=>{ console.log( "starting to load" ) }}},"namespaces":{},"recipes":{}}}', "json checks out" );
+is ($js, '{"/":{"about":"","data":{},"functions":{"beep":function() { alert("BEEP") },"leep":c=>{return alert("leep")}},"html":{"body":{"contents":[{"attrs":{"textContent":"first"},"handle":"FIRSTY","if":c=>{return true},"tag":"div"},{"attrs":{"textContent":"second"},"elseif":()=>{return true},"on":{"click":function() { alert("CLEEK") }},"tag":"div"},{"attrs":{"textContent":c=>{return "third "+c.it.doh+" = "+c.idx.doh"}},"else":1,"foreach":[1,2,3,4],"forvar":"doh","tag":"div"}],"listen":()=>{return console.log("I HEAR U")},"postLoad":()=>{ console.log( "loaded" ) },"preLoad":()=>{ console.log( "starting to load" ) }}},"namespaces":{},"recipes":{}}}', "json checks out" );
 is_deeply( $namespaces,
            {
                '/' => {
@@ -286,7 +286,7 @@ is_deeply( $namespaces,
                                },
                                ],
                            listen => '() => console.log("I HEAR U")',
-                           onLoad => '() => { console.log( "loaded" ) }',
+                           postLoad => '() => { console.log( "loaded" ) }',
                            preLoad => '() => { console.log( "starting to load" ) }',
                        }
                    },
