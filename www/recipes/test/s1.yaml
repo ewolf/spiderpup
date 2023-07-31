@@ -1,0 +1,42 @@
+---
+javascript: >
+  window.jsmessages ||= [];
+  window.jsmessages.push( "NAMESPACE JAVASCRIPT RAN" );
+
+less: >-
+  body {
+    background: wheat;
+    h1 {
+      background: silver;
+      text-align: center;
+      padding: 12px;
+    }
+    .bigger {
+      font-size: larger;
+    }
+    h1 { border: solid 3px }
+  }
+
+page:
+
+  title: Hello Page
+
+  javascript: >
+    window.jsmessages ||= [];
+    window.jsmessages.push( "PAGE JAVASCRIPT RAN" );
+
+  body: 
+    - h1: 
+        class: bigger
+        textContent: hello world
+
+test: >-
+  const tester = SP.tester;
+  tester.html_structure( document.body, 
+                  [ 'body', ['h1', 'hello world', { class: 'bigger' }],
+                  ], 
+                  'body structure' );
+  tester.is( document.title, 'Hello Page', 'title' );
+  tester.is_deeply( window.jsmessages, [ "NAMESPACE JAVASCRIPT RAN", 
+                                         "PAGE JAVASCRIPT RAN" ], 'script messages' );
+  tester.doneTesting();

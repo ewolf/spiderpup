@@ -7,9 +7,6 @@ data:
   heard: {}
   broadcast_count: 0
 
-import_into_namespace: 
-  - s_util
-
 functions:
   inc: >-
     (s,n) => {
@@ -27,7 +24,6 @@ page:
       - knock:
       - knock:
           - pock:
-      - prevnext:
 
 recipes:
   pock:
@@ -42,16 +38,10 @@ recipes:
 test: >-
   const tester = SP.tester;
   tester.html_structure( document.body, 
-                  [ 'body',
+                  [ 'body', { 'data-inst-id': '17' }, 
                       ['div', '0 broadcast(s)' ],
-                      ['div' ], 
-                      ['div', ['span'] ],
-                      ['div',
-                         [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
-                         [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
-                         [ 'a', '', { 'data-if': 'false', style: 'display: none;' } ],
-                         [ 'span', 'next', { 'data-else': 'true' } ]
-                         ],
+                      ['div', { 'data-inst-id': '18' } ], 
+                      ['div', { 'data-inst-id': '19' }, ['span', { 'data-inst-id': '21' } ] ],
                   ],
                   'body structure' );
 

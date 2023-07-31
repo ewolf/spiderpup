@@ -1,0 +1,85 @@
+---
+
+page:
+  title: bouncy recipes
+
+  body:
+    - foo:
+        contents:
+          - zing:
+        fill_first:
+          - label: 
+              textContent: HI
+              style: border: 4px green solid
+
+recipes:
+  zing:
+    - div: I say
+
+  baz:
+    - div:
+      - span:
+          fill: first
+      - section:
+          fill: second
+
+  foo:
+    - baz:
+        fill_second:
+          - label: there
+        contents:
+          - div: ohfoo
+          - div:
+              fill: true
+
+test: >-
+  const tester = SP.tester;
+  tester.html_structure( 
+    document.body, 
+     ['body', ['div', 
+        ['span',
+           [ 'label', 'HI', { style: 'border: 4px solid green;' } ] ],
+        ['section',
+           [ 'label', 'there' ] ],
+        ['div', 'ohfoo' ],
+        ['div', 
+           ['div', 'I say' ]]],
+     ],
+     'body structure' );
+
+  tester.doneTesting();  
+
+#
+# foo should transform to
+#  foo:
+#    - div:
+#      - span:
+#          fill: first
+#      - span:
+#          fill: second
+#          contents:
+#            - label: there
+#      - div: ohfoo
+#      - div:
+#          fill: true
+
+#  the body should look like
+
+#  body:
+#    - div:
+#      - span:
+#          fill: first
+#          contents:
+#            style: border 4px green;
+#            label: HI
+#            
+#      - section:
+#          fill: second
+#          contents:
+#            - label: there
+#      - div: ohfoo
+#      - div:
+#          fill: true
+#          contents:
+#            - div: I say
+#    

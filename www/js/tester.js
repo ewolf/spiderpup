@@ -127,7 +127,7 @@ function html_structure( el, node, msg ) {
   attrs = attrs || {};
   const elAttrs = {};
   for (const node of el.attributes) {
-    if (! node.nodeName.match( /^data-sp(id|lastlistlen|foridx)/) ) {
+    if (! node.nodeName.match( /^data-sp(id|lastlistlen|foridx|-inst-id)/) ) {
       elAttrs[node.nodeName] = node.nodeValue;
     }
   }

@@ -245,7 +245,7 @@ const SP = window.SP ||= {};
   /** return instance for selector */
   SP.lookup_instance = sel => {
     const el = document.querySelector( sel );
-    return el && ID_2_N[el.dataset.instId];
+    return el && ID_2_N[el.dataset.spInstId];
   };
 
   /** return node for query selector  */
@@ -309,12 +309,14 @@ const SP = window.SP ||= {};
     const inst = {
       recipe: conNode.recipe,
       namespace: conNode.recipe.namespace,
+      refresh: function() { refresh(this); },
       rootNode: (key && conNode.recipe.contents[0]) || conNode,
       instNode: conNode,
       it: {},
       idx: {},
       el: {},
       comp: {},
+      _key2instance: {},
       fun: {},
       childInstances: {},
       namedFillElement: {},
@@ -323,7 +325,7 @@ const SP = window.SP ||= {};
 
     inst.attachEl = function(el) {
       this.rootEl = this.defaultFillElement = el;
-      el.dataset.instId = this.id;
+      el.dataset.spInstId = this.id;
     };
 
     inst.broadcastListener = conNode && conNode.listen;
@@ -501,7 +503,9 @@ const SP = window.SP ||= {};
         // create the element if need be
         if (!con_E) {
           if (con_B.isComponent) {
-            con_I ||= createInstance(con_B, inst, key);
+            if (!con_I) {
+              con_I = inst._key2instance[key] = createInstance(con_B, inst, key);
+            }
 
             // if this node has a handle, it means
             // that the component instance has a
@@ -621,8 +625,10 @@ const SP = window.SP ||= {};
                 }
                 else {
                   if (con_B.isComponent) {
-                    const for_I = inst.childInstances[forIDKey]
-                          ||= createInstance(con_B,inst,con_B.key);
+                    let for_I = inst.childInstances[forIDKey];
+                    if (!for_I) {
+                      for_I = inst._key2instance[key] = createInstance(con_B,inst,con_B.key);
+                    }
                     forInstances.push( for_I );
                     for_E = createElement( for_I, con_B );
                     key2el[forIDKey] = for_E;
@@ -856,9 +862,19 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       throw new Error(`unable to load namespace '${filename}'`);
     }
 
+    NS.namespace = NS;
+
     FN_2_NS[filename] = NS;
 
-    NS.fun = NS.functions;
+    NS.fun = {};
+    Object.keys( NS.functions )
+    .forEach( funName => {
+      const origfun = NS.functions[funName];
+      NS.fun[funName] = function() {
+        const prom = origfun( NS, ...arguments );
+        return Promise.resolve( prom )
+      };
+    } );
     NS.filename = filename;
     NS.name = `[N ${filename}]`;
 
