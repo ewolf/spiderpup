@@ -1,0 +1,11 @@
+*~
+*#
+www/data
+Makefile
+_build
+blib
+cover_db
+t
+Build
+*.bak
+MYMETA.*

@@ -763,7 +763,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       prepare the data structrues, then make an
       instance for the page and refresh the page.
    */
-  function init( fileSpaces, defaultFilename, attachPoint ) {
+  function init( fileSpaces, defaultFilename, attachPoint, noTest ) {
 
     sp_filespaces = fileSpaces;
 
@@ -776,7 +776,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     bodyC.recipe = pageNS.contents[0];
     bodyC.namedFillNode = {};
 
-    useTest = pageNS.test && pageNS.html;
+    useTest = (!noTest) && pageNS.test && pageNS.html;
 
     console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
     pageNS.defaultFillNode = pageNS.contents[0];

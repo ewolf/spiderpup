@@ -18,7 +18,7 @@ page:
   title: listener test
  
   body:
-    listen: (s,x,y) => { s.namespace.data.broadcast_count++; return s.namespace.fun.inc( `body '${x}'` ) }
+    listen: (s,x,y) => { debugger; s.namespace.data.broadcast_count++; return s.namespace.fun.inc( `body '${x}'` ) }
     contents:
       - div: s => `${s.namespace.data.broadcast_count} broadcast(s)`
       - knock:
@@ -38,10 +38,10 @@ recipes:
 test: >-
   const tester = SP.tester;
   tester.html_structure( document.body, 
-                  [ 'body', { 'data-inst-id': '17' }, 
+                  [ 'body',
                       ['div', '0 broadcast(s)' ],
-                      ['div', { 'data-inst-id': '18' } ], 
-                      ['div', { 'data-inst-id': '19' }, ['span', { 'data-inst-id': '21' } ] ],
+                      ['div' ], 
+                      ['div', ['span' ] ],
                   ],
                   'body structure' );
 
@@ -52,7 +52,6 @@ test: >-
 
   inst.broadcast( "FIRST" );
 
-  tester.doneTesting();
   
   
     

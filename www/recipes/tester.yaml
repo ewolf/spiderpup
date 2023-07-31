@@ -1,0 +1,69 @@
+---
+
+alias_namespaces:
+  s1: tests/s1
+  s2: tests/s2
+  s3: tests/s3
+  s4: tests/s4
+  s5: tests/s5
+  s6: tests/s6
+
+page:
+  title: run the test suite
+
+  body: 
+    - div: this runs the test suite
+
+test: >-
+  const tester = SP.tester;
+
+  const testNSs = Object.keys( filespaces )
+      .filter( fn => (fn !== defaultFilename) && filespaces[fn].test );
+
+  function testFS( fn ) {
+    const NS = filespaces[fn];
+    console.log( `START '${fn}', clearing doc` );
+    document.body.innerHTML = '';
+    while (document.body.attributes.length > 0) {
+      document.body.removeAttribute(document.body.attributes[0].name);
+    }
+    console.log( `INIT for '${fn}'` );
+    return SP.init( filespaces, fn, document.body, true )
+      .then( () => {
+        console.log( `TEST FOR for '${fn}'` );
+        NS.test && NS.test()
+        console.log( `DONE TEST FOR for '${fn}'` );
+      } );
+  }
+
+  const prom = new Promise( (res,rej) => {
+    let checks = testNSs.length;
+    let ready = false;
+
+    const check = () => {
+      if (ready && checks === 0) {
+          res();
+      }
+    };
+    
+    
+    function nextTest() {
+      if (testNSs.length) {
+        const fn = testNSs.shift();
+        const prom = testFS( fn );
+        Promise.resolve(prom)
+          .then( () => {
+            nextTest();
+            checks--;
+            check();
+          } );
+      } else {
+        ready = true;
+        check();
+      }
+    }
+    nextTest();
+    check();
+  } );
+  prom.then( () => tester.doneTesting() );
+  

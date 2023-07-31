@@ -47,8 +47,6 @@ test: >-
      ],
      'body structure' );
 
-  tester.doneTesting();  
-
 #
 # foo should transform to
 #  foo:
