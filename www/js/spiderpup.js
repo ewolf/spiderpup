@@ -271,7 +271,7 @@ const SP = window.SP ||= {};
     if (node.attrs) {
       const style = node.attrs.style;
       if (style) {
-        newStyle = Object.keys(style).filter( k => style[k] !== '' ).reduce( (h,key) => h[key] = style[key], {} );
+        newStyle = Object.keys(style).filter( k => style[k] !== '' ).reduce( (h,key) => { h[key] = style[key]; return h; }, {} );
       }
     }
 
@@ -805,6 +805,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
           el.className = '';
           val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
         } else if (attr === 'style') {
+          if (val == 1 ) debugger;
           Object.keys( val )
             .forEach( style => el.style[ style ] = val[style] );
         } else if (attr === 'disabled' || attr === 'checked' || attr === 'selected') {
