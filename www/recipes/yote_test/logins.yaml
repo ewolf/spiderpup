@@ -84,8 +84,8 @@ recipes:
     # account and login (if there is an app) on the right
     contents:
       - header:
-          - div:
-              - div:                  
+          - row:
+              - div:
                   class: button
                   on_click: (s,e) => s.broadcast( 'logins:click-logo' )
                   contents:
@@ -141,12 +141,6 @@ recipes:
         c => yote.logout( c.data.appName )
              .then( msg => c.fun.logout_done() )
              .catch( err => c.fun.logout_done() )
-      listen: >-
-        (c,key,msg) => {
-          if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
-            c.data.showMenu = false;
-          }
-        }
 
     contents:
       - div:
@@ -163,8 +157,8 @@ recipes:
                       contents:
                         - span:
                             innerHTML: () => 'avatar &#8964';
+            # button to open login / create thingo
             - div:
-                # button to open login / create thingo
                 elseif: c => c.data.app
                 contents:
                   - button:
@@ -204,16 +198,21 @@ recipes:
       setTitle: (c,title) => c.data.title = title
       show: >-
         c => {
+          debugger;
           // position this in the middle of the page
           // left should be ... (screen width / 2) - (widget width / 2)
           // top should be ... (screen height / 2) - (widget height / 2)
           c.data.showing = true;
+
+          // set the class explicitly here so the client rect can be 
+          // calculated
           c.rootEl.classList.add( 'showing' );
+
           const box = c.rootEl.getBoundingClientRect();
           c.rootEl.style.right = `${Math.round((window.innerWidth / 2) - (box.width/2))}px`;
           c.rootEl.style.top = `${Math.round((window.innerHeight / 2) - (box.height/2))}px`;
         }
-      hide: c => c.rootEl.classList.remove( 'showing' );
+      hide: c => c.data.showing = false
 
     contents:
       - div:

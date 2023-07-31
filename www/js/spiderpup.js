@@ -358,6 +358,7 @@ const SP = window.SP ||= {};
     inst.top = parentInstance ? parentInstance.top : inst;
 
     inst._propagateBroadcast = function(act, msg) {
+      let needsRefresh = false;
       if (this.broadcastListener) {
         this.broadcastListener(this, act, msg );
         needsRefresh = true;
