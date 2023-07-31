@@ -18,7 +18,7 @@ page:
   title: listener test
  
   body:
-    listen: (s,x,y) => { debugger; s.namespace.data.broadcast_count++; return s.namespace.fun.inc( `body '${x}'` ) }
+    listen: (s,x,y) => { s.namespace.data.broadcast_count++; return s.namespace.fun.inc( `body '${x}'` ) }
     contents:
       - div: s => `${s.namespace.data.broadcast_count} broadcast(s)`
       - knock:

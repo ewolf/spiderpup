@@ -108,6 +108,9 @@ sub build_node {
             my $fill_name = $1;
             my $fill_data = $data->{$fld};
             my $fill_con = ($node->{fill_contents} //= {})->{$fill_name} = [];
+            if (ref $fill_data ne 'ARRAY') {
+                die "recipe 'fill_contents' must be array of contents";
+            }
             push @$fill_con, map { build_node($_) } @$fill_data;
         }
     }
@@ -215,7 +218,8 @@ sub yaml_to_js {
         my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader, $include_tests );
         print STDERR Data::Dumper->Dump([values %$filespaces,"WOOF"]);
         $js = "let filespaces = ".to_json( $filespaces, $alphasort ) . ";\n" .
-            'let defaultFilename = '.to_string($default_filename).';';
+            'let defaultFilename = '.to_string($default_filename) . ";\n" .
+            'window.addEventListener("load", ev => init( filespaces, defaultFilename ));';
     };
     if ($@) {
         warn $@;
@@ -259,6 +263,9 @@ sub load_namespace {
 
         # check for aliased imports
         if (my $imports = $yaml->{alias_namespaces}) {
+            if (ref $imports ne 'HASH') {
+                die "alias_namespaces must be a hash, not a '".ref($imports)."'";
+            }
             for my $alias (keys %$imports) {
                 if ($alias =~ /\./) {
                     die "namespace alias may not contain '.' and got '$alias'";

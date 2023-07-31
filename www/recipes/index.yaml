@@ -2,7 +2,7 @@
 
 title: madyote.com
 
-import:
+alias_namespaces:
   logins: yote_test/logins
 
 data:
@@ -47,67 +47,68 @@ listen: >-
     }
   }
 
-body:
-  - yamlShower:
-      data:
-        showing: true;
-        source: /recipe/index.yaml
-      content:
-        - logins.siteHeader:
-            handle: header
+page:
+  body:
+    - yamlShower:
+        data:
+          showing: true;
+          source: /recipes/index.yaml
+        contents:
+          - logins.siteHeader:
+              handle: header
 
-        - logins.loginBodyWidget:
-            handle: loginBodyWidget
-            if: s => s.data.pageMode === 'login-control'
+          - logins.loginBodyWidget:
+              handle: loginBodyWidget
+              if: s => s.data.pageMode === 'login-control'
 
-        - section:
-            - h1: MADYOTEY
-            - p: well, what do i want to say here? Stuff I want to do.
+          - section:
+              - h1: MADYOTEY
+              - p: well, what do i want to say here? Stuff I want to do.
 
-            - outline:
-                data:
-                title: Yote Recipes
-                items:
-                  - server
-                  - spiderpup
-                  - objectstore
-                  - recordstore
+              - outline:
+                  data:
+                  title: Yote Recipes
+                  items:
+                    - server
+                    - spiderpup
+                    - objectstore
+                    - recordstore
 
-            - outline:
-                data:
-                title: Yote Apps
-                items:
-                  - spuc
-                  - GRU
+              - outline:
+                  data:
+                  title: Yote Apps
+                  items:
+                    - spuc
+                    - GRU
 
-            - outline:
-                data:
-                title: ToDo Items
-                items:
-                  - caching the generated javascript. if generated javascript is older than the oldest yaml, just serve it
-                  - make CLI account tools
-                  - make CLI setup and configuration tool
-                  - extend lib directory to /opt/yote/lib
-                  - put the todo, recipes, etc in the store and have this fetch from the store.
-                  - make login page for this. 
-                  - allow for recipes as aliases to other recipes with their data, function, etc sections modifying them, so they get translated/expanded into aliased w/ data. i think the problem was that the root node of the component got messed up if its just an other component. so on server side, gotta sort of macro that, fold that into aliasedcomponent + its data
-                  - spiderpup.pm returns raw yaml if you give it the /recipes directory use this as a page control
-                  - a control on the page that reveals the yaml that created it
-                  
-                  - try to adhere to a feature freeze for spiderpup and yote. see what can be accomplished with it as is. include a wishlist for future features
+              - outline:
+                  data:
+                  title: ToDo Items
+                  items:
+                    - caching the generated javascript. if generated javascript is older than the oldest yaml, just serve it
+                    - make CLI account tools
+                    - make CLI setup and configuration tool
+                    - extend lib directory to /opt/yote/lib
+                    - put the todo, recipes, etc in the store and have this fetch from the store.
+                    - make login page for this. 
+                    - allow for recipes as aliases to other recipes with their data, function, etc sections modifying them, so they get translated/expanded into aliased w/ data. i think the problem was that the root node of the component got messed up if its just an other component. so on server side, gotta sort of macro that, fold that into aliasedcomponent + its data
+                    - spiderpup.pm returns raw yaml if you give it the /recipes directory use this as a page control
+                    - a control on the page that reveals the yaml that created it
+                    
+                    - try to adhere to a feature freeze for spiderpup and yote. see what can be accomplished with it as is. include a wishlist for future features
 
-                  - component styles. come up with rules of thumb
-                  - spiderpup example page where you can practice spiderpup
-                  - POD Yote packages
-                  - write learn yote by example
-              
-            - outline:
-                data:
-                title: ToDo Items
-                items:
-                  - make madyote.com its own repo / place this file and others in it
-                  - logging to /opt/yote/log/yote.log (this is in yote.service)
-                  - 
+                    - component styles. come up with rules of thumb
+                    - spiderpup example page where you can practice spiderpup
+                    - POD Yote packages
+                    - write learn yote by example
+                
+              - outline:
+                  data:
+                  title: ToDo Items
+                  items:
+                    - make madyote.com its own repo / place this file and others in it
+                    - logging to /opt/yote/log/yote.log (this is in yote.service)
+                    - 
 
 recipes:
   yamlShower:
@@ -119,7 +120,7 @@ recipes:
               if: s => s.data.showing && s.data.source
               src: s => s.data.source
           - div:
-              internalContent: 1
+              fill: 1
 
   outline:
     data:

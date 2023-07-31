@@ -45,11 +45,11 @@ recipes:
                   on_click: (c,e) => c.broadcast( 'pageMode', 'default' )
                   contents:
                     - img:
-                        if: c => c.get( 'logoImage' )
-                        src: c => c.get( 'logoImage' )
+                        if: c => c.data.logoImage
+                        src: c => c.data.logoImage
                     - div:
                         else:
-                        textContent: c => c.get( 'logoText' ) || 'LOGO'
+                        textContent: c => c.data.logoText || 'LOGO'
               - loginHeaderWidget:
                   handle: loginHeaderWidget
 
@@ -75,7 +75,7 @@ recipes:
     functions:
       logout_done: >-
         c => {
-          c.set('show-menu',undefined);
+          c.data['show-menu'] = undefined;
           c.broadcast( 'logout' );
         }
       logout: >-
@@ -90,7 +90,7 @@ recipes:
     listen: >-
       (c,key,msg) => {
         if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
-          c.set( 'show-menu', false );
+          c.data['show-menu'] = false;
         }
       }
     contents:
@@ -99,14 +99,14 @@ recipes:
           contents:
             - div:
                 # logged in / logout
-                if: c => c.get( 'login' )
+                if: c => c.data.login
                 contents:
                   - button:
                       type: button
                       on_click: >-
                          (c,e) => {
                            const show = !!!c.get('show-menu');
-                           c.set( 'show-menu', show );
+                           c.data['show-menu'] = show;
                            if (show) {
                            
                            }
@@ -116,7 +116,7 @@ recipes:
                             innerHTML: () => 'avatar &#8964';
             - div:
                 # button to open login / create thingo
-                elseif: c => c.get( 'app' )
+                elseif: c => c.data.app
                 contents:
                   - button:
                       type: button
@@ -125,7 +125,7 @@ recipes:
                       on_click: (c,e) => {  c.get('bodyWidget').set('mode','show-login'); c.broadcast( 'pageMode', 'login-control' ); }
             - ul:
                 handle: menu
-                if: c => c.get( 'show-menu' )
+                if: c => c.data['show-menu']
                 contents:
                   - li: identity
                   - li: 
@@ -144,7 +144,7 @@ recipes:
     functions:
       clear: >-
         c => {
-          c.set( 'err' );
+          c.data.err = undefined;
           ['login','loginPassword','email','login','password']
             .forEach( ctl => c.el[ctl] && (c.el[ctl].value = '' ) );
         }
@@ -156,7 +156,7 @@ recipes:
             .then( acct => { c.fun.clear();
                              c.broadcast( 'login', acct );
                            })
-            .catch( err => { c.set( 'err', err ); c.refresh() } );
+            .catch( err => { c.data.err = err; c.refresh() } );
         }
       createAccount: >-
         (c,handle,email,password) => {
@@ -165,13 +165,13 @@ recipes:
                      .then( acct => { c.fun.clear();
                                       c.broadcast( 'login', acct );
                                      } )
-           .catch( err => { c.set( 'err', err ); c.refresh() } )
+           .catch( err => { c.data.err = err; c.refresh() } )
         }
 
     listen: >-
       (c,key,msg) => {
         if (key === 'keyup' && msg === 'Escape' ) {
-          c.set( 'mode', 'login' );
+          c.data.mode = 'login';
           c.fun.clear();
         }
       }
@@ -187,24 +187,24 @@ recipes:
           contents:
             - createAccountForm:
                 handle: createAccountForm
-                if: c => c.get( 'mode' ) === 'show-create-account'
+                if: c => c.data.mode === 'show-create-account'
             - editProfileForm:
                 handle: editProfileForm
-                elseif: c => c.get( 'mode' ) === 'show-edit-profile'
+                elseif: c => c.data.mode === 'show-edit-profile'
             - loginForm:
                 handle: loginForm
                 else:
             - div:
                 # error
-                if: c => c.get( 'err' )
+                if: c => c.data.err
                 style: background-color: pink; border: solid 1px; padding: 2px;
-                textContent: c => c.get( 'err' )
+                textContent: c => c.data.err
   
   loginForm:
     functions:
       clear: >-
         c => {
-          c.set( 'err' );
+          c.data.err = undefined;
           ['login','loginPassword','email','login','password']
             .forEach( ctl => c.el[ctl] && (c.el[ctl].value = '' ) );
         }

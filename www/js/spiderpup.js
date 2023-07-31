@@ -4,7 +4,6 @@
  TODO:
    postLoad
    tests:
-     * listen
      * instance events
      * instance looping
      * loops in loops
@@ -217,13 +216,7 @@ const SP = window.SP ||= {};
 {
   console.warn( "class handling should be rewritten to additive classes and calculated classes" );
   console.warn( "need to put fill contents in for looped instances" );
-
-  let sp_filespaces;
-
-  window.onload = ev => {
-    console.log( filespaces, 'filespaces' );
-    init( filespaces, defaultFilename );
-  }
+  let sp_filespaces, sp_defaultFilename;
 
   // --------  CODE  ------
 
@@ -347,6 +340,24 @@ const SP = window.SP ||= {};
       this.top._propagateBroadcast( key, message) && this.top.refresh();
     };
 
+    inst.emitEvent = function( event, result ) {
+      this.parent && this.parent.handleEvent( event,result );
+    }
+
+    inst.handleEvent = function( event, result ) {
+      const listener = this.when && this.when[event];
+      const handled = listener && listener( this, result );
+      if (handled) {
+        check(this) && this.refresh();
+      }
+      else if (this.parent
+               && this.parent.handleEvent
+               && this.parent.handleEvent( event, result ) )
+      {
+        check( this.parent ) && this.parent.refresh();
+      }
+               
+    }
 
     inst.data = makeData( inst );
 
@@ -766,6 +777,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
   function init( fileSpaces, defaultFilename, attachPoint, noTest ) {
 
     sp_filespaces = fileSpaces;
+    sp_defaultFilename = defaultFilename;
 
     const pageNS = loadNamespace( defaultFilename );
 
