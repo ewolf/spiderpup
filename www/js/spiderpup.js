@@ -614,6 +614,7 @@ const SP = window.SP ||= {};
           // create elements and maybe child instances for
           // each iteration of the loop
           if (con_B.foreach && con_B.forvar) {
+            con_E.dataset.spforidx = '0';
             const forInstances = forKey2I[key] = [con_I];
             const for_Es = forKey2E[key] = [con_E];
             const list = forKey2List[key] = con_B.foreach(inst);
@@ -1117,7 +1118,6 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
                 // style is a special attr that is a data structure
                 const oldStyle = rec.attrs.style;
 
-                overlayFromTo( overlay.attrs, rec.attrs );
 
                 // the overlay just overlayed one layer depth so
                 // would clobber style which has depth of two..so
