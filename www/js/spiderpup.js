@@ -1,4 +1,15 @@
 /*
+   TODO:
+     instance node attrs to root element?
+     test listen
+     test events
+     test component looping
+     test component looping with named contents and contents
+  
+ */
+
+
+/*
 ABOUT -----------------------------
 
  Convert a json data structure into a
@@ -205,7 +216,6 @@ INIT -------------------------------
 const SP = window.SP ||= {};
 {
   console.warn( "class handling should be rewritten to additive classes and calculated classes" );
-  console.warn( "need to put named fill contents in" );
   console.warn( "need to put fill contents in for looped instances" );
 
   let sp_filespaces;
@@ -217,14 +227,23 @@ const SP = window.SP ||= {};
 
   // --------  CODE  ------
 
+  const ID_2_N = [];
   const FN_2_NS = {};
   let lastid = 1;
   let useTest = false;
 
   /** return next serialized id  */
-  function nextid() {
-    return lastid++;
+  function id(node) {
+    node.id = ID_2_N.length;
+    ID_2_N.push( node);
   }
+
+  SP.lookup = id => ID_2_N[id];
+
+  SP.lookup_node = se => {
+    const el = document.querySelector( se );
+    return el && ID_2_N[el.dataset.spid];
+  };
   
   const nodeFields = ['tag','fill','key',
                       'handle','comp',
@@ -244,7 +263,8 @@ const SP = window.SP ||= {};
     newStyle && (newnode.attrs.style = newStyle);
 
     newnode.contents = (node.contents||[]).map( c => copyNode( c, recipe ) );
-    newnode.id = nextid();
+
+    id(newnode);
 
     if (newnode.fill === true) {
       recipe.defaultFillNode = newnode;
@@ -277,12 +297,13 @@ const SP = window.SP ||= {};
   }
 
   function createInstance( conNode, parentInstance, key ) {
+    console.warn( 'chccck on rootNode here...is it quite right? only body has no key' );
     const inst = {
-      id: nextid(),
       recipe: conNode.recipe,
 //      namespace: conNode.namespace || conNode.recipe.namespace,
       namespace: conNode.recipe.namespace,
       rootNode: (key && conNode.recipe.contents[0]) || conNode,
+      instNode: conNode,
       it: {},
       idx: {},
       el: {},
@@ -292,6 +313,25 @@ const SP = window.SP ||= {};
       attachTo: function(el) { this.rootEl = el },
       namedFillElement: {},
     };
+    id (inst);
+
+
+    inst.broadcastListener = conNode && conNode.listen;
+
+    inst.top = parentInstance ? parentInstance.top : inst;
+
+    inst._propagateBroadcast = function(act, msg) {
+      let needsRefresh = false;
+      this.broadcastListener && this.broadcastListener(this,act, msg ) && (needsRefresh = true);
+      // propagates here and each child with the given message
+      Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) && (needsRefresh=true) );
+      return needsRefresh;
+    }
+
+    inst.broadcast = function( key, message ) {
+      this.top._propagateBroadcast(act,msg) && this.top.refresh();      
+    }
+
 
     inst.data = makeData( inst );
 
@@ -370,12 +410,11 @@ const SP = window.SP ||= {};
 
   function refresh( inst ) {
     const el = inst.rootEl;
-    const elNode = inst.rootNode;
-    _refresh_el( inst, el, elNode );
+    _refresh_el( inst, el, inst.rootNode, inst.instNode );
   }
 
-  function _refresh_el( inst, el, elNode ) {
-    _refresh_el_attrs( inst, el, elNode );
+  function _refresh_el( inst, el, elNode, instNode ) {
+    _refresh_el_attrs( inst, el, elNode, instNode );
     _refresh_el_children( inst, el, elNode.contents );
   }
 
@@ -505,11 +544,9 @@ const SP = window.SP ||= {};
           showThis = lastConditionalWasTrue;
           con_E.dataset.ifCondition = conditionalDone; //for debugging
           console.log(`IF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
-          debugger;
         }
         else if (con_B.elseif) {
           console.log(`ELSIF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
-          debugger;
           if (!lastWasConditional) {
             inst.recipe.error( 'elseif must be preceeded by if or elseif' );
           }
@@ -611,9 +648,6 @@ const SP = window.SP ||= {};
       .filter( con_B => showElementWithID[con_B.key] )
       .forEach( con_B => {
         const key = con_B.key;
-      if (key === undefined) debugger;
-
-//        console.log( con_B, `CHECKING <${key}>` );
         const con_E = nodeID2el[key];
         const instance_R = con_B.isComponent && con_B.recipe;
 
@@ -685,8 +719,11 @@ const SP = window.SP ||= {};
 
   } //refresh
 
-  function _refresh_el_attrs( inst, el, elNode ) {
+  function _refresh_el_attrs( inst, el, elNode, instNode ) {
+    instNode ||= elNode;
     const attrs = elNode.attrs;
+console.warn( 'need to make sure instNode has all the attrs from elNode overlayered in' );
+    debugger;
 
     attrs && Object.keys(attrs)
       .forEach( attr => {
@@ -725,17 +762,17 @@ const SP = window.SP ||= {};
     // special case, treat body element as a recipe root
     const bodyC = pageNS.contents[0];
     bodyC.recipe = pageNS.contents[0];
-//    bodyC.isComponent = true;
     bodyC.namedFillNode = {};
-    
 
     useTest = pageNS.test;
 
+    console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
+    const bodyInst = createInstance( pageNS.contents[0] );
+    bodyInst.attachTo( document.body );
+    bodyInst.namespace = pageNS;
+
     Promise.resolve(pageNS.installHead())
       .then( () => {
-        const bodyInst = createInstance( pageNS.contents[0] );
-        bodyInst.attachTo( document.body );
-        bodyInst.namespace = pageNS;
         refresh( bodyInst );
         if (useTest) {
           pageNS.test();
@@ -753,7 +790,7 @@ const SP = window.SP ||= {};
 
     node.isPrepped = true;
 
-    node.id = nextid();
+    id( node );
 
     const compoRecipe = namespace.recipeForTag( node.tag );
     if (compoRecipe) {
@@ -774,11 +811,9 @@ const SP = window.SP ||= {};
         // this line sometimes fails due to out of orderness
         root_N = prepNode(root_N, root_R.namespace,root_R);
       } else {
-//        root_N = prepNode(root_N, node.recipe.namespace,root_N.recipe);
         root_N = prepNode(root_N, node.recipe.namespace, node.recipe);
       }
       node.key = node.forvar ? `${node.id}_0` : node.id;
-      if (node.key === undefined) debugger;
 
     } else { // is Element
       node.name = `[E ${node.tag}#${node.id}]`;
@@ -792,10 +827,7 @@ const SP = window.SP ||= {};
         recipe.namedFillNode[node.fill] = node;
       }
       node.key = node.forvar ? `${node.id}_0` : node.id;
-      if (node.key === undefined) debugger;
     }
-
-    if (node.key === undefined) debugger;
 
     // the contents for a compoRecipe belong to the recipe
     //  that the compoRecipe is embedded in
@@ -866,7 +898,7 @@ const SP = window.SP ||= {};
     );
 
     // serialize this namespace
-    NS.id = nextid();
+    id (NS);
 
     NS.contents = [];
 
@@ -1007,14 +1039,13 @@ const SP = window.SP ||= {};
       Object.keys( NS.recipes || {} )
         .forEach( recipeName => {
           const recipe = NS.recipes[recipeName];
-          recipe.id = nextid();
+          id (recipe);
           recipe.name = `[R ${recipeName}#${recipe.id}]`;
           recipe.namespace = NS;
           recipe.namedFillNode = {};
           recipe.attrs ||= {};
           recipe.isRecipe = true;
           recipes.push( recipe );
-//          if (recipe.contents[0].id === undefined) debugger;
           traverse( recipe );
         } );
     } );
@@ -1031,7 +1062,6 @@ const SP = window.SP ||= {};
         rec.overlaysRecipe = overlaidRecipe;
         console.log( `${rec.name} overlays ${overlaidRecipe.name}` );
       }
-//      if (rec.contents[0].id === undefined) debugger;
     } );
     
     const id2done = {};
@@ -1095,9 +1125,6 @@ console.log( rec.contents[0].id, "IDO" );
                 overlayFromTo( rootNode.attrs, rec.attrs );
                 rec.contents[0].attrs = rec.attrs;
 
-                if (rec.contents[0].id === undefined) debugger;
-
-
                 id2done[ rec.id ] = rec;
               }
             } else {
@@ -1115,11 +1142,7 @@ console.log( rec.contents[0].id, "NO" );
               rec.contents[0].attrs = rec.attrs;
 
               id2done[ rec.id ] = rec;
-
-                if (rec.contents[0].id === undefined) debugger;
-
             }
-      if (rec.contents[0].id === undefined) debugger;
           } );
     } //recipes completed/linked together
 
