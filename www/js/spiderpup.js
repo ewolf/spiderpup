@@ -291,10 +291,13 @@ const SP = window.SP ||= {};
       childInstances: {},
       attachTo: function(el) { this.rootEl = el },
     };
-    
-    
 
     inst.data = makeData( inst );
+
+    if (conNode.recipe) {
+      overlayFromTo( conNode.recipe.data, inst.data );
+    }
+
     if (parentInstance) {
       inst.parent = parentInstance;
       parentInstance.childInstances[key] = inst;
@@ -330,7 +333,7 @@ const SP = window.SP ||= {};
           const prom = onfun( inst, ...arguments );
           return Promise.resolve( prom )
             .then( () => {
-              if ( inst.check() ) refresh(inst);
+              if ( check(inst) ) refresh(inst);
             } );
         };
         el.addEventListener( evname, evfun );
@@ -478,20 +481,20 @@ const SP = window.SP ||= {};
         }
         else if (con_B.elseif) {
           if (!lastWasConditional) {
-            this.recipe.error( 'elseif must be preceeded by if or elseif' );
+            inst.recipe.error( 'elseif must be preceeded by if or elseif' );
           }
           if (conditionalDone) {
             lastConditionalWasTrue = false;
             con_E.dataset.elseIfCondition = 'n/a'; //for debugging
           } else {
-            lastConditionalWasTrue = conditionalDone = con_B.elseif(this);
+            lastConditionalWasTrue = conditionalDone = con_B.elseif(inst);
             con_E.dataset.elseIfCondition = conditionalDone; //for debugging
             showThis = lastConditionalWasTrue;
           }
         }
         else if (con_B.else) {
           if (! lastWasConditional ) {
-            this.recipe.error( 'else must be preceeded by if or elseif' );
+            inst.recipe.error( 'else must be preceeded by if or elseif' );
           }
           if (conditionalDone) {
             lastConditionalWasTrue = false;
@@ -517,7 +520,7 @@ const SP = window.SP ||= {};
           if (con_B.foreach && con_B.forvar) {
             const forInstances = forNodeID2I[key] = [con_I];
             const for_Es = forNodeID2E[key] = [con_E];
-            const list = forNodeID2List[key] = con_B.foreach(this);
+            const list = forNodeID2List[key] = con_B.foreach(inst);
 
             if (list.length === 0) {
               con_E.style.display = 'none'; // hide the first
@@ -534,14 +537,14 @@ const SP = window.SP ||= {};
                 let for_E = nodeID2el[forIDKey];
                 if (for_E) {
                   if (instance_R) {
-                    const for_I = this.childInstances[forIDKey];
+                    const for_I = inst.childInstances[forIDKey];
                     forInstances.push( for_I );
                   }
                 } 
                 else {
                   if (instance_R) {
-                    const for_I = this.childInstances[forIDKey]
-                          ||= instance_R.createInstance(con_B,this);
+                    const for_I = inst.childInstances[forIDKey]
+                          ||= createInstance(con_B,inst,con_B.key);
                     forInstances.push( for_I );
                     for_E = inst_B.buildElement(for_I,con_B);
                     nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
@@ -549,7 +552,7 @@ const SP = window.SP ||= {};
                     for_I.attachTo( for_E );
                     for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
                   } else {
-                    for_E = con_B.buildElement(this);
+                    for_E = createElement( inst, con_B );
                   }
                   for_E.dataset.spforidx = i;
                   el.append( for_E );
@@ -558,7 +561,7 @@ const SP = window.SP ||= {};
               }
             }
           } else if (con_B.foreach || con_B.forvar) {
-            this.recipe.error( 'foreach and forvar must both be present' );
+            inst.recipe.error( 'foreach and forvar must both be present' );
           }
 
         } else {
@@ -585,7 +588,7 @@ const SP = window.SP ||= {};
         if (list) { // foreach items
 
           const for_Es = forNodeID2E[key];
-          const forInstances = forNodeID2Instances[key];
+          const forInstances = forNodeID2I[key];
           for (let i=0; i<list.length; i++ ) {
             //console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
             if (instance_R) {
@@ -605,6 +608,8 @@ const SP = window.SP ||= {};
               console.warn( "CHECK FOR NAMED FILL" );
 
             } else {
+              inst.it[ con_B.forvar ] = list[i];
+              inst.idx[ con_B.forvar ] = i;
               _refresh_el( inst, for_Es[i], con_B );
             }
           }
