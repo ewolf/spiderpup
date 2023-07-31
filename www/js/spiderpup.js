@@ -30,7 +30,7 @@ INIT -------------------------------
  The json data structure is a hash of filenames to
  namespace objects. The default filename corresponds
  to the namespace object that is used to attach the
- body component to the document.
+ body recipe to the document.
 
  Init
    * updates the namespace and recipes attached to it
@@ -41,31 +41,34 @@ INIT -------------------------------
 
  NAMESPACE DATA STRUCTURE --------------------------
 
-   a namespace has fields:
+    PARAMETERS
 
-     about                 -> "text talking about this namespace"
-     recipes               -> { name  -> recipe }
-     alias_namespaces      -> { alias -> namespace filename }
-     import_into_namespace -> [ list of namespace filenames ]
-     functions  -> { name  -> function }
-     data       -> { field -> value } <specific to namespace>
-     html       -> {
-         head -> {
-           script -> javascript text
-           title  -> string
-           style  -> css text
-           css -> single or list of filenames
-           javascript -> single or list of filenames
-         }
-         body -> {
-           init     -> function // when body instance created
-           postLoad -> function // when body placed on page
-           when     -> { eventname -> function }
-           contents -> [ element|component instance nodes...]
-           listen   -> function
-         }
-        }
-     // the following are calculated and added
+       about                 -> "text talking about this namespace"
+       recipes               -> { name  -> recipe }
+       alias_namespaces      -> { alias -> namespace filename }
+       import_into_namespace -> [ list of namespace filenames ]
+       functions  -> { name  -> function }
+       data       -> { field -> value } <specific to namespace>
+       html       -> {
+           head -> {
+             script -> javascript text
+             title  -> string
+             style  -> css text
+             css -> single or list of filenames
+             javascript -> single or list of filenames
+           }
+           body -> {
+             init     -> function // when body instance created
+             postLoad -> function // when body placed on page
+             when     -> { eventname -> function }
+             contents -> [ element|recipe instance nodes...]
+             data     -> { field -> value }
+             listen   -> function
+           }
+          }
+
+    CALCULATED
+
        id -> serialized number
        name -> "[namespace foo]"
        filename   -> "filename"
@@ -80,28 +83,31 @@ INIT -------------------------------
 
        fun -> { name -> function (with namespace as first arg) }
 
-       // methods
+    METHODS
        -> error( msg ) throws an error and errors to console
        -> recipeForTag( tag ) -> returns recipe node (if any matches tag)
 
  RECIPE DATA STRUCTURE -----------------------
 
-  a component (recipe) node has fields
-    functions  -> { name -> function }
-    data       -> { field -> value }
-    when       -> { component event -> function }
-    listen     -> function
-    postLoad   -> function
-    contents   -> [single element or component node]
-    fill_contents -> { name -> [element or component nodes] }
+    PARAMETERS
 
-    // the following are calculated and added to recipe
+       functions  -> { name -> function }
+       data       -> { field -> value }
+       when       -> { component event -> function }
+       listen     -> function // listens for broadcasts
+       postLoad   -> function // run after component is placed on the page
+       contents   -> [single element or component node]
+       fill_contents -> { name -> [element or component nodes] }
+
+    CALCULATED
+
        id -> serialized number
        name -> "[namespace foo]"
        defaultFillNode -> element node
        namedFillNode -> { name -> element node }
 
-    Recipe Object fields/methods
+    METHODS
+
        rootBuilder -> Component Builder for this recipe
        namedFillBuilders -> { name -> Builder to add named fill content to }
        fillBuilder -> Builder where to put default fill content to
@@ -547,7 +553,7 @@ const SP = window.SP ||= {};
 
             con_I.attachEl( con_E );
           }
-          else { // element not instance
+          else { // it is an element,  not an instance
             con_E = createElement( inst, con_B );
 
             // check if this is a named or default fill node
