@@ -58,7 +58,8 @@ INIT -------------------------------
            javascript -> single or list of filenames
          }
          body -> {
-           postLoad -> function
+           init     -> function // when body instance created
+           postLoad -> function // when body placed on page
            when     -> { eventname -> function }
            contents -> [ element|component instance nodes...]
            listen   -> function
@@ -387,6 +388,12 @@ const SP = window.SP ||= {};
       inst.parent = parentInstance;
       parentInstance.childInstances[key] = inst;
     }
+
+    // run the instance init  
+    if (conNode.init) {
+      conNode.init( inst );
+    }
+
     return inst;
   } // createInstance function
 
@@ -1030,8 +1037,10 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       const body = NS.html.body || {};
 
       const rootNode = {
-          tag:'body',
-          contents: body.contents || [],
+        tag:'body',
+        contents: body.contents || [],
+        init: body.init,
+        postLoad: body.postLoad,
       };
 
       NS.contents.push( rootNode );

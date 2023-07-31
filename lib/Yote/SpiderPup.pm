@@ -48,7 +48,7 @@ sub encode_attrs {
 
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
-        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|postLoad)$/) {
+        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|init|handle|postLoad)$/) {
             $node->{$field} = $val;
         }
         elsif ($field eq 'else') {
@@ -334,11 +334,6 @@ sub load_namespace {
                 ($namespace->{html}{head}{title} = $page->{title});
 
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename );
-            for my $targ (qw( listen postLoad )) {
-                if ($page->{$targ}) {
-                    $namespace->{html}{body}{$targ} = $page->{$targ};
-                }
-            }
         } #if a body
 
         return $yaml_file;
