@@ -1,6 +1,9 @@
 ---
 
 less: >-
+  .button {
+
+  }
   .login-widget {
       ul {
           position: absolute;
@@ -78,6 +81,7 @@ recipes:
           c.data['show-menu'] = undefined;
           c.broadcast( 'logout' );
         }
+
       logout: >-
         c => yote.logout( c.get('appName') )
              .then( msg => c.fun.logout_done() )
@@ -87,12 +91,14 @@ recipes:
         (c,w) => {
           c;
         }
-    listen: >-
-      (c,key,msg) => {
-        if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
-          c.data['show-menu'] = false;
+
+      listen: >-
+        (c,key,msg) => {
+          if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
+            c.data['show-menu'] = false;
+          }
         }
-      }
+
     contents:
       - div:
           class: login-widget

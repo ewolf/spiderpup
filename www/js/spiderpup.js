@@ -1038,6 +1038,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
       const rootNode = {
         tag:'body',
+        data: body.data || {},
         contents: body.contents || [],
         init: body.init,
         postLoad: body.postLoad,

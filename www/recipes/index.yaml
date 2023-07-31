@@ -80,6 +80,12 @@ page:
 
                 - outline:
                     data:
+                      title: The Stack
+                      items:
+                        - need a global state for logins and stuff, a root instance that is parent to everything. have to decide what is under that though. could be page namespace instance or body instance. what happens for aliased namespaces then too? what does the heirarchy look like? when an aliased namespace has something change, its children instances are just of the recipes on that page? draw this out on paper. s.g perhaps for global
+
+                - outline:
+                    data:
                       title: Yote Recipes
                       items:
                         - server
@@ -153,4 +159,4 @@ recipes:
                             textContent: s => s.it.item[0]
                         - span:
                             textContent: s => s.it.item
-                            else:
+                            else: true

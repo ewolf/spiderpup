@@ -1,19 +1,22 @@
-title: rando
-
-body:
-  data:
-    rando: () => Math.random();
-  contents:
-    - h1: random number
-    - div: the number is
-    - div: s => s.data.rando
-    - div:
-        textContent: low
-        if: s => s.data.rando < .5
-    - div:
-        textContent: high
-        else: true
-    - button:
-        textContent: next
-        on_click: s => s.data.rando = Math.random()
+page:
+  title: rando
+  body:
+    contents:
+      - h1: simple counter demo
+      - counter
+      - counter:
+          data:
+            incr: 10
         
+recipes:
+  counter:
+    data:
+      incr: 0
+    contents:
+      - div: 
+        - div: () => Math.random()
+        - button:
+            textContent: s => `this button has been pressed ${s.data.incr} times`
+            on_click: s => s.data.incr++
+      
+    
