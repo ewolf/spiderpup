@@ -2,11 +2,18 @@ title: embed stuff in recipe instances too
 
 less: .ilb { display: inline-block; border: solid 4px blue; }
 
+import_into_namespace: 
+  - s_util
+
 page:
   body: 
     - foo:
     - foo:
       - section: MORE
+    - prevnext:
+        data:
+          links: [ true, 's3.html' ]
+    
 
 recipes:
   foo:
@@ -35,7 +42,14 @@ test: >-
                       [ 'span', 'FOO ' ],
                       [ 'div', { class: 'ilb' },
                         ['section', 'MORE']],
-                      [ 'span', ' END' ]]],
+                      [ 'span', ' END' ]],
+                      ['div', 
+                         [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                         [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                         [ 'a', 'next', { href: 's3.html', 'data-if': 'true' } ],
+                         [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+                         ],
+                  ],
                   'body structure' );
     doneTesting();
 

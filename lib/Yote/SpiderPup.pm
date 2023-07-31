@@ -30,7 +30,7 @@ sub build_recipe {
     my $recipe = {};
     my $con = $recipe->{contents} = [];
 
-    if (@{$recipe_data->{contents}||[]} == 0) {
+    if (@{$recipe_data->{contents}||[]} == 0 && $name ne 'body') {
         die "recipe '$name' must contain contents";
     }
 
@@ -272,8 +272,8 @@ sub load_namespace {
 
         # check for imports directly to namespaces
         push @{$namespace->{import_into_namespace}},
+            map { load_namespace( $root_directory, "recipes/$_.yaml", $filespaces, $root_namespace, $yaml_loader ) }
             @{$yaml->{import_into_namespace}||[]};
-
         
         #
         # build the recipes

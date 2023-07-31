@@ -1,9 +1,15 @@
 
+import_into_namespace: 
+  - s_util
+
 page:
   title: example click counter
 
   body:
     - testapp:
+    - prevnext:
+        data:
+          links: [ true, 's4.html' ]
 
 recipes:
   testapp:
@@ -17,7 +23,14 @@ recipes:
 test: >-
   html_structure( document.body,
                   [ 'body',
-                    ['button','0']],
+                    ['button','0'],
+                    ['div', 
+                       [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                       [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                       [ 'a', 'next', { href: 's4.html', 'data-if': 'true' } ],
+                       [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+                       ],
+                  ],
                   'doc body');
   const butt = qs( 'button' );
   const l = butt.click();
@@ -25,13 +38,27 @@ test: >-
   console.log( "clicked" );
   html_structure( document.body,
                   [ 'body',
-                    ['button','1']],
+                    ['button','1'],
+                    ['div', 
+                       [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                       [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                       [ 'a', 'next', { href: 's4.html', 'data-if': 'true' } ],
+                       [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+                       ],
+                    ],
                   'doc body after button press once');
   butt.click();
   await sleep(100);
   console.log( "clicked" );
   html_structure( document.body,
                   [ 'body',
-                    ['button','2']],
+                    ['button','2'],
+                    ['div', 
+                       [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                       [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                       [ 'a', 'next', { href: 's4.html', 'data-if': 'true' } ],
+                       [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+                       ],
+                    ],
                   'doc body after button press twice');
   doneTesting();

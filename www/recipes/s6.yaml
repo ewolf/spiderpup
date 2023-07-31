@@ -1,0 +1,41 @@
+---
+
+#
+# lets test listeners
+#
+data:
+  heard: {}
+
+functions:
+  inc: (s,n) => s.namespace.data.heard[n] = 1 + (s.namespace.data.heard[n] || 0)
+
+page:
+  title: listener test
+ 
+  body:
+    listen: s => s.namespace.fun.inc( 'body' )
+    contents:
+      - knock:
+      - knock:
+          - pock:
+
+recipes:
+  pock:
+    listen: s => s.namespace.fun.inc( 'pock' )
+    contents:
+      - span:
+  knock:
+    listen: s => s.namespace.fun.inc( 'knock' )
+    contents:
+      - div:
+
+test: >-
+  const tester = SP.tester;
+  tester.html_structure( document.body, 
+                  [ 'body', ['div'], ['div', ['span']]],
+                  'body structure' );
+
+  tester.doneTesting();
+  
+  
+    

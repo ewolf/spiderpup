@@ -1,11 +1,12 @@
 /*
    TODO:
      instance node attrs to root element?
+     import_into_namespace (and test)
      test listen
      test events
      test component looping
      test component looping with named contents and contents
-  
+
  */
 
 
@@ -63,7 +64,7 @@ INIT -------------------------------
        id -> serialized number
        name -> "[namespace foo]"
        filename   -> "filename"
-       content -> { tag: 'body', 
+       content -> { tag: 'body',
                     listen: function (from body node if present)
                     preLoad: function (from body node if present)
                     postLoad: function (from body node if present)
@@ -71,9 +72,11 @@ INIT -------------------------------
                     contents: [ body node (if body present) ] }
 
        // alias_namespaces values are updated from filename to namespace node
-       alias_namespaces      -> { alias -> namespace node } 
+       alias_namespaces      -> { alias -> namespace node }
 
-       // methods 
+       fun -> { name -> function (with namespace as first arg) }
+
+       // methods
        -> error( msg ) throws an error and errors to console
        -> recipeForTag( tag ) -> returns recipe node (if any matches tag)
 
@@ -96,14 +99,8 @@ INIT -------------------------------
        namedFillNode -> { name -> element node }
 
     Recipe Object fields/methods
-       id -> serialized number
-       name -> "[namespace foo]"
-       functions  -> { name -> function }
-       data       -> { field -> value }
-       when       -> { component event -> function }
-       listen     -> function
        rootBuilder -> Component Builder for this recipe
-       namedFillBuilders -> { name -> Builder to add named fill content to } 
+       namedFillBuilders -> { name -> Builder to add named fill content to }
        fillBuilder -> Builder where to put default fill content to
 
  ELEMENT DATA STRUCTURE -----------------------
@@ -221,7 +218,7 @@ const SP = window.SP ||= {};
   let sp_filespaces;
 
   window.onload = ev => {
-    console.log( filespaces );
+    console.log( filespaces, 'filespaces' );
     init( filespaces, defaultFilename );
   }
 
@@ -229,34 +226,37 @@ const SP = window.SP ||= {};
 
   const ID_2_N = [];
   const FN_2_NS = {};
-  let lastid = 1;
+
   let useTest = false;
 
-  /** return next serialized id  */
+  const defaultBodyRecipe = {
+    contents: [ { tag: 'body' } ],
+  };
+
+  /** slap an id onto a node, that id is its index in ID_2_N */
   function id(node) {
     node.id = ID_2_N.length;
     ID_2_N.push( node);
   }
 
+  /** return node for id */
   SP.lookup = id => ID_2_N[id];
 
-  SP.lookup_node = se => {
-    const el = document.querySelector( se );
+  /** return node for query selector  */
+  SP.lookup_node = sel => {
+    const el = document.querySelector( sel );
     return el && ID_2_N[el.dataset.spid];
   };
-  
-  const nodeFields = ['tag','fill','key',
-                      'handle','comp',
-                      'if','elseif','else',
-                      'foreach','forvar',
-                      'on','when',
-                      'attrs'];
-  // copy the component or element node. if the node has a fill, update
-  // the recipe to that fill
+
+  /** copy the component or element node. if the node has a fill, update
+      the recipe to that fill */
   function copyNode( node, recipe ) {
-    // copy style node, it is 2 deep so would be 
+    // copy style node, it is 2 deep so would be
     // shallow in copy operation
     const newStyle = node.attrs && node.attrs.style && copyNode(node.attrs.style||{});
+
+    const nodeFields = ['tag', 'fill', 'key', 'handle', 'comp', 'if', 'elseif', 'else',
+                        'foreach', 'forvar', 'on', 'when', 'attrs'];
 
     const newnode = copy( node, nodeFields );
 
@@ -273,15 +273,16 @@ const SP = window.SP ||= {};
     }
 
     return newnode;
-  }
+  } // copyNode function
 
+  /** return shallow copy of object made from passed in fields */
   function copy( obj, fields ) {
     if (typeof obj === 'object') {
       const newo = {};
       (fields || Object.keys(obj))
         .forEach( fld => (newo[fld] = copy(obj[fld])) );
       return newo;
-    } 
+    }
     return obj;
   }
 
@@ -291,16 +292,16 @@ const SP = window.SP ||= {};
       .forEach( fld => ((fld in dest) || (dest[fld] = source[fld]) ));
   }
 
-
-  function dataVal( inst, v, idx ) {
-    return typeof v === 'function' ? v(inst) : v;
+  /** return value or function result */
+  function dataVal( inst, valOrFun ) {
+    return typeof valOrFun === 'function' ? valOrFun(inst) : valOrFun;
   }
 
+  /** return instance object, prepped */
   function createInstance( conNode, parentInstance, key ) {
     console.warn( 'chccck on rootNode here...is it quite right? only body has no key' );
     const inst = {
       recipe: conNode.recipe,
-//      namespace: conNode.namespace || conNode.recipe.namespace,
       namespace: conNode.recipe.namespace,
       rootNode: (key && conNode.recipe.contents[0]) || conNode,
       instNode: conNode,
@@ -310,7 +311,6 @@ const SP = window.SP ||= {};
       comp: {},
       fun: {},
       childInstances: {},
-      attachTo: function(el) { this.rootEl = el },
       namedFillElement: {},
     };
     id (inst);
@@ -329,7 +329,7 @@ const SP = window.SP ||= {};
     }
 
     inst.broadcast = function( key, message ) {
-      this.top._propagateBroadcast(act,msg) && this.top.refresh();      
+      this.top._propagateBroadcast(act,msg) && this.top.refresh();
     }
 
 
@@ -362,8 +362,9 @@ const SP = window.SP ||= {};
       parentInstance.childInstances[key] = inst;
     }
     return inst;
-  }
+  } // createInstance function
 
+  /** return data object that updates changed state of inst when data is chaged */
   function makeData(inst) {
       return new Proxy( {}, {
         get(target, name, receiver) {
@@ -378,8 +379,9 @@ const SP = window.SP ||= {};
           return true;
         }
       } );
-    }
+  } // makeData function
 
+  /** create document element based on the node */
   function createElement( inst, conNode ) {
     const rootNode = conNode.isComponent ? conNode.recipe.contents[0] : conNode;
     const el = document.createElement( rootNode.tag );
@@ -400,14 +402,16 @@ const SP = window.SP ||= {};
       } );
 
     return el;
-  }
-    
+  } // createElement function
+
+  /** return true if instance has changed since last check */
   function check( inst ) {
     const changed = inst.changed;
     inst.changed = false;
     return changed;
   }
 
+  /** refresh recipe component bound to instance. */
   function refresh( inst ) {
     const el = inst.rootEl;
     _refresh_el( inst, el, inst.rootNode, inst.instNode );
@@ -419,43 +423,43 @@ const SP = window.SP ||= {};
   }
 
   function _refresh_el_children( inst, el, contents ) {
-    if (contents === undefined || contents.length === 0) 
+    if (contents === undefined || contents.length === 0)
       return;
-    
+
     // catalog  element children
-    const nodeID2el = {};
+    const key2el = {};
     Array.from( el.children )
       .forEach( child_E => {
         if (child_E.dataset.spid) { //matches the node its on
           if (child_E.dataset.spforidx !== undefined) { //its a for element
-            nodeID2el[`${child_E.dataset.spid}_${child_E.dataset.spforidx}`] = child_E;
+            key2el[`${child_E.dataset.spid}_${child_E.dataset.spforidx}`] = child_E;
           } else {
-            nodeID2el[child_E.dataset.spid] = child_E;
+            key2el[child_E.dataset.spid] = child_E;
           }
         }
       } );
-    
+
     // little function to remove extra forloop elements
     const forTrim = (startIdx,con_B,con_E) => {
       for (let i=startIdx; i<Number(con_E.dataset.splastlistlen); i++) {
         const key = `${con_E.dataset.spid}_${i}`
-        const for_E = nodeID2el[key];
-        delete nodeID2el[key];
+        const for_E = key2el[key];
+        delete key2el[key];
         for_E && for_E.remove();
         // remove any child instance that went along with this forloop
         delete inst.childInstances[`${con_B.id}_${i}`];
       }
     };
 
-    const showElementWithID = {}; //id 2 not ifd away element
+    const showElementWithID = {};
     let lastWasConditional = false,
         conditionalDone = false,
         lastConditionalWasTrue = false;
 
     // hang on to for instances
-    const forNodeID2List = {};
-    const forNodeID2I = {};
-    const forNodeID2E = {};
+    const forKey2List = {};
+    const forKey2I = {};
+    const forKey2E = {};
 
     // first loop make sure each builder has an element associated with it
     // that element may be hidden. instance builders also will have an instance
@@ -463,9 +467,9 @@ const SP = window.SP ||= {};
     // for one loop wether or not there are zero or more than one in the loop
     //
     // this loop also figures out if/elseif/else branching and which builders
-    // need to be shown or hidden. 
+    // need to be shown or hidden.
     // for hidden branches - the element is hidden
-    // for hidden looped branches - the first element in the loop is hidden 
+    // for hidden looped branches - the first element in the loop is hidden
     //           and the rest are removed. the first instance is retained
     //           and the rest destroyed
     // for shown branches - element is unhidden
@@ -477,7 +481,7 @@ const SP = window.SP ||= {};
       .forEach( con_B => {
         const key = con_B.key;
 
-        let con_E = nodeID2el[key];
+        let con_E = key2el[key];
         const compo_R = con_B.recipe;
         const instance_R = inst.recipe;
         let inst_B;
@@ -490,7 +494,7 @@ const SP = window.SP ||= {};
             con_I ||= createInstance(con_B, inst, key);
 
             // if this node has a handle, it means
-            // that the component instance has a 
+            // that the component instance has a
             // handle attached to this instance
             if (con_B.handle) {
               inst.comp[con_B.handle] = con_I;
@@ -498,12 +502,11 @@ const SP = window.SP ||= {};
 
             // now make the element
             con_E = createElement( con_I, con_B );
-            
+
             if (con_B.forvar) {
               con_E.dataset.spforidx = '0';
             }
-            con_I.attachTo( con_E );
-            //              con_I.builder_id2el[compo_R.rootBuilder.key] = con_E;
+            con_I.rootEl = con_E;
           }
           else { // element not instance
             con_E = createElement( inst, con_B );
@@ -518,44 +521,39 @@ const SP = window.SP ||= {};
                 inst.namedFillElement[con_B.fill] = con_E;
               }
             }
-            
 
             // if this node has a handle, it means
-            // that the elementhas a 
+            // that the elementhas a
             // handle attached to this instance
             if (con_B.handle) {
               inst.el[con_B.handle] = con_E;
             }
-            
+
           }
-          nodeID2el[key] = con_E;
-          //            nodeID2el[key] = this.builder_id2el[key] = con_E;
-          
+          key2el[key] = con_E;
+
           con_E.style.display = 'none';
           el.append( con_E );
         };
-        //inst_B ||= con_I && con_I.instanceBuilder;
-        
+
         // check conditionals if it should be displayed
         let showThis = false;
         if (con_B.if) {
           lastConditionalWasTrue = conditionalDone = con_B.if(inst);
           lastWasConditional = true;
           showThis = lastConditionalWasTrue;
-          con_E.dataset.ifCondition = conditionalDone; //for debugging
-          console.log(`IF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
+          con_E.dataset.if = !!conditionalDone; //for debugging
         }
         else if (con_B.elseif) {
-          console.log(`ELSIF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
           if (!lastWasConditional) {
             inst.recipe.error( 'elseif must be preceeded by if or elseif' );
           }
           if (conditionalDone) {
             lastConditionalWasTrue = false;
-            con_E.dataset.elseIfCondition = 'n/a'; //for debugging
+            con_E.dataset.elseIf = 'n/a'; //for debugging
           } else {
             lastConditionalWasTrue = conditionalDone = con_B.elseif(inst);
-            con_E.dataset.elseIfCondition = conditionalDone; //for debugging
+            con_E.dataset.elseIf = !!conditionalDone; //for debugging
             showThis = lastConditionalWasTrue;
           }
         }
@@ -575,7 +573,7 @@ const SP = window.SP ||= {};
         else { // no conditional
           showThis = true;
         }
-        
+
         if (showThis) {
           showElementWithID[key] = true;
 
@@ -585,9 +583,9 @@ const SP = window.SP ||= {};
           // create elements and maybe child instances for
           // each iteration of the loop
           if (con_B.foreach && con_B.forvar) {
-            const forInstances = forNodeID2I[key] = [con_I];
-            const for_Es = forNodeID2E[key] = [con_E];
-            const list = forNodeID2List[key] = con_B.foreach(inst);
+            const forInstances = forKey2I[key] = [con_I];
+            const for_Es = forKey2E[key] = [con_E];
+            const list = forKey2List[key] = con_B.foreach(inst);
 
             if (list.length === 0) {
               con_E.style.display = 'none'; // hide the first
@@ -601,23 +599,21 @@ const SP = window.SP ||= {};
 
               for (let i=1; i<list.length; i++) {
                 const forIDKey = `${con_B.id}_${i}`;
-                let for_E = nodeID2el[forIDKey];
+                let for_E = key2el[forIDKey];
                 if (for_E) {
                   if (con_B.isComponent) {
                     const for_I = inst.childInstances[forIDKey];
                     forInstances.push( for_I );
                   }
-                } 
+                }
                 else {
                   if (con_B.isComponent) {
                     const for_I = inst.childInstances[forIDKey]
                           ||= createInstance(con_B,inst,con_B.key);
                     forInstances.push( for_I );
                     for_E = createElement( for_I, con_B );
-                    nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
-                    nodeID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
-                    for_I.attachTo( for_E );
-                    for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                    key2el[forIDKey] = for_E;
+                    for_I.rootEl = for_E;
                   } else {
                     for_E = createElement( inst, con_B );
                   }
@@ -641,28 +637,26 @@ const SP = window.SP ||= {};
 
       } );
 
-    // this element is complete except for child elements. 
+    // this element is complete except for child elements.
     // refresh the child elements and any fill content
     const instances = [];
     contents
       .filter( con_B => showElementWithID[con_B.key] )
       .forEach( con_B => {
         const key = con_B.key;
-        const con_E = nodeID2el[key];
+        const con_E = key2el[key];
         const instance_R = con_B.isComponent && con_B.recipe;
 
-        const list = forNodeID2List[key];
+        const list = forKey2List[key];
         if (list) { // foreach items
 
-          const for_Es = forNodeID2E[key];
-          const forInstances = forNodeID2I[key];
+          const for_Es = forKey2E[key];
+          const forInstances = forKey2I[key];
           for (let i=0; i<list.length; i++ ) {
-            //console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
             if (instance_R) {
               const for_I = forInstances[i];
               for_I.it[ con_B.forvar ] = list[i];
               for_I.idx[ con_B.forvar ] = i;
-              //console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
               refresh( for_I );
 
               // put fill contents in
@@ -670,7 +664,7 @@ const SP = window.SP ||= {};
                 const fill_E = for_I.defaultFillElement;
                 _refresh_el_children( inst, fill_E, con_B.contents );
               }
-              
+
               if (con_B.fill_contents) {
                 Object.keys( con_B.fill_contents)
                   .forEach( fillName => {
@@ -709,21 +703,18 @@ const SP = window.SP ||= {};
                 } );
             }
           }
-          else { // element builder
-            //console.log( `CALL REFRESH FOR ${con_B.id}` );
+          else {
             _refresh_el( inst, con_E, con_B );
           }
         }
       } );
-
-
-  } //refresh
+  } // _refresh_el_children function
 
   function _refresh_el_attrs( inst, el, elNode, instNode ) {
     instNode ||= elNode;
     const attrs = elNode.attrs;
+
 console.warn( 'need to make sure instNode has all the attrs from elNode overlayered in' );
-    debugger;
 
     attrs && Object.keys(attrs)
       .forEach( attr => {
@@ -731,7 +722,6 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
         if (attr.match( /^(textContent|innerHTML)$/)) {
           el[attr] = val;
-          //console.log( el, `UPDATED textContent to ${val}` );
         } else if (attr === 'class' ) {
           el.className = '';
           val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
@@ -744,11 +734,11 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
           el.setAttribute( attr, val );
         }
       } );
-    } // _refresh_el_attrs
+    } // _refresh_el_attrs function
 
 
-  /** 
-      prepare the data structrues, then make an 
+  /**
+      prepare the data structrues, then make an
       instance for the page and refresh the page.
    */
   function init( fileSpaces, defaultFilename, attachPoint ) {
@@ -767,8 +757,11 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     useTest = pageNS.test;
 
     console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
+    pageNS.defaultFillNode = pageNS.contents[0];
     const bodyInst = createInstance( pageNS.contents[0] );
-    bodyInst.attachTo( document.body );
+ 
+    bodyInst.rootEl = attachPoint || document.body;
+    bodyInst.defaultFillElement = pageNS.contents[0];
     bodyInst.namespace = pageNS;
 
     Promise.resolve(pageNS.installHead())
@@ -786,7 +779,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       a component or element node
    */
   const prepNode = (node,namespace,recipe) => {
-    if (node === undefined || node.isPrepped) return node;
+    if (node.isPrepped) return node;
 
     node.isPrepped = true;
 
@@ -880,22 +873,16 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       }
     }; // recipeForTag method
 
-    // imports the recipes from the namespace into this namespace
-    const import_into_FN = NS.import_into_namespaces || [];
-    import_into_FN
-      .forEach( alias => {
-        const importNS = loadNamespace(import_into_FN[alias]);
-        const recs = importNS.recipes || {};
-        Object.keys( recs )
-          .forEach( rname => (NS.recipes[rname] ||= recs[rname]));
-      } );
-
     // stores aliases of an other namespace in this one
     const alias_2_FN = NS.alias_namespace || {};
     const aliases = Object.keys( alias_2_FN );
     aliases.forEach( alias =>
       (alias_2_FN[alias] = loadNamespace(alias_2_FN[alias]))
     );
+
+    // load refereced namespaces for import
+    (NS.import_into_namespace || [])
+      .forEach( file => loadNamespace( file) );
 
     // serialize this namespace
     id (NS);
@@ -961,7 +948,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
           headEl.appendChild( link );
           link.setAttribute( 'href', file );
         } );
-        
+
         // js files
         const js = headNode.javascript;
         const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
@@ -971,7 +958,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
           loadList( scr );
           scr.setAttribute( 'src', file );
         } );
-        
+
         // js modules files
         const mods = headNode['javascript-module'];
         const modFiles = Array.isArray( mods ) ? mods : mods ? [mods] : [];
@@ -982,7 +969,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
           loadList( scr );
           scr.setAttribute( 'src', file );
         } );
-        
+
         ready = true;
         promCheck();
       } );
@@ -993,8 +980,6 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
       const body = NS.html.body || {};
 
-      NS.tag = 'body';
-      
       const rootNode = {
           tag:'body',
           contents: body.contents || [],
@@ -1004,7 +989,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
       [ 'listen', 'postLoad', 'preLoad', 'when' ]
         .forEach( fld => ( rootNode[fld] = body[fld] ) );
-      
+
     } // if the namespace has html
 
     return NS;
@@ -1030,7 +1015,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
         }
       }
     }
-    
+
 
     // first prep all the recipes
     // and build a list of all recipes
@@ -1052,30 +1037,27 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
     recipes.forEach( rec => prepNode( rec.contents[0], rec.namespace, rec ) );
 
-    
-//    console.log( "checking for recipe overlays" );
-    // see if this recipe is overlaying an other
+    // check if recipe overlays an other
     recipes.forEach( rec => {
       const rootNode = rec.contents[0];
       const overlaidRecipe = rec.namespace.recipeForTag(rootNode.tag);
       if (overlaidRecipe) {
         rec.overlaysRecipe = overlaidRecipe;
-        console.log( `${rec.name} overlays ${overlaidRecipe.name}` );
       }
     } );
-    
+
+    //
     const id2done = {};
     while (Object.keys(id2done).length < recipes.length) {
       recipes
         .filter( rec => ! id2done[rec.id] )
-        .forEach( rec => 
+        .forEach( rec =>
           {
             // see if this recipe is overlaying an other
-            // if so, and what it is overlaying is done, do 
+            // if so, and what it is overlaying is done, do
             // the overlay
             const overlay = rec.overlaysRecipe;
             if (overlay) {
-console.log( rec.contents[0].id, "IDO" );
               const rootNode = rec.contents[0];
               const overlayRootNode = overlay.contents[0];
               if (id2done[overlay.id]) { // make sure this one is done and ready
@@ -1095,14 +1077,13 @@ console.log( rec.contents[0].id, "IDO" );
                   rec.attrs.style = oldStyle;
                   overlayFromTo( overlay.attrs.style, oldStyle );
                 }
-                
+
                 // build a replacement for contents
-//                console.log( `copy ${overlay.contents[0].id} to ${rec.name}` );
 
                 // clear this; copyNode may find an other and if it does not, then new content root should be used
                 const oldFillNode = rec.defaultFillNode;
                 const oldNamedFillNode = rec.namedFillNode;
-                rec.defaultFillNode = undefined; 
+                rec.defaultFillNode = undefined;
                 rec.namedFillNode = {};
 
                 const overlayRootNodeCopy = copyNode(overlay.contents[0], rec);
@@ -1128,13 +1109,6 @@ console.log( rec.contents[0].id, "IDO" );
                 id2done[ rec.id ] = rec;
               }
             } else {
-console.log( rec.contents[0].id, "NO" );
-              // recipe has a root Node that is an element. 
-              // make sure it has a default fill node which
-              // by default is the root node
-              rec.defaultFillNode ||= rec.contents[0];
-
-
               // attributes on the recipe take precendence
               // but then are attached to the root node
               overlayFromTo( rec.contents[0].attrs, rec.attrs );
@@ -1143,14 +1117,31 @@ console.log( rec.contents[0].id, "NO" );
 
               id2done[ rec.id ] = rec;
             }
+
+            // recipe has a root Node that is an element.
+            // make sure it has a default fill node which
+            // by default is the root node
+            rec.defaultFillNode ||= rec.contents[0];
+
           } );
     } //recipes completed/linked together
+
+    // imports the recipes from the namespace into this namespace
+    NSs.forEach( NS => {
+      const import_into_FN = NS.import_into_namespace || [];
+      import_into_FN
+        .forEach( file => {
+          const importNS = loadNamespace(file);
+          const recs = importNS.recipes || {};
+          Object.keys( recs )
+            .forEach( rname => (NS.recipes[rname] ||= recs[rname]));
+        } );
+    } );
 
     // now prep namespace (body) contents
     NSs.forEach( NS => {
       NS.name = `[N ${NS.filename}#${NS.id}]`;
-      prepNode( NS.contents && NS.contents[0], NS );
-//      console.log( NS.contents[0], `BODY CONTENTS for ${NS.name}` );
+      NS.contents && NS.contents.length && prepNode( NS.contents[0], NS );
     } );
 
   } //prepNamespaces

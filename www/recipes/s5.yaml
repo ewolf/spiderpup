@@ -1,0 +1,97 @@
+---
+
+import_into_namespace: 
+  - s_util
+
+page:
+  title: bouncy recipes
+
+  body:
+    - foo:
+        contents:
+          - zing:
+        fill_first:
+          - label: 
+              textContent: HI
+              style: border: 4px green solid
+    - prevnext:
+        data:
+          links: [ true, 's6.html' ]
+
+recipes:
+  zing:
+    - div: I say
+
+  baz:
+    - div:
+      - span:
+          fill: first
+      - section:
+          fill: second
+
+  foo:
+    - baz:
+        fill_second:
+          - label: there
+        contents:
+          - div: ohfoo
+          - div:
+              fill: true
+
+test: >-
+  const tester = SP.tester;
+  tester.html_structure( 
+    document.body, 
+     ['body', ['div', 
+        ['span',
+           [ 'label', 'HI', { style: 'border: 4px solid green;' } ] ],
+        ['section',
+           [ 'label', 'there' ] ],
+        ['div', 'ohfoo' ],
+        ['div', 
+           ['div', 'I say' ]]],
+        ['div', 
+           [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+           [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+           [ 'a', 'next', { href: 's6.html', 'data-if': 'true' } ],
+           [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+           ],
+     ],
+     'body structure' );
+
+  tester.doneTesting();  
+
+#
+# foo should transform to
+#  foo:
+#    - div:
+#      - span:
+#          fill: first
+#      - span:
+#          fill: second
+#          contents:
+#            - label: there
+#      - div: ohfoo
+#      - div:
+#          fill: true
+
+#  the body should look like
+
+#  body:
+#    - div:
+#      - span:
+#          fill: first
+#          contents:
+#            style: border 4px green;
+#            label: HI
+#            
+#      - section:
+#          fill: second
+#          contents:
+#            - label: there
+#      - div: ohfoo
+#      - div:
+#          fill: true
+#          contents:
+#            - div: I say
+#    

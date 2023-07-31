@@ -1,10 +1,17 @@
 ---
+
+import_into_namespace: 
+  - s_util
+
 page:
   body:
     - div:
         foreach: () => [1,2,3,4,5]
         forvar: I
         textContent: s => s.idx.I + ') ' + (2 * s.it.I)
+    - prevnext:
+        data:
+          links: [ true, 's5.html' ]
 
 test: >-
   html_structure( document.body,
@@ -13,5 +20,12 @@ test: >-
                     [ 'div', '1) 4' ],
                     [ 'div', '2) 6' ],
                     [ 'div', '3) 8' ],
-                    [ 'div', '4) 10' ] ], 'body structure' );
+                    [ 'div', '4) 10' ],
+                    ['div', 
+                       [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                       [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                       [ 'a', 'next', { href: 's5.html', 'data-if': 'true' } ],
+                       [ 'span', '', { style: 'display: none;', 'data-else': 'false' } ]
+                       ],
+                  ], 'body structure' );
   doneTesting();
