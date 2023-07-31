@@ -6,6 +6,9 @@
 data:
   heard: {}
 
+import_into_namespace: 
+  - s_util
+
 functions:
   inc: (s,n) => s.namespace.data.heard[n] = 1 + (s.namespace.data.heard[n] || 0)
 
@@ -18,6 +21,7 @@ page:
       - knock:
       - knock:
           - pock:
+      - prevnext:
 
 recipes:
   pock:
@@ -32,7 +36,14 @@ recipes:
 test: >-
   const tester = SP.tester;
   tester.html_structure( document.body, 
-                  [ 'body', ['div'], ['div', ['span']]],
+                  [ 'body', ['div'], ['div', ['span']],
+                      ['div', 
+                         [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
+                         [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
+                         [ 'a', '', { 'data-if': 'false', style: 'display: none;' } ],
+                         [ 'span', 'next', { 'data-else': 'true' } ]
+                         ],
+                  ],
                   'body structure' );
 
   tester.doneTesting();

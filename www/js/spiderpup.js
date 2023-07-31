@@ -315,6 +315,9 @@ const SP = window.SP ||= {};
     };
     id (inst);
 
+    inst.attachEl = function(el) {
+      this.rootEl = this.defaultFillElement = el;
+    }
 
     inst.broadcastListener = conNode && conNode.listen;
 
@@ -503,10 +506,13 @@ const SP = window.SP ||= {};
             // now make the element
             con_E = createElement( con_I, con_B );
 
+            con_I.defaultFillElement ||= con_E;
+
             if (con_B.forvar) {
               con_E.dataset.spforidx = '0';
             }
-            con_I.rootEl = con_E;
+
+            con_I.attachEl( con_E );
           }
           else { // element not instance
             con_E = createElement( inst, con_B );
@@ -613,7 +619,7 @@ const SP = window.SP ||= {};
                     forInstances.push( for_I );
                     for_E = createElement( for_I, con_B );
                     key2el[forIDKey] = for_E;
-                    for_I.rootEl = for_E;
+                    for_I.attachEl(for_E);
                   } else {
                     for_E = createElement( inst, con_B );
                   }
@@ -760,7 +766,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     pageNS.defaultFillNode = pageNS.contents[0];
     const bodyInst = createInstance( pageNS.contents[0] );
  
-    bodyInst.rootEl = attachPoint || document.body;
+    bodyInst.attachEl( attachPoint || document.body );
     bodyInst.defaultFillElement = pageNS.contents[0];
     bodyInst.namespace = pageNS;
 
