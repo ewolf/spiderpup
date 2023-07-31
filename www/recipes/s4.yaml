@@ -1,10 +1,10 @@
 ---
-
-body:
-  - div:
-      foreach: () => [1,2,3,4,5]
-      forvar: I
-      textContent: s => s.idx.I + ') ' + (2 * s.it.I)
+page:
+  body:
+    - div:
+        foreach: () => [1,2,3,4,5]
+        forvar: I
+        textContent: s => s.idx.I + ') ' + (2 * s.it.I)
 
 test: >-
   html_structure( document.body,

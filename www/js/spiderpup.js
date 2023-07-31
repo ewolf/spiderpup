@@ -15,22 +15,21 @@ INIT -------------------------------
  to the namespace object that is used to attach the
  body component to the document.
 
- Init builds an object version of the data strcture using
- the following object classes: Namespace, Recipe, BodyRecipe,
- Builder and Instance.
-
-   * parses and adds to the data structure
+ Init
+   * updates the namespace and recipes attached to it
+   * converts any page body into a contents node
    * attaches styles, css links and script tags to the head
    * instantiates a body instance object
    * calls refresh on the body instance object
 
  NAMESPACE DATA STRUCTURE --------------------------
 
-   a namespace has the following fields in JSON:
+   a namespace has fields:
 
+     about                 -> "text talking about this namespace"
      recipes               -> { name  -> recipe }
-     alias_namespaces      -> { alias -> namespace }
-     import_into_namespace -> [ list of namespaces ]
+     alias_namespaces      -> { alias -> namespace filename }
+     import_into_namespace -> [ list of namespace filenames ]
      functions  -> { name  -> function }
      data       -> { field -> value } <specific to namespace>
      html       -> {
@@ -49,42 +48,52 @@ INIT -------------------------------
            listen   -> function
          }
         }
+     // the following are calculated and added
+       id -> serialized number
+       name -> "[namespace foo]"
+       filename   -> "filename"
+       content -> { tag: 'body', 
+                    listen: function (from body node if present)
+                    preLoad: function (from body node if present)
+                    postLoad: function (from body node if present)
+                    when: function (from body node if present)
+                    contents: [ body node (if body present) ] }
 
-     Namespace object with the following fields
+       // alias_namespaces values are updated from filename to namespace node
+       alias_namespaces      -> { alias -> namespace node } 
 
-       recipes -> { name -> recipe object }
-       namespaces -> { name -> namespace object }
-       fun     -> { name  -> function }
-       data    -> { field -> value }
-       html    -> {
-           script -> javascript text
-           title  -> string
-           style  -> css text
-           css -> single or list of filenames
-           javascript -> single or list of filenames
-         }
-         body -> {
-           onLoad   -> function
-           preLoad   -> function
-           on       -> { eventname -> function }
-           contents -> [ element|component instance nodes...]
-           listen   -> function
-         }
-        }
-
-      
-
-
+       // methods 
+       -> error( msg ) throws an error and errors to console
+       -> recipeForTag( tag ) -> returns recipe node (if any matches tag)
 
  RECIPE DATA STRUCTURE -----------------------
 
-  a component (recipe) node has the following fields in JSON:
+  a component (recipe) node has fields
     functions  -> { name -> function }
     data       -> { field -> value }
-    onLoad     -> function
-    on         -> { event -> function }
+    when       -> { component event -> function }
     listen     -> function
-    contents   -> [content node] (may only have one content node)
+    postLoad   -> function
+    preLoad    -> function
+    contents   -> [single element or component node]
+    fill_contents -> { name -> [element or component nodes] }
+
+    // the following are calculated and added to recipe
+       id -> serialized number
+       name -> "[namespace foo]"
+       defaultFillNode -> element node
+       namedFillNode -> { name -> element node }
+
+    Recipe Object fields/methods
+       id -> serialized number
+       name -> "[namespace foo]"
+       functions  -> { name -> function }
+       data       -> { field -> value }
+       when       -> { component event -> function }
+       listen     -> function
+       rootBuilder -> Component Builder for this recipe
+       namedFillBuilders -> { name -> Builder to add named fill content to } 
+       fillBuilder -> Builder where to put default fill content to
 
  ELEMENT DATA STRUCTURE -----------------------
 
@@ -187,21 +196,22 @@ INIT -------------------------------
    once the root element has been refreshed, the content that it contains
    is also refreshed.
 
-   if this is the first time the instance was refreshed, onLoad is called
+   if this is the first time the instance was refreshed, postLoad is called
    as the last part of the rfresh
 
  */
 
 // -------- LAUNCH ------
-
 const SP = window.SP ||= {};
 {
   console.warn( "class handling should be rewritten to additive classes and calculated classes" );
   console.warn( "need to put named fill contents in" );
   console.warn( "need to put fill contents in for looped instances" );
 
+  let sp_filespaces;
+
   window.onload = ev => {
-    //console.log( filespaces );
+    console.log( filespaces );
     init( filespaces, defaultFilename );
   }
 
@@ -212,744 +222,175 @@ const SP = window.SP ||= {};
   let bodyInst;
   let useTest = false;
 
+  /** return next serialized id  */
   function nextid() {
     return lastid++;
   }
+  
+  const nodeFields = ['tag','fill',
+                      'handle','comp',
+                      'if','elseif','else',
+                      'foreach','forvar',
+                      'on','when',
+                      'attrs'];
+  // copy the component or element node. if the node has a fill, update
+  // the recipe to that fill
+  function copyNode( node, recipe ) {
+    // copy style node, it is 2 deep so would be 
+    // shallow in copy operation
+    const newStyle = node.attrs && node.attrs.style && copyNode(node.attrs.style||{});
 
-  function init( fileSpaces, defaultFilename, attachPoint ) {
-    const pageNS = loadNamespace( defaultFilename );
-    useTest = pageNS.test;
+    const newnode = copy( node, nodeFields );
 
-    const bodyR = pageNS.bodyRecipe;
+    newStyle && (newnode.attrs.style = newStyle);
 
-    Promise.resolve(bodyR.installHead())
-      .then( () => {
+    newnode.contents = (node.contents||[]).map( c => copyNode( c, recipe ) );
+    newnode.id = nextid();
 
-        bodyInst = bodyR.createInstance(bodyR.rootBuilder);
-        bodyInst.attachTo(attachPoint || document.body);
-        bodyInst.refresh();
+    if (newnode.fill === true) {
+      recipe.defaultFillNode = newnode;
+    } else if (newnode.fill) {
+      recipe.namedFillNode[newnode.fill] = newnode;
+    }
 
-        if (useTest) {
-          pageNS.test();
-        }
-      } );
+    return newnode;
   }
 
-  SP.init = init;
-
-  function loadNamespace( filename ) {
-    let NS = FN_2_NS[filename];
-    if (NS) return NS;
-
-    const NS_node = filespaces[filename];
-    if (!NS_node) {
-      throw new Error(`unable to load namespace '${filename}'`);
-    }
-
-    NS = FN_2_NS[filename] = new Namespace();
-
-    const import_into_2_FN = NS_node.import_into_namespaces || [];
-    import_into_2_FN
-      .forEach( fn => {
-        const importNS = loadNamespace(alias_2_FN[alias]);
-        
-      } );
-
-    const alias_2_FN = NS_node.alias_namespaces || {};
-    const aliases = Object.keys( alias_2_FN );
-    aliases.forEach( alias =>
-      NS.aliasNamspace( alias, loadNamespace(alias_2_FN[alias]))
-    );
-
-    NS.setup( NS_node, filename );
-    if (NS_node.test) {
-      NS.test = NS_node.test;
-    }
-
-    return NS;
+  function copy( obj, fields ) {
+    if (typeof obj === 'object') {
+      const newo = {};
+      (fields || Object.keys(obj))
+        .forEach( fld => (newo[fld] = copy(obj[fld])) );
+      return newo;
+    } 
+    return obj;
   }
 
-  class Node {
-    constructor() {
-      this.id = nextid();
+  /** place key value pairs on dest if the key is new  */
+  function overlayFromTo( source, dest ) {
+    Object.keys( source || {} )
+      .forEach( fld => ((fld in dest) || (dest[fld] = source[fld]) ));
+  }
+
+
+  function dataVal( inst, v, idx ) {
+    return typeof v === 'function' ? v(inst) : v;
+  }
+
+  function createInstance( conNode, parentInstance, key ) {
+    const inst = {
+      id: nextid(),
+      recipe: conNode.recipe,
+      namespace: conNode.namespace || conNode.recipe.namespace,
+      rootNode: conNode,
+      it: {},
+      idx: {},
+      el: {},
+      comp: {},
+      fun: {},
+      childInstances: {},
+      attachTo: function(el) { this.rootEl = el },
+    };
+    inst.data = makeData( inst );
+    if (parentInstance) {
+      inst.parent = parentInstance;
+      parentInstance.childInstances[key] = inst;
     }
-    makeData() {
-      const that = this;
+    return inst;
+  }
+
+  function makeData(inst) {
       return new Proxy( {}, {
         get(target, name, receiver) {
-          if (! Reflect.has(target, name) ) {
-            if ( (! that.loaded) && name in that._data) {
-              // this field has not been loaded before, so load it now
-              const val = that.dataVal( that._data[name] );
-              this.set(target,name,val, receiver);
-              return val;
-            }
-            return undefined;
-          }
           return Reflect.get(target, name, receiver);
         },
         set(target, name, value, receiver) {
           const original = Reflect.get(target, name, receiver);
           if (value !== original) {
-            that.changed = true;
+            inst.changed = true;
             return Reflect.set(target, name, value, receiver);
           }
           return true;
         }
       } );
     }
+
+  function createElement( inst, conNode ) {
+    const el = document.createElement( conNode.tag );
+    el.dataset.spid = conNode.id;
+
+    // attach event listeners
+    conNode.on && Object.keys( conNode.on )
+      .forEach( evname => {
+        const onfun = conNode.on[evname];
+        const evfun = function() {
+          const prom = onfun( inst, ...arguments );
+          return Promise.resolve( prom )
+            .then( () => {
+              if ( inst.check() ) refresh(inst);
+            } );
+        };
+        el.addEventListener( evname, evfun );
+      } );
+
+    return el;
+  }
+    
+  function check( inst ) {
+    const changed = inst.changed;
+    inst.changed = false;
+    return changed;
   }
 
-  class Namespace extends Node {
-
-    namespace( alias ) {
-      return this.aliasedNS[alias];
-    }
-
-    aliasNamespace( alias, NS ) {
-      this.aliasedNS[alias] = NS;
-    }
-
-    error( msg ) {
-      console.error( msg );
-      throw new Error( `${msg} in file '${this.name}'` );
-    }
-
-    // class Namespace
-    findRecipe( htmlTagOrRecipeName ) {
-      const parts = htmlTagOrRecipeName.split(/[.]/);
-      let recipe;
-      if (parts.length === 1) {
-        return this.recipes[parts[0]];
-        // not an error if it was not found. means it is
-        // probably an html tag rather than recipe name
-      }
-      else if (parts.length === 2) {
-        const NS = this.aliasedNS[parts[0]];
-        recipe = NS && NS.findRecipe( parts[1] );
-        if (recipe) return recipe;
-        this.error( `recipe '${tag}' not found` );
-      } else {
-        this.error( `recipe '${tag}' not found` );
-      }
-    }
-
-    // class Namespace
-    setup( node, filename ) {
-      this.aliasedNS = {};
-      const recipes = this.recipes = {};
-      this.name = `[namespace ${filename}]`;
-      this.filename = filename;
-
-      // build the recipes for this namespace
-      Object.keys( node.recipes )
-        .forEach( recipeName => {
-          const recipeData = node.recipes[recipeName];
-          const recipe = recipes[recipeName] = new Recipe();
-          recipe.setup( this, recipeData, recipeName );
-        } );
-
-      // injest the data
-      this.data = this.makeData();
-      Object.keys( node.data )
-        .forEach( fld => this.data[fld] = node.data[fld] );
-      
-      this.fun = node.functions || {};
-      this.about = node.about;
-      
-      if (node.html) {
-        const body = html.body || {};
-
-        const rootNode = {
-          contents: [ {
-            tag:'body',
-            contents: body.contents || [],
-          } ]
-        };
-
-        ['preLoad', 'onLoad', 'on', 'data', 'listen', 'functions']
-          .forEach( fld => body[fld] && (rootNode[fld] = body[fld]) );
-
-        const bodyRecipe = this.bodyRecipe = new BodyRecipe();
-        bodyRecipe.head = html.head || {};
-        bodyRecipe.setup( this, rootNode, 'body' );
-      }
-    }
-
-  } //class NameSpace
-
-  class Recipe extends Node {
-
-    setup( NS, recipeData, recipeName ) {
-      this.name = `[recipe: '${recipeName}' of ${NS.name}]`;
-      this.namespace = NS;
-
-      this.class   = recipeData.class;
-      this.onLoad  = recipeData.onLoad;
-      this.preLoad = recipeData.preLoad;
-      this.data    = recipeData.data;
-      this.on      = recipeData.on;
-      this.attrs   = recipeData.attrs;
-      this.fun     = recipeData.functions;
-
-      //console.log( this.functions, recipe.functions, recipeData.functions, "BURPH" );
-      this.namedFillBuilders = {};
-      this.contents = recipeData.contents; // used for prepping root builder
-      const rootBuilder = this.prepRootBuilder();
-      rootBuilder.fillOut();
-
-      // if no child builder was specifically called 'fill'
-      // give the root builder that honor
-      this.fillBuilder ||= rootBuilder;
-    }
-
-    namespace( alias ) {
-      return this.namespace.namespace( alias );
-    }
-
-    // class Recipe
-    error( msg ) {
-      this.namespace.error( `${msg} in recipe '${this.name}'` );
-    }
-
-    // makes new builder.
-    // this is here for the case of a root component node
-    // being an alias for an other component
-    // class Recipe
-    prepRootBuilder() {
-
-      const NS = this.namespace;
-
-      const recipeRootNode = this.contents[0];
-      const rootIsAlsoRecipe = NS.findRecipe( recipeRootNode.tag );
-
-      let rootBuilder;
-
-      if (rootIsAlsoRecipe) {
-        // (this) recipe coly - recipeRootNode is col/class: overflow
-        rootBuilder = rootIsAlsoRecipe.prepRootBuilder();
-        // rootbuilder is now componentbuilder with tag
-        rootBuilder.layer( recipeRootNode, this );
-        // rootbuilder is now componentbuilder with tag
-      } else {
-        // recipe col - recipeRootNode is div/class: col... 
-        rootBuilder = new ComponentBuilder();
-        rootBuilder.setup( recipeRootNode, this );
-        // rootbuilder is now componentbuilder with tag: div
-      }
-
-      rootBuilder.recipe = this;
-
-      return rootBuilder;
-    }
-
-    // class Recipe
-    createInstance(builder, parentInstance) {
-      const inst = new Instance();
-      inst.setup( this, builder );
-      inst.parent = parentInstance;
-      if (parentInstance) {
-        inst.top = parentInstance.top;
-        // pull data from parentInstance but do not override
-        Object.keys( parentInstance._data )
-          .forEach( fld => {
-            if (! (fld in inst._data)) {
-              inst._data[fld] = parentInstance._data[fld];
-            }
-          } );
-      } else {
-        inst.top = inst;
-      }
-      if (builder.handle) {
-        parentInstance.comp[builder.handle] = inst;
-      }
-      return inst;
-    }
-
-  } //class Recipe
-
-
-  class BodyRecipe extends Recipe {
-    // class BodyRecipe
-    installHead() {
-      this.head.title && (document.title = this.head.title);
-
-      const head = document.head;
-
-      // explicit style
-      let style = this.head.style
-      if (style) {
-        const stylel = document.createElement( 'style' );
-        stylel.setAttribute( 'type', 'text/css' );
-        if (stylel.styleSheet) { // IE
-          stylel.styleSheet.cssText = style;
-        } else {
-          stylel.appendChild(document.createTextNode(style));
-        }
-        head.appendChild( stylel );
-      }
-
-      // explicit javascript
-      let script = this.head.script
-      if (script) {
-        const scriptel = document.createElement( 'script' );
-        scriptel.setAttribute( 'type', 'text/javascript' );
-        scriptel.appendChild(document.createTextNode(script));
-        head.appendChild( scriptel );
-      }
-
-      return new Promise( (res,rej) => {
-        let files = 0;
-        let ready = false;
-
-        const promCheck = () => {
-          if (ready && files === 0) {
-            res();
-          }
-        }
-
-        const loadList = file => {
-          files++;
-          file.onload = function() {
-            files--;
-            promCheck();
-          }
-        };
-
-        // css files
-        const css = this.head.css;
-        const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
-        cssFiles.forEach( file => {
-          const link = document.createElement( 'link' );
-          link.setAttribute( 'rel', 'stylesheet' );
-          link.setAttribute( 'media', 'screen' );
-          head.appendChild( link );
-          link.setAttribute( 'href', file );
-        } );
-        
-        // js files
-        const js = this.head.javascript;
-        const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
-        jsFiles.forEach( file => {
-          const scr = document.createElement( 'script' );
-          head.appendChild( scr );
-          loadList( scr );
-          scr.setAttribute( 'src', file );
-        } );
-        
-        // js modules files
-        const mods = this.head['javascript-module'];
-        const modFiles = Array.isArray( mods ) ? mods : mods ? [mods] : [];
-        modFiles.forEach( file => {
-          const scr = document.createElement( 'script' );
-          scr.setAttribute( 'type', 'module' );
-          head.appendChild( scr );
-          loadList( scr );
-          scr.setAttribute( 'src', file );
-        } );
-        
-        ready = true;
-        promCheck();
-      } );
-    }
-  }  //class BodyRecipe
-
-  class ComponentBuilder extends Node {
-    setup( rootNode, recipe ) {
-      this.attrs = {};
-      this.tag = rootNode.tag;
-      this.name = `${this.tag} in ${recipe.name}`;
-      this.recipe = recipe;
-      this.layer( rootNode, recipe ); //????
-      this.contentBuilders = [];
-      if (this.fill) {
-        if (this.fill === true) {
-          this.recipe.fillBuilder = this;
-          //        this.isDefaultFillBuilder = true;
-        } else {
-          this.recipe.namedFillBuilders[this.fill] = this;
-          //        this.fillBuilderName = this.fill;
-        }
-      }
-    } //setup
-    layer( rootNode, recipe ) {
-      
-    }
+  function refresh( inst ) {
+    const el = inst.rootEl;
+    const elNode = inst.rootNode;
+    _refresh_el( inst, el, elNode );
   }
 
-  class Builder extends Node {
+  function _refresh_el( inst, el, elNode ) {
+    _refresh_el_attrs( inst, el, elNode );
+    _refresh_el_children( inst, el, elNode.contents );
+  }
 
-    get key() {
-      return this.forvar ? `${this.id}_0` : this.id;
-    }
+  function _refresh_el_children( inst, el, contents ) {
+    if (contents === undefined || contents.length === 0) 
+      return;
 
-    // class Builder
-    setup( layerAbove, withinRecipe, instanceRecipe ) {
-      this.attrs = {};
-      this.tag = layerAbove.tag;
-      this.name = `${this.tag} in ${withinRecipe.name}`;
-      if (instanceRecipe) {
-        //console.log( `SETTING UP BUILDER using recipe '${instanceRecipe.name}' inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
-      } else {
-        //console.log( `SETTING UP BUILDER inside '${withinRecipe.name}' ${this.id} : ${this.tag}` );
-      }
-      this.instanceRecipe = instanceRecipe;
-      this.layer( layerAbove, withinRecipe );
-      this.contentBuilders = [];
-      if (this.fill) {
-        if (this.fill === true) {
-          this.recipe.fillBuilder = this;
-          //        this.isDefaultFillBuilder = true;
-        } else {
-          this.recipe.namedFillBuilders[this.fill] = this;
-          //        this.fillBuilderName = this.fill;
+    // catalog  element children
+    const nodeID2el = {};
+    Array.from( el.children )
+      .forEach( child_E => {
+        if (child_E.dataset.spid) { //matches the node its on
+          if (child_E.dataset.spforidx !== undefined) { //its a for element
+            nodeID2el[`${child_E.dataset.spid}_${child_E.dataset.spforidx}`] = child_E;
+          } else {
+            nodeID2el[child_E.dataset.spid] = child_E;
+          }
         }
-      }
-    } //setup
-
-    // class Builder
-    layer( layerAbove, recipe ) {
-      this.layerAbove = layerAbove;
-      this.recipe = recipe;
-      //  data only makes sense for instance builders, not element builders
-      [ recipe, layerAbove ]
-      .forEach ( source => {
-        [ 'attrs', 'data', 'on', 'functions' ]
-          .forEach ( htype => {
-            if (htype in source) {
-              const above = source[htype];
-              const current = this[htype] ||= {};
-              Object.keys (above)
-                .forEach( fld => {
-                  current[fld] = above[fld];
-                } );
-            }
-          });
       } );
-      [ 'listen', 'fill', 'if', 'elseif', 'else', 'foreach', 'forvar', 'handle' ]
-        .forEach( fun =>
-          layerAbove[fun] && (this[fun] = layerAbove[fun]) );
-
-      this.contents ||= [];
-      this.contents.push( ...(layerAbove.contents||[]) );
-    } //layer
-
-    // class Builder
-    fillOut() {
-      // this may be called multiple times for the same builder
-      // during construction if a root node for a recipe refers
-      // to an other recipe
-      const R = this.recipe;
-      const NS = R.namespace;
-
-      this.contents
-        .forEach( con => {
-          const child_B = new Builder();
-          const conRecipe = NS.findRecipe( con.tag );
-
-          if (conRecipe) {
-            // component node
-
-            child_B.setup( con, R, conRecipe );
-
-            const toFill = child_B.fillContents = {}; // name -> [ ... BuilderList ]
-            if (con.fill_contents) {
-              Object.keys(con.fill_contents)
-                .forEach( fillName => {
-                  const toFillBuilders = toFill[fillName] =
-                        con.fill_contents[fillName]
-                        .map( fill_con => {
-                          const fill_B = new Builder();
-                          const fill_R = NS.findRecipe( fill_con.tag );
-                          fill_B.setup( fill_con, R, fill_R );
-                          toFillBuilders.push(fill_B);
-                          fill_B.fillOut();
-                          return fill_B;
-                        } );
-                } );
-            }
-
-            if (con.contents && con.contents.length) {
-              const toFillBuilders = child_B.defaultFillContents =
-                    con.contents.map( fill_con => {
-                      const fill_B = new Builder();
-                      const fill_R = NS.findRecipe( fill_con.tag );
-                      fill_B.setup( fill_con, R, fill_R );
-                      fill_B.fillOut();
-                      return fill_B;
-                    } );
-            }
-
-            // do not fill out the child_B for the component node any more
-            //  - the fill_contents filling out was what was needed
-
-          } else {
-            // element node
-            child_B.setup( con, R );
-            child_B.fillOut();
-          }
-
-          this.contentBuilders.push( child_B );
-        } );
-    } //fillOut
-
-    // class Builder
-    buildElement( inst, builderNode ) {
-      const el = document.createElement( this.tag );
-      el.dataset.spid = (builderNode||this).id;
-
-      if (this.handle) {
-        inst.el[this.handle] = el;
-      }
-
-      // attach event listeners
-      this.on && Object.keys( this.on )
-        .forEach( evname => {
-          const onfun = this.on[evname];
-          const evfun = function() {
-            const prom = onfun( inst, ...arguments );
-            return Promise.resolve( prom )
-              .then( () => {
-                if ( inst.check() ) inst.refresh();
-              } );
-          };
-          el.addEventListener( evname, evfun );
-        } );
-
-      return el;
-    }
-
-  } // class Builder
-
-  class Instance extends Node {
-
-    setup( recipe, builder ) {
-      this.recipe = recipe;
-      this.builder = builder;
-      this.name = `<inst#${this.id} of ${recipe.name}>`;
-      this.childInstances = {}; // id -> instance
-      this.builder_id2el = {};
-      this.it            = {};
-      this.idx           = {};
-      this.el            = {}; // handle -> element
-      this.comp          = {}; // handle -> component
-      this.fun           = {}; // name   -> function
-      this.layer( recipe, builder );
-    }
-
-    // class Instance
-    check() {
-      const changed = this.changed;
-      this.changed = false;
-      return changed;
-    }
-
-    // class Instance
-
-    // class Instance
-    layer( recipe, builder ) {
-      // we want za data
-      const inst = this;
-      const _data = this._data = {};
-      const data = this.data = this.makeData();
-      const fun = this.fun;
-      const onLoads = this.onLoads = [];
-      const preLoads = this.preLoads = [];
-      this.attrs = builder.attrs;
-      [ builder, recipe ]
-        .forEach ( from => {
-          from.data && Object.keys( from.data )
-            .forEach( fld => {
-              if ( ! (fld in _data) ) {
-                const valOrFun = from.data[fld];
-                //console.log( `layering '${fld}' in inst.name from from.name` );
-                _data[fld] = typeof valOrFun === 'function' ?
-                  function() { //console.log(`calling function for ${fld} in ${inst.name}`);
-                               return valOrFun( inst, ...arguments ); }
-                : valOrFun;
-              }
-            } );
-        } );
-
-      [ recipe, builder ]
-        .forEach ( from => {
-          from.onLoad && onLoads.push( from.onLoad.bind(this) );
-          from.preLoad && preLoads.push( from.preLoad.bind(this) );
-          from.functions && Object.keys( from.functions )
-            .forEach( funname => {
-              if (!fun[funname]) {
-                const fromfun = from.functions[funname];
-                fun[funname] = function() {
-                  return Promise.resolve( fromfun( inst, ...arguments ) );
-                }
-              }
-            } );
-
-        } );
-    } //layer
-
-    // class Instance
-    getFillEl(name) {
-      const R = this.recipe;
-      if (name) return this.build_id2el[R.namedFillBuilders[name].id];
-      return this.builder_id2el[R.fillBuilder.key];
-    }
-
-    // class Instance
-    get instanceBuilder() {
-      let B = this._instanceBuilder;
-      if (!B) {
-
-        // this.builder is the component instance
-
-        console.log( this.recipe.rootBuilder, this.recipe, this.builder.recipe, `INSTANCE BUILDER FOR ${this.recipe.name}` );
-        B = this._instanceBuilder = new Builder();
-        B.setup( this.recipe.rootBuilder, this.recipe, this.builder.recipe );
-        B.instance = this;
-        B.contentBuilders = this.recipe.rootBuilder.contentBuilders;
-
-        // layer attributes
-        Object.keys( this.attrs || {} )
-          .forEach( attr => {
-            B.attrs[attr] = this.attrs[attr];
-          } );
-      }
-      return B;
-    }
-
-
-    // class Instance
-    attachTo(el) {
-      this.root_EL = el;
-    }
-
-    dataVal( v ) {
-      return typeof v === 'function' ? v(this) : v;
-    }
-
-    namespace( alias ) {
-      return this.recipe.namespace( alias );
-    }
-
-    // class Instance
-    refresh() {
-      //console.log( `REFRESHING builder ${this.builder.tag}/${this.builder.id}, recipe ${this.builder.recipe.name}` );
-
-      if (! this.loaded) {
-        // initial data settings
-        Object.keys( this._data )
-          .forEach( fld => {
-            const val = this.dataVal( this._data[fld] );
-            this.data[fld] = val;
-          } );
-        this.preLoads.forEach( pl => pl(this) );
-      }
-
-//      this._refresh_root_el( this.root_EL, this.recipe.rootBuilder );
-//      this._refresh_root_el( this.root_EL, this.instanceBuilder );
-      this._refresh_root_el();
-
-      if (! this.loaded) {
-        this.onLoads.forEach( ol => ol(this) );
-        this.loaded = true;
-      }
-    } //refresh
-
-    // class Instance
-//    _refresh_root_el( el, rootBuilder ) {
-    _refresh_root_el() {
-
-      // calculate data from _data
-      Object.keys( this._data )
-        .forEach( fld => {
-          // if the data is the result of a function
-          // recalculate it on refresh
-          if ( typeof this._data[fld] === 'function' ) {
-            const val = this.dataVal( this._data[fld] );
-            this.data[fld] = val;
-          }
-        } );
-      const el = this.root_EL;
-      const builder = this.instanceBuilder;
-      this._refresh_el( el, builder );
-
-      this._refresh_el_attrs( el, builder );
-      //console.log( this.instanceBuilder.attrs, rootBuilder.attrs, `${this.instanceBuilder.name} ${this.instanceBuilder.id} / ${rootBuilder.name} ${rootBuilder.id}` );
-
-    } //_refresh_root_el
-
-    _refresh_el_attrs( el, builder ) {
-      // fill in elements attributes ---------------------------
-      const attrs = builder.attrs;
-
-      attrs && Object.keys(attrs)
-        .forEach( attr => {
-
-          const val = this.dataVal( attrs[attr] );
-
-          if (attr.match( /^(textContent|innerHTML)$/)) {
-            el[attr] = val;
-            //console.log( el, `UPDATED textContent to ${val}` );
-          } else if (attr === 'class' ) {
-            el.className = '';
-            val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
-          } else if (attr === 'style') {
-            Object.keys( val )
-              .forEach( style => el.style[ style ] = val[style] );
-          } else if (attr === 'disabled' || attr === 'checked' || attr === 'selected') {
-            val ? el.setAttribute( attr, attr ) : el.removeAttribute( attr );
-          } else {
-            el.setAttribute( attr, val );
-          }
-        } );
-    }
-
-    // class Instance
-    _refresh_el( el, builder ) {
-      this._refresh_el_attrs( el, builder );
-      this._refresh_el_children( el, builder.contentBuilders );
-    } //_refresh_el
-
-    //class Instance
-    _refresh_el_children( el, builders ) {
-
-      if (builders.length === 0) return;
-      
-      // catalog child elements ---------------------------
-      const builderID2el = {};
-      Array.from( el.children )
-        .forEach( child_E => {
-          if (child_E.dataset.spid) {
-            if (child_E.dataset.spforidx !== undefined) {
-              builderID2el[`${child_E.dataset.spid}_${child_E.dataset.spforidx}`] = child_E;
-            } else {
-              builderID2el[child_E.dataset.spid] = child_E;
-            }
-          }
-        } );
 
       // little function to remove extra forloop elements
       const forTrim = (startIdx,con_B,con_E) => {
         for (let i=startIdx; i<Number(con_E.dataset.splastlistlen); i++) {
           const key = `${con_E.dataset.spid}_${i}`
-          const for_E = builderID2el[key];
-          delete builderID2el[key];
+          const for_E = nodeID2el[key];
+          delete nodeID2el[key];
           for_E && for_E.remove();
           // remove any child instance that went along with this forloop
-          delete this.childInstances[`${con_B.id}_${i}`];
+          delete inst.childInstances[`${con_B.id}_${i}`];
         }
       };
 
-
-      const showElementWithID = {};
+      const showElementWithID = {}; //id 2 not ifd away element
       let lastWasConditional = false,
           conditionalDone = false,
           lastConditionalWasTrue = false;
 
       // hang on to for instances
-      const forBuilderID2List = {};
-      const forBuilderID2Instances = {};
-      const forBuilderID2E = {};
+      const forNodeID2List = {};
+      const forNodeID2I = {};
+      const forNodeID2E = {};
 
       // first loop make sure each builder has an element associated with it
       // that element may be hidden. instance builders also will have an instance
@@ -967,44 +408,60 @@ const SP = window.SP ||= {};
       //           and loop instances and elements beyond the first are created
       //           and loop instances and elements that go beyond the current list
       //           are destroyed
-      builders
+      contents
         .forEach( con_B => {
           const key = con_B.key;
 
-          let con_E = builderID2el[key];
-          const instance_R = con_B.instanceRecipe;
+          let con_E = nodeID2el[key];
+          const instance_R = con_B.recipe;
           let inst_B;
 
-          let con_I = this.childInstances[key];
+          let con_I = inst.childInstances[key];
 
           // create the element if need be
           if (!con_E) {
-            if (instance_R) {
-              con_I ||= this.childInstances[key]
-                ||= instance_R.createInstance(con_B,this);
-              inst_B = con_I.instanceBuilder;
+            if (con_B.isComponent) {
+              con_I ||= createInstance(con_B, inst, key);
 
-              con_E = inst_B.buildElement(con_I, con_B);
+              // if this node has a handle, it means
+              // that the component instance has a 
+              // handle attached to this instance
+              if (con_B.handle) {
+                inst.comp[con_B.handle] = con_I;
+              }
+
+              // now make the element
+              con_E = createElement( con_I, con_B );
+
               if (con_B.forvar) {
                 con_E.dataset.spforidx = '0';
               }
               con_I.attachTo( con_E );
-              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
+//              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
             }
             else { // element not instance
-              con_E = con_B.buildElement(this);
+              con_E = createElement( inst, con_B );
+
+              // if this node has a handle, it means
+              // that the elementhas a 
+              // handle attached to this instance
+              if (con_B.handle) {
+                inst.el[con_B.handle] = con_E;
+              }
+
             }
-            builderID2el[key] = this.builder_id2el[key] = con_E;
+            nodeID2el[key] = con_E;
+//            nodeID2el[key] = this.builder_id2el[key] = con_E;
 
             con_E.style.display = 'none';
             el.append( con_E );
-          }
-          inst_B ||= con_I && con_I.instanceBuilder;
+          };
+          //inst_B ||= con_I && con_I.instanceBuilder;
 
           // check conditionals if it should be displayed
           let showThis = false;
           if (con_B.if) {
-            lastConditionalWasTrue = conditionalDone = con_B.if(this);
+            lastConditionalWasTrue = conditionalDone = con_B.if(inst);
             lastWasConditional = true;
             showThis = lastConditionalWasTrue;
             con_E.dataset.ifCondition = conditionalDone; //for debugging
@@ -1032,7 +489,7 @@ const SP = window.SP ||= {};
             } else {
               lastConditionalWasTrue = true;
               con_E.dataset.else = true;
-              showThis = lastConditionalWasTrue;
+              showThis = true;
             }
           }
           else { // no conditional
@@ -1041,19 +498,20 @@ const SP = window.SP ||= {};
 
           if (showThis) {
             showElementWithID[key] = true;
-            con_E.style.display = null;
+
+            con_E.style.display = null; // unhide
 
             // check if this is a loop. if so
             // create elements and maybe child instances for
             // each iteration of the loop
             if (con_B.foreach && con_B.forvar) {
-              const forInstances = forBuilderID2Instances[key] = [con_I];
-              const for_Es = forBuilderID2E[key] = [con_E];
-              const list = forBuilderID2List[key] = con_B.foreach(this);
+              const forInstances = forNodeID2I[key] = [con_I];
+              const for_Es = forNodeID2E[key] = [con_E];
+              const list = forNodeID2List[key] = con_B.foreach(this);
 
               if (list.length === 0) {
-                con_E.style.display = 'none';
-                forTrim( 1, con_B, con_E ); //remove all but the first
+                con_E.style.display = 'none'; // hide the first
+                forTrim( 1, con_B, con_E );   // remove all but the first
               }
               else {
                 if (Number(con_E.dataset.splastlistlen) > list.length) {
@@ -1063,7 +521,7 @@ const SP = window.SP ||= {};
 
                 for (let i=1; i<list.length; i++) {
                   const forIDKey = `${con_B.id}_${i}`;
-                  let for_E = builderID2el[forIDKey];
+                  let for_E = nodeID2el[forIDKey];
                   if (for_E) {
                     if (instance_R) {
                       const for_I = this.childInstances[forIDKey];
@@ -1076,8 +534,8 @@ const SP = window.SP ||= {};
                             ||= instance_R.createInstance(con_B,this);
                       forInstances.push( for_I );
                       for_E = inst_B.buildElement(for_I,con_B);
-                      builderID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
-                      builderID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                      nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
+                      nodeID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
                       for_I.attachTo( for_E );
                       for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
                     } else {
@@ -1105,18 +563,18 @@ const SP = window.SP ||= {};
 
       // this element is complete except for child elements. 
       // refresh the child elements and any fill content
-      builders
+      contents
         .filter( con_B => showElementWithID[con_B.key] )
         .forEach( con_B => {
           const key = con_B.key;
-          const con_E = builderID2el[key];
+          const con_E = nodeID2el[key];
           const instance_R = con_B.instanceRecipe;
 
-          const list = forBuilderID2List[key];
+          const list = forNodeID2List[key];
           if (list) { // foreach items
 
-            const for_Es = forBuilderID2E[key];
-            const forInstances = forBuilderID2Instances[key];
+            const for_Es = forNodeID2E[key];
+            const forInstances = forNodeID2Instances[key];
             for (let i=0; i<list.length; i++ ) {
               this.it[ con_B.forvar ] = list[i];
               this.idx[ con_B.forvar ] = i;
@@ -1126,15 +584,15 @@ const SP = window.SP ||= {};
                 for_I.it[ con_B.forvar ] = list[i];
                 for_I.idx[ con_B.forvar ] = i;
                 //console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
-                for_I.refresh();
+                refresh( for_I );
 
                 // put fill contents in
                 if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
                   const fill_E = for_I.getFillEl();
-                  this._refresh_el_children( fill_E, con_B.defaultFillContents );
+                  _refresh_el_children( inst, fill_E, con_B.defaultFillContents );
                 }
               } else {
-                this._refresh_el( for_Es[i], con_B );
+                _refresh_el( inst, for_Es[i], con_B );
               }
             }
           }
@@ -1142,21 +600,412 @@ const SP = window.SP ||= {};
 
             if (instance_R) {
               const con_I = this.childInstances[key];
-              con_I.refresh();
+              refresh( con_I );
 
               // check for fill and fill contents
               if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
-                if (con_B.tag == 'coly' ) debugger;
                 const fill_E = con_I.getFillEl();
-                this._refresh_el_children( fill_E, con_B.defaultFillContents );
+                _refresh_el_children( inst, fill_E, con_B.defaultFillContents );
               }
             }
             else { // element builder
               //console.log( `CALL REFRESH FOR ${con_B.id}` );
-              this._refresh_el( con_E, con_B );
+              _refresh_el( inst, con_E, con_B );
             }
           }
         } );
-    } //_refresh_el_children
-  } // Class Instance
+
+
+  } //refresh
+
+  function _refresh_el_attrs( inst, el, elNode ) {
+    const attrs = elNode.attrs;
+
+    attrs && Object.keys(attrs)
+      .forEach( attr => {
+
+        const val = dataVal( inst, attrs[attr] );
+
+        if (attr.match( /^(textContent|innerHTML)$/)) {
+          el[attr] = val;
+          //console.log( el, `UPDATED textContent to ${val}` );
+        } else if (attr === 'class' ) {
+          el.className = '';
+          val.trim().split( /\s+/ ).forEach( cls => el.classList.add( cls ) );
+        } else if (attr === 'style') {
+          Object.keys( val )
+            .forEach( style => el.style[ style ] = val[style] );
+        } else if (attr === 'disabled' || attr === 'checked' || attr === 'selected') {
+          val ? el.setAttribute( attr, attr ) : el.removeAttribute( attr );
+        } else {
+          el.setAttribute( attr, val );
+        }
+      } );
+    } // _refresh_el_attrs
+
+
+  /** 
+      prepare the data structrues, then make an 
+      instance for the page and refresh the page.
+   */
+  function init( fileSpaces, defaultFilename, attachPoint ) {
+
+    sp_filespaces = fileSpaces;
+
+    const pageNS = loadNamespace( defaultFilename );
+
+    prepNamespaces();
+
+    useTest = pageNS.test;
+
+    Promise.resolve(pageNS.installHead())
+      .then( () => {
+        const bodyInst = createInstance( pageNS.contents[0] );
+        bodyInst.attachTo( document.body );
+        bodyInst.namespace = pageNS;
+
+        refresh( bodyInst );
+
+        if (useTest) {
+          pageNS.test();
+        }
+      } );
+  } // init
+
+  SP.init = init;
+
+  /** serialize the node and determine if it is
+      a component or element node
+   */
+  const prepNode = (node,namespace,recipe) => {
+    if (node === undefined) return;
+
+    node.id = nextid();
+
+    const compoRecipe = namespace.recipeForTag( node.tag );
+    if (compoRecipe) {
+      node.recipe = compoRecipe;
+      node.namespace = compoRecipe.namespace;
+      node.isComponent = true;
+      node.name = `[C ${node.tag}#${node.id}]`;
+      // the  fill_contents for a compoRecipe
+      // belong to the recipe that the compoRecipe is embedded in
+      // so the recipe and namespace here are fine
+      node.fill_contents && Object.values( node.fill_contents )
+        .forEach( cons => cons.forEach( con => prepNode(con,namespace,recipe)));
+    } else { // is Element
+      node.name = `[E ${node.tag}#${node.id}]`;
+      node.recipe = recipe;
+      node.namespace = namespace;
+      node.isElement = true;
+      if (node.fill === true) {
+        node.contents ||= [];
+        recipe.defaultFillNode = node;
+      } else if (node.fill) {
+        recipe.namedFillNode[node.fill] = node;
+      }
+    }
+
+    node.key = node.forvar ? `${node.id}_0` : node.id;
+
+    // the contents for a compoRecipe belong to the recipe
+    //  that the compoRecipe is embedded in
+    // so the recipe and namespace here are fine
+    node.contents && node.contents
+        .forEach( con => prepNode(con,namespace,recipe));
+
+  }; // prepNode function
+
+
+  /**   */
+  function loadNamespace( filename ) {
+    let NS = FN_2_NS[filename];
+    if (NS) return NS;
+
+    NS = sp_filespaces[filename];
+    if (!NS) {
+      throw new Error(`unable to load namespace '${filename}'`);
+    }
+
+    FN_2_NS[filename] = NS;
+
+    NS.filename = filename;
+    NS.name = `[N ${filename}]`;
+
+    // method reports and throws error
+    NS.error = function(msg) {
+      console.error( msg );
+      throw new Error( `${msg} in file ${this.name}` );
+    }
+
+    // method returns a matching recipe (if any) for the tag
+    NS.recipeForTag = function(tag) {
+      const parts = tag.split(/[.]/);
+      let recipe;
+      if (parts.length === 1) {
+        return this.recipes[parts[0]];
+        // not an error if it was not found. means it is
+        // probably an html tag rather than recipe name
+      }
+      else if (parts.length === 2) {
+        const aliasedNS = this.alias_namespaces[parts[0]];
+        recipe = aliasedNS && aliasedNS.recipeForTag( parts[1] );
+        if (recipe) return recipe;
+        error( `recipe '${tag}' not found` );
+      } else {
+        error( `recipe '${tag}' not found` );
+      }
+    }; // recipeForTag method
+
+    // imports the recipes from the namespace into this namespace
+    const import_into_FN = NS.import_into_namespaces || [];
+    import_into_FN
+      .forEach( alias => {
+        const importNS = loadNamespace(import_into_FN[alias]);
+        const recs = importNS.recipes || {};
+        Object.keys( recs )
+          .forEach( rname => (NS.recipes[rname] ||= recs[rname]));
+      } );
+
+    // stores aliases of an other namespace in this one
+    const alias_2_FN = NS.alias_namespace || {};
+    const aliases = Object.keys( alias_2_FN );
+    aliases.forEach( alias =>
+      (alias_2_FN[alias] = loadNamespace(alias_2_FN[alias]))
+    );
+
+    // serialize this namespace
+    NS.id = nextid();
+
+    NS.contents = [];
+
+    // method that looks at the head and
+    NS.installHead = function() {
+      const headNode = this.html.head;
+      if (! headNode) return;
+
+      headNode.title && (document.title = headNode.title);
+
+      const headEl = document.head;
+
+      // explicit style
+      let style = headNode.style
+      if (style) {
+        const stylel = document.createElement( 'style' );
+        stylel.setAttribute( 'type', 'text/css' );
+        if (stylel.styleSheet) { // IE
+          stylel.styleSheet.cssText = style;
+        } else {
+          stylel.appendChild(document.createTextNode(style));
+        }
+        headEl.appendChild( stylel );
+      }
+
+      // explicit javascript
+      let script = headNode.script
+      if (script) {
+        const scriptel = document.createElement( 'script' );
+        scriptel.setAttribute( 'type', 'text/javascript' );
+        scriptel.appendChild(document.createTextNode(script));
+        headEl.appendChild( scriptel );
+      }
+
+      return new Promise( (res,rej) => {
+        let files = 0;
+        let ready = false;
+
+        const promCheck = () => {
+          if (ready && files === 0) {
+            res();
+          }
+        }
+
+        const loadList = file => {
+          files++;
+          file.onload = function() {
+            files--;
+            promCheck();
+          }
+        };
+
+        // css files
+        const css = headNode.css;
+        const cssFiles = Array.isArray( css ) ? css : css ? [css] : [];
+        cssFiles.forEach( file => {
+          const link = document.createElement( 'link' );
+          link.setAttribute( 'rel', 'stylesheet' );
+          link.setAttribute( 'media', 'screen' );
+          headEl.appendChild( link );
+          link.setAttribute( 'href', file );
+        } );
+        
+        // js files
+        const js = headNode.javascript;
+        const jsFiles = Array.isArray( js ) ? js : js ? [js] : [];
+        jsFiles.forEach( file => {
+          const scr = document.createElement( 'script' );
+          headEl.appendChild( scr );
+          loadList( scr );
+          scr.setAttribute( 'src', file );
+        } );
+        
+        // js modules files
+        const mods = headNode['javascript-module'];
+        const modFiles = Array.isArray( mods ) ? mods : mods ? [mods] : [];
+        modFiles.forEach( file => {
+          const scr = document.createElement( 'script' );
+          scr.setAttribute( 'type', 'module' );
+          headEl.appendChild( scr );
+          loadList( scr );
+          scr.setAttribute( 'src', file );
+        } );
+        
+        ready = true;
+        promCheck();
+      } );
+    }; // installHead method
+
+    // if there is html/body here, make a root node
+    if (NS.html) {
+
+      const body = NS.html.body || {};
+
+      NS.tag = 'body';
+      
+      const rootNode = {
+          tag:'body',
+          contents: body.contents || [],
+      };
+
+      NS.contents.push( rootNode );
+
+      [ 'listen', 'postLoad', 'preLoad', 'when' ]
+        .forEach( fld => ( rootNode[fld] = body[fld] ) );
+      
+    } // if the namespace has html
+
+    return NS;
+  } // loadNamespace
+
+  SP.loadNamespace = loadNamespace;
+
+  /**   */
+  function prepNamespaces() {
+
+    const NSs = Object.values( FN_2_NS );
+
+    // first prep all the recipes
+    // and build a list of all recipes
+    let recipes = [];
+    NSs.forEach( NS => {
+      Object.keys( NS.recipes || {} )
+        .forEach( recipeName => {
+          const recipe = NS.recipes[recipeName];
+          recipe.id = nextid();
+          recipe.name = `[R ${recipeName}#${recipe.id}]`;
+          recipe.namespace = NS;
+          recipe.namedFillNode = {};
+          recipe.attrs ||= {};
+          recipe.isRecipe = true;
+          prepNode( recipe.contents[0], NS, recipe );
+          recipes.push( recipe );
+        } );
+    } );
+
+    // now prep namespace (body) contents
+    NSs.forEach( NS => {
+      NS.name = `[N ${NS.filename}#${NS.id}]`;
+      prepNode( NS.contents && NS.contents[0], NS );
+      console.log( NS.contents[0], `BODY CONTENTS for ${NS.name}` );
+    } );
+    
+    console.log( "checking for recipe overlays" );
+    // see if this recipe is overlaying an other
+    recipes.forEach( rec => {
+      const rootNode = rec.contents[0];
+      if (rootNode.isComponent) {
+        rec.overlaysRecipe = rootNode.recipe;
+        console.log( `${rec.name} overlays ${rootNode.recipe.name}` );
+      }
+    } );
+    
+    const id2done = {};
+    while (Object.keys(id2done).length < recipes.length) {
+      recipes
+        .filter( rec => ! id2done[rec.id] )
+        .forEach( rec => 
+          {
+            // see if this recipe is overlaying an other
+            // if so, and what it is overlaying is done, do 
+            // the overlay
+            const overlay = rec.overlaysRecipe;
+            if (overlay) {
+              const rootNode = rec.contents[0];
+              const overlayRootNode = overlay.contents[0];
+              if (id2done[overlay.id]) { // make sure this one is done and ready
+                overlayFromTo( overlay.functions, rec.functions );
+                overlayFromTo( overlay.data, rec.data );
+                overlayFromTo( overlay.when, rec.when );
+
+                // style is a special attr that is a data structure
+                const oldStyle = rec.attrs.style;
+
+                overlayFromTo( overlay.attrs, rec.attrs );
+
+                // the overlay just overlayed one layer depth so
+                // would clobber style which has depth of two..so
+                // restore
+                if (oldStyle) {
+                  rec.attrs.style = oldStyle;
+                  overlayFromTo( overlay.attrs.style, oldStyle );
+                }
+                
+                // build a replacement for contents
+                console.log( `copy ${overlay.contents[0].id} to ${rec.name}` );
+
+                // clear this; copyNode may find an other and if it does not, then new content root should be used
+                const oldFillNode = rec.defaultFillNode;
+                rec.defaultFillNode = undefined; 
+
+                const overlayRootNodeCopy = copyNode(overlay.contents[0], rec);
+                const tempFillNode = rec.defaultFillNode ||= overlayRootNodeCopy;
+
+                tempFillNode.contents.push( ...rootNode.contents );
+                rec.defaultFillNode = oldFillNode ? oldFillNode : tempFillNode;
+
+                rec.contents = [overlayRootNodeCopy];
+
+                if (rootNode.fill_contents) {
+                  Object.keys( rootNode.fill_contents )
+                    .forEach( fillName => {
+                      const fillNode = rec.namedFillNode[fillName];
+                      fillNode && fillNode.contents.push( ...rootNode.fill_contents[fillName] );
+                    } );
+                }
+
+                // now update the root node of the contents with the attributes
+                overlayFromTo( rootNode.attrs, rec.attrs );
+                rec.contents[0].attrs = rec.attrs;
+
+                id2done[ rec.id ] = rec;
+              }
+            } else {
+              // recipe has a root Node that is an element. 
+              // make sure it has a default fill node which
+              // by default is the root node
+              rec.defaultFillNode ||= rec.contents[0];
+
+              // attributes on the recipe take precendence
+              // but then are attached to the root node
+              overlayFromTo( rec.contents[0].attrs, rec.attrs );
+              // the attributes are ultimately used from the root content node
+              rec.contents[0].attrs = rec.attrs;
+
+              id2done[ rec.id ] = rec;
+            }
+          } );
+    } //recipes completed/linked together
+
+  } //prepNamespaces
+
 }

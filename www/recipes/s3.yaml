@@ -1,7 +1,9 @@
-title: example
 
-body:
-  - testapp:
+page:
+  title: example click counter
+
+  body:
+    - testapp:
 
 recipes:
   testapp:

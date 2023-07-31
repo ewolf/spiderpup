@@ -67,7 +67,7 @@ sub encode_attrs {
                 $style->{$k} = $v;
             }
         }
-        elsif( $field ne 'contents' && $field ne 'fill_contents' ) {
+        elsif( $field ne 'contents' && $field !~ /^fill_/ ) {
             # is considered a property (and contents is handled elsewhere)
             $node->{attrs}{$field} = $val;
         }
@@ -97,20 +97,18 @@ sub build_node {
         }
     }
 
-    if ($data->{contents}) {
-        my $con = $node->{contents} = [];
-        for my $con_data (@{$data->{contents}}) {
-            push @$con, build_node( $con_data );
-        }
-    }
-    
-    if (my $fill_data = $data->{fill_contents}) {
-        my $fill_con = $node->{fill_contents} = {};
-        for my $fill_name (keys %{$data->{fill_contents}}) {
-            my $con = $fill_con->{$fill_name} = [];
-            for my $fill_con_data (@{$fill_data->{$fill_name}}) {
-                push @$con, build_node( $fill_con_data );
+    for my $fld (keys %$data) {
+        if ($fld eq 'contents') {
+            my $con = $node->{contents} = [];
+            for my $con_data (@{$data->{contents}}) {
+                push @$con, build_node( $con_data );
             }
+        }
+        if ($fld =~ /^fill_(.*)/) {
+            my $fill_name = $1;
+            my $fill_data = $data->{$fld};
+            my $fill_con = ($node->{fill_contents} //= {})->{$fill_name} = [];
+            push @$fill_con, map { build_node($_) } @$fill_data;
         }
     }
 
@@ -215,11 +213,12 @@ sub yaml_to_js {
     my $js = '';
     eval {
         my $default_filename = load_namespace( $yaml_root_directory, $filename, $filespaces, undef, $default_yaml_loader, $include_tests );
-
+        print STDERR Data::Dumper->Dump([values %$filespaces,"WOOF"]);
         $js = "let filespaces = ".to_json( $filespaces, $alphasort ) . ";\n" .
             'let defaultFilename = '.to_string($default_filename).';';
     };
     if ($@) {
+        warn $@;
         $js = make_error($filename);
     }
     return $js;
@@ -240,7 +239,8 @@ sub load_namespace {
     if ($yaml) {
 
         my $namespace = { 
-            namespaces => {},
+            alias_namespaces => {},
+            import_into_namespace => [],
             functions  => $yaml->{functions} || {},
             about      => $yaml->{about} || '',
             recipes    => {},
@@ -259,25 +259,20 @@ sub load_namespace {
 
         # check for aliased imports
         if (my $imports = $yaml->{alias_namespaces}) {
-            for my $ns (keys %$imports) {
-                if ($ns =~ /\./) {
-                    die "namespace may not contain '.' and got '$ns'";
+            for my $alias (keys %$imports) {
+                if ($alias =~ /\./) {
+                    die "namespace alias may not contain '.' and got '$alias'";
                 }
-                my $imp_filename = $imports->{$ns};
-                $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader );
+                my $imp_filename = $imports->{$alias};
+                my $aliased_NS = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader );
+                $namespace->{alias_namespaces}{$alias} = $aliased_NS;
+
             }
         }
 
         # check for imports directly to namespaces
-        if (my $imports = $yaml->{import_namespaces}) {
-            for my $ns (keys %$imports) {
-                if ($ns =~ /\./) {
-                    die "namespace may not contain '.' and got '$ns'";
-                }
-                my $imp_filename = $imports->{$ns};
-                $namespace->{namespaces}{$ns} = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader );
-            }
-        }
+        push @{$namespace->{import_into_namespace}},
+            @{$yaml->{import_into_namespace}||[]};
 
         
         #
