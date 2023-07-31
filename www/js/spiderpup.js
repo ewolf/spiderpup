@@ -282,7 +282,7 @@ const SP = window.SP ||= {};
       id: nextid(),
       recipe: conNode.recipe,
       namespace: conNode.namespace || conNode.recipe.namespace,
-      rootNode: conNode,
+      rootNode: (key && conNode.recipe.contents[0]) || conNode,
       it: {},
       idx: {},
       el: {},
@@ -291,6 +291,9 @@ const SP = window.SP ||= {};
       childInstances: {},
       attachTo: function(el) { this.rootEl = el },
     };
+    
+    
+
     inst.data = makeData( inst );
     if (parentInstance) {
       inst.parent = parentInstance;
@@ -356,7 +359,7 @@ const SP = window.SP ||= {};
   function _refresh_el_children( inst, el, contents ) {
     if (contents === undefined || contents.length === 0) 
       return;
-
+    
     // catalog  element children
     const nodeID2el = {};
     Array.from( el.children )
@@ -369,251 +372,263 @@ const SP = window.SP ||= {};
           }
         }
       } );
+    
+    // little function to remove extra forloop elements
+    const forTrim = (startIdx,con_B,con_E) => {
+      for (let i=startIdx; i<Number(con_E.dataset.splastlistlen); i++) {
+        const key = `${con_E.dataset.spid}_${i}`
+        const for_E = nodeID2el[key];
+        delete nodeID2el[key];
+        for_E && for_E.remove();
+        // remove any child instance that went along with this forloop
+        delete inst.childInstances[`${con_B.id}_${i}`];
+      }
+    };
 
-      // little function to remove extra forloop elements
-      const forTrim = (startIdx,con_B,con_E) => {
-        for (let i=startIdx; i<Number(con_E.dataset.splastlistlen); i++) {
-          const key = `${con_E.dataset.spid}_${i}`
-          const for_E = nodeID2el[key];
-          delete nodeID2el[key];
-          for_E && for_E.remove();
-          // remove any child instance that went along with this forloop
-          delete inst.childInstances[`${con_B.id}_${i}`];
+    const showElementWithID = {}; //id 2 not ifd away element
+    let lastWasConditional = false,
+        conditionalDone = false,
+        lastConditionalWasTrue = false;
+
+    // hang on to for instances
+    const forNodeID2List = {};
+    const forNodeID2I = {};
+    const forNodeID2E = {};
+
+    // first loop make sure each builder has an element associated with it
+    // that element may be hidden. instance builders also will have an instance
+    // associated with them; looped instance builders will have an instance
+    // for one loop wether or not there are zero or more than one in the loop
+    //
+    // this loop also figures out if/elseif/else branching and which builders
+    // need to be shown or hidden. 
+    // for hidden branches - the element is hidden
+    // for hidden looped branches - the first element in the loop is hidden 
+    //           and the rest are removed. the first instance is retained
+    //           and the rest destroyed
+    // for shown branches - element is unhidden
+    // for shown looped branches - first element in loop is unhidden
+    //           and loop instances and elements beyond the first are created
+    //           and loop instances and elements that go beyond the current list
+    //           are destroyed
+    contents
+      .forEach( con_B => {
+        const key = con_B.key;
+
+        let con_E = nodeID2el[key];
+        const instance_R = con_B.recipe;
+        let inst_B;
+
+        let con_I = inst.childInstances[key];
+
+        // create the element if need be
+        if (!con_E) {
+          if (con_B.isComponent) {
+            con_I ||= createInstance(con_B, inst, key);
+
+            // if this node has a handle, it means
+            // that the component instance has a 
+            // handle attached to this instance
+            if (con_B.handle) {
+              inst.comp[con_B.handle] = con_I;
+            }
+
+            // now make the element
+            con_E = createElement( con_I, con_B.recipe.contents[0] );
+            
+            if (con_B.forvar) {
+              con_E.dataset.spforidx = '0';
+            }
+            con_I.attachTo( con_E );
+            //              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
+          }
+          else { // element not instance
+            con_E = createElement( inst, con_B );
+            
+            // check if this is a named or default fill node
+            // (no R for body inst)
+            if (instance_R && con_B === instance_R.defaultFillNode) {
+              inst.defaultFillElement = con_E;
+            }
+
+
+            // if this node has a handle, it means
+            // that the elementhas a 
+            // handle attached to this instance
+            if (con_B.handle) {
+              inst.el[con_B.handle] = con_E;
+            }
+            
+          }
+          nodeID2el[key] = con_E;
+          //            nodeID2el[key] = this.builder_id2el[key] = con_E;
+          
+          con_E.style.display = 'none';
+          el.append( con_E );
+        };
+        //inst_B ||= con_I && con_I.instanceBuilder;
+        
+        // check conditionals if it should be displayed
+        let showThis = false;
+        if (con_B.if) {
+          lastConditionalWasTrue = conditionalDone = con_B.if(inst);
+          lastWasConditional = true;
+          showThis = lastConditionalWasTrue;
+          con_E.dataset.ifCondition = conditionalDone; //for debugging
         }
-      };
-
-      const showElementWithID = {}; //id 2 not ifd away element
-      let lastWasConditional = false,
-          conditionalDone = false,
-          lastConditionalWasTrue = false;
-
-      // hang on to for instances
-      const forNodeID2List = {};
-      const forNodeID2I = {};
-      const forNodeID2E = {};
-
-      // first loop make sure each builder has an element associated with it
-      // that element may be hidden. instance builders also will have an instance
-      // associated with them; looped instance builders will have an instance
-      // for one loop wether or not there are zero or more than one in the loop
-      //
-      // this loop also figures out if/elseif/else branching and which builders
-      // need to be shown or hidden. 
-      // for hidden branches - the element is hidden
-      // for hidden looped branches - the first element in the loop is hidden 
-      //           and the rest are removed. the first instance is retained
-      //           and the rest destroyed
-      // for shown branches - element is unhidden
-      // for shown looped branches - first element in loop is unhidden
-      //           and loop instances and elements beyond the first are created
-      //           and loop instances and elements that go beyond the current list
-      //           are destroyed
-      contents
-        .forEach( con_B => {
-          const key = con_B.key;
-
-          let con_E = nodeID2el[key];
-          const instance_R = con_B.recipe;
-          let inst_B;
-
-          let con_I = inst.childInstances[key];
-
-          // create the element if need be
-          if (!con_E) {
-            if (con_B.isComponent) {
-              con_I ||= createInstance(con_B, inst, key);
-
-              // if this node has a handle, it means
-              // that the component instance has a 
-              // handle attached to this instance
-              if (con_B.handle) {
-                inst.comp[con_B.handle] = con_I;
-              }
-
-              // now make the element
-              con_E = createElement( con_I, con_B );
-
-              if (con_B.forvar) {
-                con_E.dataset.spforidx = '0';
-              }
-              con_I.attachTo( con_E );
-//              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
-            }
-            else { // element not instance
-              con_E = createElement( inst, con_B );
-
-              // if this node has a handle, it means
-              // that the elementhas a 
-              // handle attached to this instance
-              if (con_B.handle) {
-                inst.el[con_B.handle] = con_E;
-              }
-
-            }
-            nodeID2el[key] = con_E;
-//            nodeID2el[key] = this.builder_id2el[key] = con_E;
-
-            con_E.style.display = 'none';
-            el.append( con_E );
-          };
-          //inst_B ||= con_I && con_I.instanceBuilder;
-
-          // check conditionals if it should be displayed
-          let showThis = false;
-          if (con_B.if) {
-            lastConditionalWasTrue = conditionalDone = con_B.if(inst);
-            lastWasConditional = true;
+        else if (con_B.elseif) {
+          if (!lastWasConditional) {
+            this.recipe.error( 'elseif must be preceeded by if or elseif' );
+          }
+          if (conditionalDone) {
+            lastConditionalWasTrue = false;
+            con_E.dataset.elseIfCondition = 'n/a'; //for debugging
+          } else {
+            lastConditionalWasTrue = conditionalDone = con_B.elseif(this);
+            con_E.dataset.elseIfCondition = conditionalDone; //for debugging
             showThis = lastConditionalWasTrue;
-            con_E.dataset.ifCondition = conditionalDone; //for debugging
           }
-          else if (con_B.elseif) {
-            if (!lastWasConditional) {
-              this.recipe.error( 'elseif must be preceeded by if or elseif' );
-            }
-            if (conditionalDone) {
-              lastConditionalWasTrue = false;
-              con_E.dataset.elseIfCondition = 'n/a'; //for debugging
-            } else {
-              lastConditionalWasTrue = conditionalDone = con_B.elseif(this);
-              con_E.dataset.elseIfCondition = conditionalDone; //for debugging
-              showThis = lastConditionalWasTrue;
-            }
+        }
+        else if (con_B.else) {
+          if (! lastWasConditional ) {
+            this.recipe.error( 'else must be preceeded by if or elseif' );
           }
-          else if (con_B.else) {
-            if (! lastWasConditional ) {
-              this.recipe.error( 'else must be preceeded by if or elseif' );
-            }
-            if (conditionalDone) {
-              lastConditionalWasTrue = false;
-              con_E.dataset.else = false;
-            } else {
-              lastConditionalWasTrue = true;
-              con_E.dataset.else = true;
-              showThis = true;
-            }
-          }
-          else { // no conditional
+          if (conditionalDone) {
+            lastConditionalWasTrue = false;
+            con_E.dataset.else = false;
+          } else {
+            lastConditionalWasTrue = true;
+            con_E.dataset.else = true;
             showThis = true;
           }
+        }
+        else { // no conditional
+          showThis = true;
+        }
+        
+        if (showThis) {
+          showElementWithID[key] = true;
 
-          if (showThis) {
-            showElementWithID[key] = true;
+          con_E.style.display = null; // unhide
 
-            con_E.style.display = null; // unhide
+          // check if this is a loop. if so
+          // create elements and maybe child instances for
+          // each iteration of the loop
+          if (con_B.foreach && con_B.forvar) {
+            const forInstances = forNodeID2I[key] = [con_I];
+            const for_Es = forNodeID2E[key] = [con_E];
+            const list = forNodeID2List[key] = con_B.foreach(this);
 
-            // check if this is a loop. if so
-            // create elements and maybe child instances for
-            // each iteration of the loop
-            if (con_B.foreach && con_B.forvar) {
-              const forInstances = forNodeID2I[key] = [con_I];
-              const for_Es = forNodeID2E[key] = [con_E];
-              const list = forNodeID2List[key] = con_B.foreach(this);
-
-              if (list.length === 0) {
-                con_E.style.display = 'none'; // hide the first
-                forTrim( 1, con_B, con_E );   // remove all but the first
+            if (list.length === 0) {
+              con_E.style.display = 'none'; // hide the first
+              forTrim( 1, con_B, con_E );   // remove all but the first
+            }
+            else {
+              if (Number(con_E.dataset.splastlistlen) > list.length) {
+                forTrim( list.length, con_B, con_E );
               }
-              else {
-                if (Number(con_E.dataset.splastlistlen) > list.length) {
-                  forTrim( list.length, con_B, con_E );
-                }
-                con_E.dataset.splastlistlen = list.length;
+              con_E.dataset.splastlistlen = list.length;
 
-                for (let i=1; i<list.length; i++) {
-                  const forIDKey = `${con_B.id}_${i}`;
-                  let for_E = nodeID2el[forIDKey];
-                  if (for_E) {
-                    if (instance_R) {
-                      const for_I = this.childInstances[forIDKey];
-                      forInstances.push( for_I );
-                    }
-                  } 
-                  else {
-                    if (instance_R) {
-                      const for_I = this.childInstances[forIDKey]
-                            ||= instance_R.createInstance(con_B,this);
-                      forInstances.push( for_I );
-                      for_E = inst_B.buildElement(for_I,con_B);
-                      nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
-                      nodeID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
-                      for_I.attachTo( for_E );
-                      for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
-                    } else {
-                      for_E = con_B.buildElement(this);
-                    }
-                    for_E.dataset.spforidx = i;
-                    el.append( for_E );
+              for (let i=1; i<list.length; i++) {
+                const forIDKey = `${con_B.id}_${i}`;
+                let for_E = nodeID2el[forIDKey];
+                if (for_E) {
+                  if (instance_R) {
+                    const for_I = this.childInstances[forIDKey];
+                    forInstances.push( for_I );
                   }
-                  for_Es.push( for_E );
+                } 
+                else {
+                  if (instance_R) {
+                    const for_I = this.childInstances[forIDKey]
+                          ||= instance_R.createInstance(con_B,this);
+                    forInstances.push( for_I );
+                    for_E = inst_B.buildElement(for_I,con_B);
+                    nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
+                    nodeID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                    for_I.attachTo( for_E );
+                    for_I.builder_id2el[instance_R.rootBuilder.key] = for_E;
+                  } else {
+                    for_E = con_B.buildElement(this);
+                  }
+                  for_E.dataset.spforidx = i;
+                  el.append( for_E );
                 }
-              }
-            } else if (con_B.foreach || con_B.forvar) {
-              this.recipe.error( 'foreach and forvar must both be present' );
-            }
-
-          } else {
-            con_E.style.display = 'none';
-            // remove foreach beyond zero
-            if (Number(con_E.dataset.splastlistlen) > 1) {
-              forTrim( 1, con_B, con_E );
-            }
-          }
-
-        } );
-
-      // this element is complete except for child elements. 
-      // refresh the child elements and any fill content
-      contents
-        .filter( con_B => showElementWithID[con_B.key] )
-        .forEach( con_B => {
-          const key = con_B.key;
-          const con_E = nodeID2el[key];
-          const instance_R = con_B.instanceRecipe;
-
-          const list = forNodeID2List[key];
-          if (list) { // foreach items
-
-            const for_Es = forNodeID2E[key];
-            const forInstances = forNodeID2Instances[key];
-            for (let i=0; i<list.length; i++ ) {
-              this.it[ con_B.forvar ] = list[i];
-              this.idx[ con_B.forvar ] = i;
-              //console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
-              if (instance_R) {
-                const for_I = forInstances[i];
-                for_I.it[ con_B.forvar ] = list[i];
-                for_I.idx[ con_B.forvar ] = i;
-                //console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
-                refresh( for_I );
-
-                // put fill contents in
-                if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
-                  const fill_E = for_I.getFillEl();
-                  _refresh_el_children( inst, fill_E, con_B.defaultFillContents );
-                }
-              } else {
-                _refresh_el( inst, for_Es[i], con_B );
+                for_Es.push( for_E );
               }
             }
+          } else if (con_B.foreach || con_B.forvar) {
+            this.recipe.error( 'foreach and forvar must both be present' );
           }
-          else { //single item
 
+        } else {
+          con_E.style.display = 'none';
+          // remove foreach beyond zero
+          if (Number(con_E.dataset.splastlistlen) > 1) {
+            forTrim( 1, con_B, con_E );
+          }
+        }
+
+      } );
+
+    // this element is complete except for child elements. 
+    // refresh the child elements and any fill content
+    const instances = [];
+    contents
+      .filter( con_B => showElementWithID[con_B.key] )
+      .forEach( con_B => {
+        const key = con_B.key;
+        const con_E = nodeID2el[key];
+        const instance_R = con_B.isComponent && con_B.recipe;
+
+        const list = forNodeID2List[key];
+        if (list) { // foreach items
+
+          const for_Es = forNodeID2E[key];
+          const forInstances = forNodeID2Instances[key];
+          for (let i=0; i<list.length; i++ ) {
+            //console.log( `set ${this.id}/${this.builder.name} it[${con_B.forvar}] to ${i}` );
             if (instance_R) {
-              const con_I = this.childInstances[key];
-              refresh( con_I );
+              const for_I = forInstances[i];
+              for_I.it[ con_B.forvar ] = list[i];
+              for_I.idx[ con_B.forvar ] = i;
+              //console.log( `set ${for_I.id}/${for_I.builder.name} it[${con_B.forvar}] to ${i}` );
+              refresh( for_I );
 
-              // check for fill and fill contents
-              if (con_B.defaultFillContents && con_B.defaultFillContents.length) {
-                const fill_E = con_I.getFillEl();
-                _refresh_el_children( inst, fill_E, con_B.defaultFillContents );
+              // put fill contents in
+              if (con_B.contents && con_B.contents.length) {
+                const fill_E = for_I.defaultFillElement;
+                _refresh_el_children( inst, fill_E, con_B.contents );
               }
-            }
-            else { // element builder
-              //console.log( `CALL REFRESH FOR ${con_B.id}` );
-              _refresh_el( inst, con_E, con_B );
+
+              // check for named fill contents
+              console.warn( "CHECK FOR NAMED FILL" );
+
+            } else {
+              _refresh_el( inst, for_Es[i], con_B );
             }
           }
-        } );
+        }
+        else { //single item
+
+          if (instance_R) {
+            const con_I = inst.childInstances[key];
+            refresh( con_I );
+
+            // check for fill and fill contents
+            if (con_B.contents && con_B.contents.length) {
+              const fill_E = con_I.defaultFillElement;
+              _refresh_el_children( inst, fill_E, con_B.contents );
+            }
+
+            console.warn( "CHECK FOR NAMED FILL" );
+          }
+          else { // element builder
+            //console.log( `CALL REFRESH FOR ${con_B.id}` );
+            _refresh_el( inst, con_E, con_B );
+          }
+        }
+      } );
 
 
   } //refresh
