@@ -219,7 +219,6 @@ const SP = window.SP ||= {};
 
   const FN_2_NS = {};
   let lastid = 1;
-  let bodyInst;
   let useTest = false;
 
   /** return next serialized id  */
@@ -227,7 +226,7 @@ const SP = window.SP ||= {};
     return lastid++;
   }
   
-  const nodeFields = ['tag','fill',
+  const nodeFields = ['tag','fill','key',
                       'handle','comp',
                       'if','elseif','else',
                       'foreach','forvar',
@@ -281,7 +280,8 @@ const SP = window.SP ||= {};
     const inst = {
       id: nextid(),
       recipe: conNode.recipe,
-      namespace: conNode.namespace || conNode.recipe.namespace,
+//      namespace: conNode.namespace || conNode.recipe.namespace,
+      namespace: conNode.recipe.namespace,
       rootNode: (key && conNode.recipe.contents[0]) || conNode,
       it: {},
       idx: {},
@@ -290,6 +290,7 @@ const SP = window.SP ||= {};
       fun: {},
       childInstances: {},
       attachTo: function(el) { this.rootEl = el },
+      namedFillElement: {},
     };
 
     inst.data = makeData( inst );
@@ -419,7 +420,8 @@ const SP = window.SP ||= {};
         const key = con_B.key;
 
         let con_E = nodeID2el[key];
-        const instance_R = con_B.recipe;
+        const compo_R = con_B.recipe;
+        const instance_R = inst.recipe;
         let inst_B;
 
         let con_I = inst.childInstances[key];
@@ -443,17 +445,22 @@ const SP = window.SP ||= {};
               con_E.dataset.spforidx = '0';
             }
             con_I.attachTo( con_E );
-            //              con_I.builder_id2el[instance_R.rootBuilder.key] = con_E;
+            //              con_I.builder_id2el[compo_R.rootBuilder.key] = con_E;
           }
           else { // element not instance
             con_E = createElement( inst, con_B );
-            
+
             // check if this is a named or default fill node
             // (no R for body inst)
-            if (instance_R && con_B === instance_R.defaultFillNode) {
-              inst.defaultFillElement = con_E;
+            if (instance_R) {
+              if ( con_B === instance_R.defaultFillNode) {
+                inst.defaultFillElement = con_E;
+              }
+              if ( con_B === instance_R.namedFillNode[con_B.fill] ) {
+                inst.namedFillElement[con_B.fill] = con_E;
+              }
             }
-
+            
 
             // if this node has a handle, it means
             // that the elementhas a 
@@ -536,13 +543,13 @@ const SP = window.SP ||= {};
                 const forIDKey = `${con_B.id}_${i}`;
                 let for_E = nodeID2el[forIDKey];
                 if (for_E) {
-                  if (instance_R) {
+                  if (con_B.isComponent) {
                     const for_I = inst.childInstances[forIDKey];
                     forInstances.push( for_I );
                   }
                 } 
                 else {
-                  if (instance_R) {
+                  if (con_B.isComponent) {
                     const for_I = inst.childInstances[forIDKey]
                           ||= createInstance(con_B,inst,con_B.key);
                     forInstances.push( for_I );
@@ -603,8 +610,16 @@ const SP = window.SP ||= {};
                 const fill_E = for_I.defaultFillElement;
                 _refresh_el_children( inst, fill_E, con_B.contents );
               }
+              
+              if (con_B.fill_contents) {
+                Object.keys( con_B.fill_contents)
+                  .forEach( fillName => {
+                    const fill_E = for_I.namedFillElement[fillName];
+                    fill_E && _refresh_el_children( inst, fill_E, con_B.fill_contents[fillName] );
+                  } );
+              }
 
-              // check for named fill contents
+              // Check for named fill contents
               console.warn( "CHECK FOR NAMED FILL" );
 
             } else {
@@ -616,16 +631,23 @@ const SP = window.SP ||= {};
         }
         else { //single item
 
-          if (instance_R) {
+          if (con_B.isComponent) {
             const con_I = inst.childInstances[key];
             refresh( con_I );
+
 
             // check for fill and fill contents
             if (con_B.contents && con_B.contents.length) {
               const fill_E = con_I.defaultFillElement;
               _refresh_el_children( inst, fill_E, con_B.contents );
             }
-
+            if (con_B.fill_contents) {
+              Object.keys( con_B.fill_contents)
+                .forEach( fillName => {
+                  const fill_E = con_I.namedFillElement[fillName];
+                  fill_E && _refresh_el_children( inst, fill_E, con_B.fill_contents[fillName] );
+                } );
+            }
             console.warn( "CHECK FOR NAMED FILL" );
           }
           else { // element builder
@@ -643,7 +665,6 @@ const SP = window.SP ||= {};
 
     attrs && Object.keys(attrs)
       .forEach( attr => {
-
         const val = dataVal( inst, attrs[attr] );
 
         if (attr.match( /^(textContent|innerHTML)$/)) {
@@ -676,6 +697,13 @@ const SP = window.SP ||= {};
 
     prepNamespaces();
 
+    // special case, treat body element as a recipe root
+    const bodyC = pageNS.contents[0];
+    bodyC.recipe = pageNS.contents[0];
+//    bodyC.isComponent = true;
+    bodyC.namedFillNode = {};
+    
+
     useTest = pageNS.test;
 
     Promise.resolve(pageNS.installHead())
@@ -683,9 +711,7 @@ const SP = window.SP ||= {};
         const bodyInst = createInstance( pageNS.contents[0] );
         bodyInst.attachTo( document.body );
         bodyInst.namespace = pageNS;
-
         refresh( bodyInst );
-
         if (useTest) {
           pageNS.test();
         }
@@ -985,7 +1011,9 @@ const SP = window.SP ||= {};
 
                 // clear this; copyNode may find an other and if it does not, then new content root should be used
                 const oldFillNode = rec.defaultFillNode;
+                const oldNamedFillNode = rec.namedFillNode;
                 rec.defaultFillNode = undefined; 
+                rec.namedFillNode = {};
 
                 const overlayRootNodeCopy = copyNode(overlay.contents[0], rec);
                 const tempFillNode = rec.defaultFillNode ||= overlayRootNodeCopy;

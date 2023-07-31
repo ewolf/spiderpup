@@ -140,7 +140,7 @@ function html_structure( el, node, msg ) {
   }
   if (! is_deeply( elAttrs, attrs ) ) {
     msg && fail( msg );
-//    console.log( elAttrs, attrs, "ATTR FAIL" );
+    console.log( elAttrs, attrs, "ATTR FAIL" );
     messages.push ( `html_structure. Attribute mismatch for element '${tag}'` );
     return false;
   }
