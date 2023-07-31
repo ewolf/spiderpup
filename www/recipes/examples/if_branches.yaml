@@ -13,30 +13,31 @@ title: pressure settings
 # Set up the page with number adjustings
 # with different settings.
 #
-body:
+page:
+  body:
 
-  - h1: Pressure Controls
+    - h1: Pressure Controls
 
-  - h2: Click the pressure up and down and see how these react
+    - h2: Click the pressure up and down and see how these react
 
-  - NumberAdjuster:
-      data:
-        value: 15
-        incVal: 5
-        tooLow: 10
-        tooHigh: 35
-        name: 'pressure A'
+    - NumberAdjuster:
+        data:
+          value: 15
+          incVal: 5
+          tooLow: 10
+          tooHigh: 35
+          name: 'pressure A'
 
-  - NumberAdjuster:
-      data:
-        value: 20
-        incVal: 10
-        tooLow: 10
-        tooHigh: 50
-        name: 'pressure B'
+    - NumberAdjuster:
+        data:
+          value: 20
+          incVal: 10
+          tooLow: 10
+          tooHigh: 50
+          name: 'pressure B'
 
-  - NumberAdjuster:
-      # uses default values
+    - NumberAdjuster:
+        # uses default values
           
 recipes:
   NumberAdjuster:
@@ -67,9 +68,14 @@ recipes:
                 style: margin: 0 5px
                 textContent: s => s.data.name + ': ' + s.data.value
             - warning:
+                data:
+                  text: too low
                 if: s => s.data.value <= s.data.tooLow
                 textContent: too low
+                style: border black 3px
             - warning:
+                data:
+                  text: too high
                 elseif: s => s.data.value >= s.data.tooHigh
                 textContent: too high
             - span:
@@ -79,4 +85,4 @@ recipes:
   warning:
     style: background: orange;
     contents:
-      - span:
+      - span: s => s.data.text

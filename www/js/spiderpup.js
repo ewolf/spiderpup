@@ -296,7 +296,25 @@ const SP = window.SP ||= {};
     inst.data = makeData( inst );
 
     if (conNode.recipe) {
+      overlayFromTo( conNode.data, inst.data );
       overlayFromTo( conNode.recipe.data, inst.data );
+
+      // copy over functions
+      [ conNode.functions, conNode.recipe.functions ]
+        .filter ( from => from !== undefined )
+        .forEach( from => {
+          Object.keys( from )
+          .filter( funName => !inst.fun[funName] )
+          .forEach( funName => {
+            inst.fun[funName] = function() {
+              const prom = from[funName]( inst, ...arguments );
+              return Promise.resolve( prom )
+                .then( () => {
+                  if ( check(inst) ) refresh(inst);
+                } );
+            };
+          } );
+        } );
     }
 
     if (parentInstance) {
@@ -323,13 +341,14 @@ const SP = window.SP ||= {};
     }
 
   function createElement( inst, conNode ) {
-    const el = document.createElement( conNode.tag );
+    const rootNode = conNode.isComponent ? conNode.recipe.contents[0] : conNode;
+    const el = document.createElement( rootNode.tag );
     el.dataset.spid = conNode.id;
 
     // attach event listeners
-    conNode.on && Object.keys( conNode.on )
+    rootNode.on && Object.keys( rootNode.on )
       .forEach( evname => {
-        const onfun = conNode.on[evname];
+        const onfun = rootNode.on[evname];
         const evfun = function() {
           const prom = onfun( inst, ...arguments );
           return Promise.resolve( prom )
@@ -439,7 +458,7 @@ const SP = window.SP ||= {};
             }
 
             // now make the element
-            con_E = createElement( con_I, con_B.recipe.contents[0] );
+            con_E = createElement( con_I, con_B );
             
             if (con_B.forvar) {
               con_E.dataset.spforidx = '0';
@@ -485,8 +504,12 @@ const SP = window.SP ||= {};
           lastWasConditional = true;
           showThis = lastConditionalWasTrue;
           con_E.dataset.ifCondition = conditionalDone; //for debugging
+          console.log(`IF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
+          debugger;
         }
         else if (con_B.elseif) {
+          console.log(`ELSIF k=${con_B.key}, B = ${con_B.id}, E = ${con_E.dataset.spid}`);
+          debugger;
           if (!lastWasConditional) {
             inst.recipe.error( 'elseif must be preceeded by if or elseif' );
           }
@@ -553,7 +576,7 @@ const SP = window.SP ||= {};
                     const for_I = inst.childInstances[forIDKey]
                           ||= createInstance(con_B,inst,con_B.key);
                     forInstances.push( for_I );
-                    for_E = inst_B.buildElement(for_I,con_B);
+                    for_E = createElement( for_I, con_B );
                     nodeID2el[forIDKey] = this.builder_id2el[forIDKey] = for_E;
                     nodeID2el[instance_R.rootBuilder.key] = this.builder_id2el[instance_R.rootBuilder.key] = for_E;
                     for_I.attachTo( for_E );
@@ -588,6 +611,9 @@ const SP = window.SP ||= {};
       .filter( con_B => showElementWithID[con_B.key] )
       .forEach( con_B => {
         const key = con_B.key;
+      if (key === undefined) debugger;
+
+//        console.log( con_B, `CHECKING <${key}>` );
         const con_E = nodeID2el[key];
         const instance_R = con_B.isComponent && con_B.recipe;
 
@@ -648,7 +674,6 @@ const SP = window.SP ||= {};
                   fill_E && _refresh_el_children( inst, fill_E, con_B.fill_contents[fillName] );
                 } );
             }
-            console.warn( "CHECK FOR NAMED FILL" );
           }
           else { // element builder
             //console.log( `CALL REFRESH FOR ${con_B.id}` );
@@ -724,7 +749,9 @@ const SP = window.SP ||= {};
       a component or element node
    */
   const prepNode = (node,namespace,recipe) => {
-    if (node === undefined) return;
+    if (node === undefined || node.isPrepped) return node;
+
+    node.isPrepped = true;
 
     node.id = nextid();
 
@@ -739,6 +766,19 @@ const SP = window.SP ||= {};
       // so the recipe and namespace here are fine
       node.fill_contents && Object.values( node.fill_contents )
         .forEach( cons => cons.forEach( con => prepNode(con,namespace,recipe)));
+
+      let root_N = node.recipe.contents[0];
+      if (root_N.isComponent) {
+        const root_R = root_N.recipe;
+
+        // this line sometimes fails due to out of orderness
+        root_N = prepNode(root_N, root_R.namespace,root_R);
+      } else {
+        root_N = prepNode(root_N, node.recipe.namespace,root_N.recipe);
+      }
+      node.key = node.forvar ? `${node.id}_0` : node.id;
+      if (node.key === undefined) debugger;
+
     } else { // is Element
       node.name = `[E ${node.tag}#${node.id}]`;
       node.recipe = recipe;
@@ -750,15 +790,19 @@ const SP = window.SP ||= {};
       } else if (node.fill) {
         recipe.namedFillNode[node.fill] = node;
       }
+      node.key = node.forvar ? `${node.id}_0` : node.id;
+      if (node.key === undefined) debugger;
     }
 
-    node.key = node.forvar ? `${node.id}_0` : node.id;
+    if (node.key === undefined) debugger;
 
     // the contents for a compoRecipe belong to the recipe
     //  that the compoRecipe is embedded in
     // so the recipe and namespace here are fine
     node.contents && node.contents
         .forEach( con => prepNode(con,namespace,recipe));
+
+    return node;
 
   }; // prepNode function
 
@@ -940,6 +984,21 @@ const SP = window.SP ||= {};
 
     const NSs = Object.values( FN_2_NS );
 
+    // traverse the recipes to make sure there is no cyclic use of them
+    const rid2rids = {};
+    function traverse( rec, root ) {
+      root = root || rec.contents[0];
+      const refd_rec = rec.namespace.recipeForTag( root.tag );
+      if (refd_rec) {
+        rid2rids[rec.id] ||= {};
+        rid2rids[rec.id][refd_rec.id] = 1;
+        if (rid2rids[refd_rec.id] && rid2rids[rec.id]) {
+          throw new Error(`circular reference detected between recipes '${rec.name}' and '${refd_rec.name}'` );
+        }
+      }
+    }
+    
+
     // first prep all the recipes
     // and build a list of all recipes
     let recipes = [];
@@ -953,26 +1012,25 @@ const SP = window.SP ||= {};
           recipe.namedFillNode = {};
           recipe.attrs ||= {};
           recipe.isRecipe = true;
-          prepNode( recipe.contents[0], NS, recipe );
           recipes.push( recipe );
+//          if (recipe.contents[0].id === undefined) debugger;
+          traverse( recipe );
         } );
     } );
 
-    // now prep namespace (body) contents
-    NSs.forEach( NS => {
-      NS.name = `[N ${NS.filename}#${NS.id}]`;
-      prepNode( NS.contents && NS.contents[0], NS );
-      console.log( NS.contents[0], `BODY CONTENTS for ${NS.name}` );
-    } );
+    recipes.forEach( rec => prepNode( rec.contents[0], rec.namespace, rec ) );
+
     
-    console.log( "checking for recipe overlays" );
+//    console.log( "checking for recipe overlays" );
     // see if this recipe is overlaying an other
     recipes.forEach( rec => {
       const rootNode = rec.contents[0];
-      if (rootNode.isComponent) {
-        rec.overlaysRecipe = rootNode.recipe;
-        console.log( `${rec.name} overlays ${rootNode.recipe.name}` );
+      const overlaidRecipe = rec.namespace.recipeForTag(rootNode.tag);
+      if (overlaidRecipe) {
+        rec.overlaysRecipe = overlaidRecipe;
+        console.log( `${rec.name} overlays ${overlaidRecipe.name}` );
       }
+//      if (rec.contents[0].id === undefined) debugger;
     } );
     
     const id2done = {};
@@ -986,6 +1044,7 @@ const SP = window.SP ||= {};
             // the overlay
             const overlay = rec.overlaysRecipe;
             if (overlay) {
+console.log( rec.contents[0].id, "IDO" );
               const rootNode = rec.contents[0];
               const overlayRootNode = overlay.contents[0];
               if (id2done[overlay.id]) { // make sure this one is done and ready
@@ -1007,7 +1066,7 @@ const SP = window.SP ||= {};
                 }
                 
                 // build a replacement for contents
-                console.log( `copy ${overlay.contents[0].id} to ${rec.name}` );
+//                console.log( `copy ${overlay.contents[0].id} to ${rec.name}` );
 
                 // clear this; copyNode may find an other and if it does not, then new content root should be used
                 const oldFillNode = rec.defaultFillNode;
@@ -1035,13 +1094,18 @@ const SP = window.SP ||= {};
                 overlayFromTo( rootNode.attrs, rec.attrs );
                 rec.contents[0].attrs = rec.attrs;
 
+                if (rec.contents[0].id === undefined) debugger;
+
+
                 id2done[ rec.id ] = rec;
               }
             } else {
+console.log( rec.contents[0].id, "NO" );
               // recipe has a root Node that is an element. 
               // make sure it has a default fill node which
               // by default is the root node
               rec.defaultFillNode ||= rec.contents[0];
+
 
               // attributes on the recipe take precendence
               // but then are attached to the root node
@@ -1050,9 +1114,20 @@ const SP = window.SP ||= {};
               rec.contents[0].attrs = rec.attrs;
 
               id2done[ rec.id ] = rec;
+
+                if (rec.contents[0].id === undefined) debugger;
+
             }
+      if (rec.contents[0].id === undefined) debugger;
           } );
     } //recipes completed/linked together
+
+    // now prep namespace (body) contents
+    NSs.forEach( NS => {
+      NS.name = `[N ${NS.filename}#${NS.id}]`;
+      prepNode( NS.contents && NS.contents[0], NS );
+//      console.log( NS.contents[0], `BODY CONTENTS for ${NS.name}` );
+    } );
 
   } //prepNamespaces
 
