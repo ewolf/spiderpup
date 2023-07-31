@@ -217,7 +217,7 @@ const SP = window.SP ||= {};
 {
   console.warn( "class handling should be rewritten to additive classes and calculated classes" );
   console.warn( "need to put fill contents in for looped instances" );
-  let sp_filespaces, sp_defaultFilename;
+  let sp_filespaces, sp_defaultFilename, sp_top_state;
 
   // --------  CODE  ------
 
@@ -226,9 +226,9 @@ const SP = window.SP ||= {};
 
   let useTest = false;
 
-  const defaultBodyRecipe = {
-    contents: [ { tag: 'body' } ],
-  };
+  // const defaultBodyRecipe = {
+  //   contents: [ { tag: 'body' } ],
+  // };
 
   /** slap an id onto a node, that id is its index in ID_2_N */
   function id(node) {
@@ -304,6 +304,7 @@ const SP = window.SP ||= {};
   function createInstance( conNode, parentInstance, key ) {
     console.warn( 'chccck on rootNode here...is it quite right? only body has no key' );
     const inst = {
+      top: sp_top_state,
       recipe: conNode.recipe,
       namespace: conNode.recipe.namespace,
       refresh: function() { refresh(this); },
@@ -786,7 +787,9 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
     sp_filespaces = fileSpaces;
     sp_defaultFilename = defaultFilename;
-
+    sp_top_state = sp_filespaces[defaultFilename];
+    // here is where we make the root instance
+    
     const pageNS = loadNamespace( defaultFilename );
 
     prepNamespaces();
@@ -888,6 +891,14 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     if (!NS) {
       throw new Error(`unable to load namespace '${filename}'`);
     }
+
+    //
+    // a NS is like an instance, with data and fun
+    // but no sub instances or refresh
+    // 
+    const NSdata = makeData( NS );
+    overlayFromTo( NS.data, NSdata );
+    NS.data = NSdata;
 
     NS.namespace = NS;
 

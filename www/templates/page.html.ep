@@ -2,7 +2,7 @@
 <html>
   <head>
     <title></title>
-    <script> const params = <%== $params %>;</script>
+    <script> const urlParams = <%== $params %>;</script>
     % if ( $tests ) {
       <script src="/js/tester.js"></script>
     % }

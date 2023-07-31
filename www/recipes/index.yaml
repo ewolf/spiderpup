@@ -1,5 +1,10 @@
 ---
 
+less: >-
+  body {
+    font-size: large;
+  }
+
 alias_namespaces:
   logins: yote_test/logins
 
@@ -7,19 +12,6 @@ data:
   appName: test
   pageMode: default
 
-postLoad: >-
-  s => {
-    yote.fetchAppTryLogin( s.data.appName )
-      .then( app => {
-          if (app) {
-            s.broadcast( 'app', app );
-            if (app.acct) {
-               s.broadcast( 'login', app.acct );
-            }
-          }
-      } );
-      s.comp.header.fun.attach(s.comp.loginBodyWidget)
-  }
 
 listen: >-
   (c,msg,data) => {
@@ -51,6 +43,22 @@ page:
   title: madyote.com
 
   body:
+    postLoad: >-
+      s => {
+        debugger;
+        yote.fetchAppTryLogin( s.data.appName )
+          .then( app => {
+              if (app) {
+                s.broadcast( 'app', app );
+                if (app.acct) {
+                   s.broadcast( 'login', app.acct );
+                }
+              }
+          } );
+          s.comp.header.fun.attach(s.comp.loginBodyWidget)
+      }
+
+
     data:
       rand: 0
     init: s => s.data.rand = Math.random()

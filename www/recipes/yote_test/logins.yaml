@@ -45,14 +45,14 @@ recipes:
           - div:
               - div:                  
                   class: button
-                  on_click: (c,e) => c.broadcast( 'pageMode', 'default' )
+                  on_click: (s,e) => s.broadcast( 'pageMode', 'default' )
                   contents:
                     - img:
-                        if: c => c.data.logoImage
-                        src: c => c.data.logoImage
+                        if: s => s.data.logoImage
+                        src: s => s.data.logoImage
                     - div:
                         else:
-                        textContent: c => c.data.logoText || 'LOGO'
+                        textContent: s => s.data.logoText || 'LOGO'
               - loginHeaderWidget:
                   handle: loginHeaderWidget
 
