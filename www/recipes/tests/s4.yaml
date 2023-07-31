@@ -16,4 +16,3 @@ test: >-
                     [ 'div', '3) 8' ],
                     [ 'div', '4) 10' ],
                   ], 'body structure' );
-  doneTesting();

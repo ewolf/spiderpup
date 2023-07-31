@@ -16,7 +16,8 @@ recipes:
           on_click: s => s.data.count++
 
 test: >-
-  html_structure( document.body,
+  const tester = SP.tester;
+  tester.html_structure( document.body,
                   [ 'body',
                     ['button','0']
                   ],
@@ -25,7 +26,7 @@ test: >-
   const l = butt.click();
   await sleep(100);
   console.log( "clicked" );
-  html_structure( document.body,
+  tester.html_structure( document.body,
                   [ 'body',
                     ['button','1']
                     ],
@@ -33,9 +34,8 @@ test: >-
   butt.click();
   await sleep(100);
   console.log( "clicked" );
-  html_structure( document.body,
+  tester.html_structure( document.body,
                   [ 'body',
                     ['button','2'],
                     ],
                   'doc body after button press twice');
-  doneTesting();

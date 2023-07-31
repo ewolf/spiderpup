@@ -38,6 +38,5 @@ test: >-
                       [ 'span', ' END' ]],
                   ],
                   'body structure' );
-    doneTesting();
 
   

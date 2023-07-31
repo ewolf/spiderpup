@@ -1,11 +1,17 @@
 /*
-   TODO:
-     instance node attrs to root element?
-     import_into_namespace (and test)
-     test listen
-     test events
-     test component looping
-     test component looping with named contents and contents
+ rename to something like 'Active Dynamic Html Design'
+
+ TODO:
+   postLoad
+   tests:
+     * listen
+     * instance events
+     * instance looping
+     * loops in loops
+   documenting:
+     * all input data structures
+     * instance object methods and fields 
+     * 
 
  */
 
@@ -54,7 +60,6 @@ INIT -------------------------------
          }
          body -> {
            postLoad -> function
-           preLoad  -> function
            when     -> { eventname -> function }
            contents -> [ element|component instance nodes...]
            listen   -> function
@@ -66,7 +71,6 @@ INIT -------------------------------
        filename   -> "filename"
        content -> { tag: 'body',
                     listen: function (from body node if present)
-                    preLoad: function (from body node if present)
                     postLoad: function (from body node if present)
                     when: function (from body node if present)
                     contents: [ body node (if body present) ] }
@@ -88,7 +92,6 @@ INIT -------------------------------
     when       -> { component event -> function }
     listen     -> function
     postLoad   -> function
-    preLoad    -> function
     contents   -> [single element or component node]
     fill_contents -> { name -> [element or component nodes] }
 
@@ -773,7 +776,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     bodyC.recipe = pageNS.contents[0];
     bodyC.namedFillNode = {};
 
-    useTest = pageNS.test;
+    useTest = pageNS.test && pageNS.html;
 
     console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
     pageNS.defaultFillNode = pageNS.contents[0];
@@ -783,13 +786,17 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     bodyInst.defaultFillElement = pageNS.contents[0];
     bodyInst.namespace = pageNS;
 
-    Promise.resolve(pageNS.installHead())
-      .then( () => {
+    console.log( 'install head ' + pageNS.name );
+    const prom = pageNS.installHead();
+    prom.then( () => {
         refresh( bodyInst );
         if (useTest) {
+          console.log( 'to test ' + pageNS.name );
           pageNS.test();
         }
+      return pageNS;
       } );
+    return prom;
   } // init
 
   SP.init = init;
@@ -904,7 +911,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     }; // recipeForTag method
 
     // stores aliases of an other namespace in this one
-    const alias_2_FN = NS.alias_namespace || {};
+    const alias_2_FN = NS.alias_namespaces || {};
     const aliases = Object.keys( alias_2_FN );
     aliases.forEach( alias =>
       (alias_2_FN[alias] = loadNamespace(alias_2_FN[alias]))
@@ -921,8 +928,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
     // method that looks at the head and
     NS.installHead = function() {
-      const headNode = this.html.head;
-      if (! headNode) return;
+      const headNode = this.html.head || {};
 
       headNode.title && (document.title = headNode.title);
 
@@ -1017,15 +1023,13 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
       NS.contents.push( rootNode );
 
-      [ 'listen', 'postLoad', 'preLoad', 'when' ]
+      [ 'listen', 'postLoad', 'when' ]
         .forEach( fld => ( rootNode[fld] = body[fld] ) );
 
     } // if the namespace has html
 
     return NS;
   } // loadNamespace
-
-  SP.loadNamespace = loadNamespace;
 
   /**   */
   function prepNamespaces() {
@@ -1054,14 +1058,17 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
       Object.keys( NS.recipes || {} )
         .forEach( recipeName => {
           const recipe = NS.recipes[recipeName];
-          id (recipe);
-          recipe.name = `[R ${recipeName}#${recipe.id}]`;
-          recipe.namespace = NS;
-          recipe.namedFillNode = {};
-          recipe.attrs ||= {};
-          recipe.isRecipe = true;
-          recipes.push( recipe );
-          traverse( recipe );
+          if (!recipe.prepped) {
+            id (recipe);
+            recipe.name = `[R ${recipeName}#${recipe.id}]`;
+            recipe.namespace = NS;
+            recipe.namedFillNode = {};
+            recipe.attrs ||= {};
+            recipe.isRecipe = true;
+            recipes.push( recipe );
+            traverse( recipe );
+            recipe.prepped = true;
+          }
         } );
     } );
 
@@ -1157,23 +1164,28 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     } //recipes completed/linked together
 
     // imports the recipes from the namespace into this namespace
-    NSs.forEach( NS => {
-      const import_into_FN = NS.import_into_namespace || [];
-      import_into_FN
-        .forEach( file => {
-          const importNS = loadNamespace(file);
-          const recs = importNS.recipes || {};
-          Object.keys( recs )
-            .forEach( rname => (NS.recipes[rname] ||= recs[rname]));
-        } );
-    } );
+    NSs
+      .filter( NS => ! NS.prepped )
+      .forEach( NS => {
+        const import_into_FN = NS.import_into_namespace || [];
+        import_into_FN
+          .forEach( file => {
+            const importNS = loadNamespace(file);
+            const recs = importNS.recipes || {};
+            Object.keys( recs )
+              .forEach( rname => (NS.recipes[rname] ||= recs[rname]));
+          } );
+      } );
 
     // now prep namespace (body) contents
-    NSs.forEach( NS => {
-      NS.name = `[N ${NS.filename}#${NS.id}]`;
-      NS.contents && NS.contents.length && prepNode( NS.contents[0], NS );
-    } );
-
+    NSs
+      .filter( NS => ! NS.prepped )
+      .forEach( NS => {
+        NS.name = `[N ${NS.filename}#${NS.id}]`;
+        NS.contents && NS.contents.length && prepNode( NS.contents[0], NS );
+        NS.prepped = true;
+      } );
+    
   } //prepNamespaces
 
 }

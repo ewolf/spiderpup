@@ -39,4 +39,4 @@ test: >-
   tester.is( document.title, 'Hello Page', 'title' );
   tester.is_deeply( window.jsmessages, [ "NAMESPACE JAVASCRIPT RAN", 
                                          "PAGE JAVASCRIPT RAN" ], 'script messages' );
-  tester.doneTesting();
+

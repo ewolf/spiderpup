@@ -48,7 +48,7 @@ sub encode_attrs {
 
     for my $field (keys %$node_data) {
         my $val = $node_data->{$field};
-        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|postLoad|preLoad)$/) {
+        if ($field =~ /^(data|elseif|fill|foreach|forvar|functions|listen|if|handle|postLoad)$/) {
             $node->{$field} = $val;
         }
         elsif ($field eq 'else') {
@@ -251,11 +251,11 @@ sub load_namespace {
 
         if (!$root_namespace) {
             $root_namespace = $namespace;
-
-            # include any tests if there are any, but just for the root namespace
-            $include_tests && $yaml->{test} && 
-                ( $namespace->{test} = "async function() { $yaml->{test} }" );
         }
+
+        # include any tests if there are any if tests are requested
+        $include_tests && $yaml->{test} && 
+            ( $namespace->{test} = "async function() { $yaml->{test} }" );
 
         # check for aliased imports
         if (my $imports = $yaml->{alias_namespaces}) {
@@ -264,7 +264,7 @@ sub load_namespace {
                     die "namespace alias may not contain '.' and got '$alias'";
                 }
                 my $imp_filename = $imports->{$alias};
-                my $aliased_NS = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader );
+                my $aliased_NS = load_namespace( $root_directory, "recipes/$imp_filename.yaml", $filespaces, $root_namespace, $yaml_loader, $include_tests );
                 $namespace->{alias_namespaces}{$alias} = $aliased_NS;
 
             }
@@ -272,7 +272,7 @@ sub load_namespace {
 
         # check for imports directly to namespaces
         push @{$namespace->{import_into_namespace}},
-            map { load_namespace( $root_directory, "recipes/$_.yaml", $filespaces, $root_namespace, $yaml_loader ) }
+            map { load_namespace( $root_directory, "recipes/$_.yaml", $filespaces, $root_namespace, $yaml_loader, $include_tests ) }
             @{$yaml->{import_into_namespace}||[]};
         
         #
@@ -327,7 +327,7 @@ sub load_namespace {
                 ($namespace->{html}{head}{title} = $page->{title});
 
             $namespace->{html}{body} = build_recipe( 'body', $body, $filename );
-            for my $targ (qw( listen postLoad preLoad )) {
+            for my $targ (qw( listen postLoad )) {
                 if ($page->{$targ}) {
                     $namespace->{html}{body}{$targ} = $page->{$targ};
                 }
