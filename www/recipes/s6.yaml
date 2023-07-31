@@ -5,19 +5,25 @@
 #
 data:
   heard: {}
+  broadcast_count: 0
 
 import_into_namespace: 
   - s_util
 
 functions:
-  inc: (s,n) => s.namespace.data.heard[n] = 1 + (s.namespace.data.heard[n] || 0)
+  inc: >-
+    (s,n) => {
+       s.namespace.data.heard[n] = 1 + (s.namespace.data.heard[n] || 0);
+       return n;
+    }
 
 page:
   title: listener test
  
   body:
-    listen: s => s.namespace.fun.inc( 'body' )
+    listen: (s,x,y) => { s.namespace.data.broadcast_count++; return s.namespace.fun.inc( `body '${x}'` ) }
     contents:
+      - div: s => `${s.namespace.data.broadcast_count} broadcast(s)`
       - knock:
       - knock:
           - pock:
@@ -25,19 +31,22 @@ page:
 
 recipes:
   pock:
-    listen: s => s.namespace.fun.inc( 'pock' )
+    listen: (s,x,y) => s.namespace.fun.inc( `pock '${x}'` )
     contents:
       - span:
   knock:
-    listen: s => s.namespace.fun.inc( 'knock' )
+    listen: (s,x,y) => s.namespace.fun.inc( `knock '${x}'` )
     contents:
       - div:
 
 test: >-
   const tester = SP.tester;
   tester.html_structure( document.body, 
-                  [ 'body', ['div'], ['div', ['span']],
-                      ['div', 
+                  [ 'body', { 'data-inst-id': '17' }, 
+                      ['div', '0 broadcast(s)' ],
+                      ['div', { 'data-inst-id': '18' } ], 
+                      ['div', { 'data-inst-id': '19' }, ['span', { 'data-inst-id': '21' } ] ],
+                      ['div', { 'data-inst-id': '20' },
                          [ 'a', 'first', { 'data-if': 'true', href: 's1.html' } ],
                          [ 'span', '', { 'data-else': 'false', style: 'display: none;' } ],
                          [ 'a', '', { 'data-if': 'false', style: 'display: none;' } ],
@@ -45,6 +54,13 @@ test: >-
                          ],
                   ],
                   'body structure' );
+
+  const inst = SP.bodyInstance;
+  const NS = inst.namespace;
+
+  tester.is_deeply( NS.data.heard, {}, 'empty heard hash' );
+
+  inst.broadcast( "FIRST" );
 
   tester.doneTesting();
   

@@ -242,6 +242,12 @@ const SP = window.SP ||= {};
   /** return node for id */
   SP.lookup = id => ID_2_N[id];
 
+  /** return instance for selector */
+  SP.lookup_instance = sel => {
+    const el = document.querySelector( sel );
+    return el && ID_2_N[el.dataset.instId];
+  };
+
   /** return node for query selector  */
   SP.lookup_node = sel => {
     const el = document.querySelector( sel );
@@ -317,7 +323,8 @@ const SP = window.SP ||= {};
 
     inst.attachEl = function(el) {
       this.rootEl = this.defaultFillElement = el;
-    }
+      el.dataset.instId = this.id;
+    };
 
     inst.broadcastListener = conNode && conNode.listen;
 
@@ -325,15 +332,15 @@ const SP = window.SP ||= {};
 
     inst._propagateBroadcast = function(act, msg) {
       let needsRefresh = false;
-      this.broadcastListener && this.broadcastListener(this,act, msg ) && (needsRefresh = true);
+      this.broadcastListener && this.broadcastListener(this, act, msg ) && (needsRefresh = true);
       // propagates here and each child with the given message
       Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) && (needsRefresh=true) );
       return needsRefresh;
-    }
+    };
 
     inst.broadcast = function( key, message ) {
-      this.top._propagateBroadcast(act,msg) && this.top.refresh();
-    }
+      this.top._propagateBroadcast( key, message) && this.top.refresh();
+    };
 
 
     inst.data = makeData( inst );
@@ -764,7 +771,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
     console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
     pageNS.defaultFillNode = pageNS.contents[0];
-    const bodyInst = createInstance( pageNS.contents[0] );
+    const bodyInst = SP.bodyInstance = createInstance( pageNS.contents[0] );
  
     bodyInst.attachEl( attachPoint || document.body );
     bodyInst.defaultFillElement = pageNS.contents[0];
@@ -851,6 +858,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
 
     FN_2_NS[filename] = NS;
 
+    NS.fun = NS.functions;
     NS.filename = filename;
     NS.name = `[N ${filename}]`;
 
