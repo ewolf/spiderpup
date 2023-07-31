@@ -211,7 +211,7 @@ const fetchAppTryLogin = (appName,yoteArgs) => {
   const config = {...yoteConfig};
   yoteArgs && Object.keys( yoteArgs ).
     forEach( k => config[k] = yoteArgs[k] );
-  
+
   return rpc(config,appName,'load_and_login',undefined,undefined,undefined)
     .then( pair => { const app = yote.apps[appName] = decorateApp(pair[0]);
                      app.acct = pair[1];

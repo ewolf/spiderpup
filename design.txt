@@ -87,9 +87,12 @@ let filespaces = {
 let defaultNamespace = 'name of filespace to render on the page';
 
 
-FILENAME NODE ----
+NAMESPACE (FILENAME) NODE ----
 {
-  'namespaces': { 'alias' : 'filename', ... },
+  'about': "text about this namespace",
+  'alias_namespaces': { 'alias' : 'filename', ... },
+  'data': { <name>: <value or function>, ... },
+  'functions': { <name>: <function>, .. },
   'html':{
     'head':{ 'title':'title', 
              'css':[css urls to include], 
@@ -97,13 +100,11 @@ FILENAME NODE ----
              'javascript-module':[javascript modules to include] 
            },
     'body':{ 'listen': <function>,
-             'preLoad': <function>,
-             'onLoad': <function>,
+             'postLoad': <function>,
              'contents': [ el or component instance nodes ], 
            },
          },
-  'functions': { <name>: <function>, .. },
-  'data': { <name>: <value or function>, ... },
+  'import_into_namespace': ['file1','file2'],
   'recipes': { <name>: <recipe node>, ... },
 }
 
@@ -112,7 +113,7 @@ BODY NODE ---
   'contents': [ el or component instance nodes under the body element ], (* slightly differs from recipe node)
   'class': [ value or function to adding to the root element class TODO: remove old added classes? ],
   'listen': <function>,
-  'preLoad': <function called when an instance is starting to be placed>,
+  'postLoad': <function called when an instance is starting to be placed>,
   'onLoad': <function called when an instance has been placed>,
 }
 

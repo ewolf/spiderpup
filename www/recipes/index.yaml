@@ -8,10 +8,6 @@ less: >-
 alias_namespaces:
   logins: yote_test/logins
 
-data:
-  appName: test
-  pageMode: default
-
 
 listen: >-
   (c,msg,data) => {
@@ -43,39 +39,22 @@ page:
   title: madyote.com
 
   body:
-    postLoad: >-
-      s => {
-        debugger;
-        yote.fetchAppTryLogin( s.data.appName )
-          .then( app => {
-              if (app) {
-                s.broadcast( 'app', app );
-                if (app.acct) {
-                   s.broadcast( 'login', app.acct );
-                }
-              }
-          } );
-          s.comp.header.fun.attach(s.comp.loginBodyWidget)
-      }
-
 
     data:
       rand: 0
+
     init: s => s.data.rand = Math.random()
+
     contents:
+      - logins.siteHeader:
+          data:
+            appName: test
       - yamlShower:
           data:
             showing: true;
             source: /recipes/index.yaml
 
           contents:
-            - logins.siteHeader:
-                handle: header
-                
-            - logins.loginBodyWidget:
-                handle: loginBodyWidget
-                if: s => s.data.pageMode === 'login-control'
-
             - section:
                 - h1: MADYOTEY
                 - div:
@@ -90,6 +69,10 @@ page:
                     data:
                       title: The Stack
                       items:
+                        - bug where if condition toggling from true to false and back is adding more instances of the thing
+                        - there is an init function for instances. should it be called onCreate?
+                        - how about editing this when logged in!
+                        - test file uploads, downloads
                         - need a global state for logins and stuff, a root instance that is parent to everything. have to decide what is under that though. could be page namespace instance or body instance. what happens for aliased namespaces then too? what does the heirarchy look like? when an aliased namespace has something change, its children instances are just of the recipes on that page? draw this out on paper. s.g perhaps for global
 
                 - outline:

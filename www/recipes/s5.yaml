@@ -10,10 +10,16 @@ page:
     - foo:
         contents:
           - zing:
+        # foo is a baz, and a baz has a span with 'fill: first'
+        # so things in fill_first go into that span
         fill_first:
           - label: 
               textContent: HI
               style: border: 4px green solid
+    - button:
+        on_click: s => s.refresh()
+        textContent: refresh
+
     - prevnext:
         data:
           links: [ true, 's6.html' ]

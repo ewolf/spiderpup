@@ -1,7 +1,7 @@
 ---
 
 page:
-  title: bouncy recipes
+  title: test fill and replacing
 
   body:
     - foo:
@@ -11,6 +11,8 @@ page:
           - label: 
               textContent: HI
               style: border: 4px green solid
+    - button:
+        on_click: s => s.refresh()
 
 recipes:
   zing:

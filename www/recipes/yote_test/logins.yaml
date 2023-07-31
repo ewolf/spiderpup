@@ -4,7 +4,7 @@ less: >-
   .button {
 
   }
-  .login-widget {
+  .login-header-widget {
       ul {
           position: absolute;
           right: 4px;
@@ -27,25 +27,67 @@ less: >-
           background-color: #dbdbdb;
       }
   }
+  .dialog.showing {
+      display: flex;
+  }
+  .dialog {
+     .dialog-content {
+         z-index: 3;
+         padding: 1em;
+         background-color: white;
+     }
+     display: none;
+     .dialog-curtain {
+        left:0;
+        top:0;
+        width:100%;
+        height:100%;
+        opacity: .6;
+        background-color: #000;
+        position: fixed;
+     }
+  }
   .login-body-widget {
-    background-color: lightyellow;
+      background-color: lightyellow;
+      position: absolute;
   }
   
 recipes:
 
+  row:
+    - div:
+        style: display: flex;  flex-direction: row
+  col:
+    - div:
+        style: display: flex;  flex-direction: column
+
+  # generic site header with login control on the right hand side
+  # data:
+  #   * logoImage
+  #   * logoText
   siteHeader:
-    functions:
-      attach: >-
-        (c,bodyWidget) => {
-          c.comp.loginHeaderWidget.set( 'bodyWidget', bodyWidget );
-          bodyWidget.set( 'headerWidget', c.comp.loginHeaderWidget );
-        }
+    # once everything is rendered, fetch app and try to log in
+    postRender: >-
+      s => {
+        yote.fetchAppTryLogin( s.data.appName )
+          .then( app => {
+              if (app) {
+                s.broadcast( 'logins:got-app', app );
+                if (app.acct) {
+                   s.broadcast( 'logins:logged-in', app.acct );
+                }
+              }
+          } );
+      }
+
+    # header bar with a logo on the left,
+    # account and login (if there is an app) on the right
     contents:
       - header:
           - div:
               - div:                  
                   class: button
-                  on_click: (s,e) => s.broadcast( 'pageMode', 'default' )
+                  on_click: (s,e) => s.broadcast( 'logins:click-logo' )
                   contents:
                     - img:
                         if: s => s.data.logoImage
@@ -54,7 +96,6 @@ recipes:
                         else:
                         textContent: s => s.data.logoText || 'LOGO'
               - loginHeaderWidget:
-                  handle: loginHeaderWidget
 
   # this is meant to go in the top right header
   # 
@@ -75,48 +116,50 @@ recipes:
   #       log out - broadcasts 'logout'
   #
   loginHeaderWidget:
+    data:
+      showMenu: false
+
+    listen: >-
+      (c,key,data) => {
+         if (key === 'logins:got-app') {
+            c.data.app = data;
+         }
+         else if (key === 'logins:logged-in') {
+            c.data.login = data;
+         }
+      }
+
+
     functions:
       logout_done: >-
         c => {
-          c.data['show-menu'] = undefined;
-          c.broadcast( 'logout' );
+          c.data.showMenu = false;
+          c.broadcast( 'logins:logout' );
         }
 
       logout: >-
-        c => yote.logout( c.get('appName') )
+        c => yote.logout( c.data.appName )
              .then( msg => c.fun.logout_done() )
              .catch( err => c.fun.logout_done() )
-
-      connectToLoginBodyWidget: >-
-        (c,w) => {
-          c;
-        }
-
       listen: >-
         (c,key,msg) => {
           if ((key === 'keyup' && msg === 'Escape') || key === 'body-click' ) {
-            c.data['show-menu'] = false;
+            c.data.showMenu = false;
           }
         }
 
     contents:
       - div:
-          class: login-widget
+          class: login-header-widget
           contents:
             - div:
-                # logged in / logout
+                # is logged in, so a click shows the menu
+                # toto: fill in avatar
                 if: c => c.data.login
                 contents:
                   - button:
                       type: button
-                      on_click: >-
-                         (c,e) => {
-                           const show = !!!c.get('show-menu');
-                           c.data['show-menu'] = show;
-                           if (show) {
-                           
-                           }
-                         }
+                      on_click: c => c.data.showMenu = ! c.data.showMenu
                       contents:
                         - span:
                             innerHTML: () => 'avatar &#8964';
@@ -128,10 +171,12 @@ recipes:
                       type: button
                       textContent: log in
                       # maybee catch the pageMode change?
-                      on_click: (c,e) => {  c.get('bodyWidget').set('mode','show-login'); c.broadcast( 'pageMode', 'login-control' ); }
+                      on_click: c => c.comp.loginBodyWidget.fun.show()
+
+            # account menu 
             - ul:
                 handle: menu
-                if: c => c.data['show-menu']
+                if: c => c.data.showMenu
                 contents:
                   - li: identity
                   - li: 
@@ -146,7 +191,58 @@ recipes:
                       textContent: log out
                       on_click: c => c.fun.logout()
 
+            # login dialog
+            - loginBodyWidget:
+                handle: loginBodyWidget
+
+  # dialog that centers on the page
+  dialog:
+    data:
+      showing: false
+      title: ''
+    functions:
+      setTitle: (c,title) => c.data.title = title
+      show: >-
+        c => {
+          // position this in the middle of the page
+          // left should be ... (screen width / 2) - (widget width / 2)
+          // top should be ... (screen height / 2) - (widget height / 2)
+          c.data.showing = true;
+          c.rootEl.classList.add( 'showing' );
+          const box = c.rootEl.getBoundingClientRect();
+          c.rootEl.style.right = `${Math.round((window.innerWidth / 2) - (box.width/2))}px`;
+          c.rootEl.style.top = `${Math.round((window.innerHeight / 2) - (box.height/2))}px`;
+        }
+      hide: c => c.rootEl.classList.remove( 'showing' );
+
+    contents:
+      - div:
+          - div:
+              class: dialog-content
+              contents:
+                - row:
+                    contents:
+                      - div:
+                          class: dialog-title
+                          style: flex-grow: 1;
+                          textContent: s => s.data.title
+                      - button:
+                          class: dialog-close
+                          style: padding: 3px; margin: 3px; border: solid black 3px;
+                          textContent: X
+                          on_click: s => s.fun.hide()
+                - div:
+                    fill: true
+          - div:
+              class: dialog-curtain
+              if: s => s.data.showing
+
+  # dialog for logging in 
   loginBodyWidget:
+    data:
+      mode: 'login'
+      title: Log In
+
     functions:
       clear: >-
         c => {
@@ -157,7 +253,7 @@ recipes:
 
       login: >-
         (c,login,password) => {
-          c.get('app')
+          c.data.app
             .login( { login, password } )
             .then( acct => { c.fun.clear();
                              c.broadcast( 'login', acct );
@@ -166,7 +262,7 @@ recipes:
         }
       createAccount: >-
         (c,handle,email,password) => {
-          c.get('app')
+          c.data.app
             .create_account( { handle, email, password } )
                      .then( acct => { c.fun.clear();
                                       c.broadcast( 'login', acct );
@@ -181,25 +277,30 @@ recipes:
           c.fun.clear();
         }
       }
-    onLoad: >-
-      c => {
-        c.comp.loginForm.set( 'createAccountForm', c.comp.createAccountForm );
-        c.comp.createAccountForm.set( 'loginForm', c.comp.loginForm );
-      }
     contents:
-      - section:
-          class: login-body-widget
-          style: display: inline-block; border: solid 3px black; padding: .5em;
+      - dialog:
+          class: c => `dialog login-body-widget${c.data.showing? ' showing':''}`
+          style: border: solid 3px black; color: red; background-color: white;
           contents:
-            - createAccountForm:
-                handle: createAccountForm
+            - div:
                 if: c => c.data.mode === 'show-create-account'
-            - editProfileForm:
-                handle: editProfileForm
+                textContent: create account form
+            - div:
                 elseif: c => c.data.mode === 'show-edit-profile'
+                textContent: edit profile form
             - loginForm:
-                handle: loginForm
                 else:
+                textContent: login form
+                
+            # - createAccountForm:
+            #     handle: createAccountForm
+            #     if: c => c.data.mode === 'show-create-account'
+            # - editProfileForm:
+            #     handle: editProfileForm
+            #     elseif: c => c.data.mode === 'show-edit-profile'
+            # - loginForm:
+            #     handle: loginForm
+            #     else:
             - div:
                 # error
                 if: c => c.data.err
@@ -254,7 +355,7 @@ recipes:
                       on_click: >-
                         (c,ev) => { 
                            ev.preventDefault();
-                           c.parent.set('mode', 'show-create-account');
+                           c.parent.data.mode = 'show-create-account';
                            c.fun.clear();
                            c.parent.refresh() 
                         }

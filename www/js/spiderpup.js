@@ -3,6 +3,7 @@
 
  TODO:
    postLoad
+   postRender
    tests:
      * instance events
      * instance looping
@@ -44,28 +45,30 @@ INIT -------------------------------
     PARAMETERS
 
        about                 -> "text talking about this namespace"
-       recipes               -> { name  -> recipe }
        alias_namespaces      -> { alias -> namespace filename }
-       import_into_namespace -> [ list of namespace filenames ]
-       functions  -> { name  -> function }
        data       -> { field -> value } <specific to namespace>
+       functions  -> { name  -> function }
        html       -> {
            head -> {
-             script -> javascript text
-             title  -> string
-             style  -> css text
              css -> single or list of filenames
              javascript -> single or list of filenames
+             script -> javascript text
+             style  -> css text
+             title  -> string
            }
            body -> {
-             init     -> function // when body instance created
-             postLoad -> function // when body placed on page
-             when     -> { eventname -> function }
              contents -> [ element|recipe instance nodes...]
              data     -> { field -> value }
+             init     -> function // when body instance created
              listen   -> function
+             postLoad -> function // called after body instance is created and before 
+                                  // its first refresh
+             postRender -> function // called after body instance's first refresh
+             when     -> { eventname -> function }
            }
           }
+       import_into_namespace -> [ list of namespace filenames ]
+       recipes               -> { name  -> recipe }
 
     CALCULATED
 
@@ -95,7 +98,8 @@ INIT -------------------------------
        data       -> { field -> value }
        when       -> { component event -> function }
        listen     -> function // listens for broadcasts
-       postLoad   -> function // run after component is placed on the page
+       postLoad   -> function // run after component is loaded but before it is first refreshed on page
+       postRender -> function // run after body instance's first refresh
        contents   -> [single element or component node]
        fill_contents -> { name -> [element or component nodes] }
 
@@ -214,7 +218,8 @@ INIT -------------------------------
    is also refreshed.
 
    if this is the first time the instance was refreshed, postLoad is called
-   as the last part of the rfresh
+   after loading but before refresh. postRender is called for instances after
+   the body's first refresh completes
 
  */
 
@@ -238,7 +243,7 @@ const SP = window.SP ||= {};
 
   /** slap an id onto a node, that id is its index in ID_2_N */
   function id(node) {
-    node.id = ID_2_N.length;
+    node.id = String(ID_2_N.length);
     ID_2_N.push( node);
   }
 
@@ -262,18 +267,31 @@ const SP = window.SP ||= {};
   function copyNode( node, recipe ) {
     // copy style node, it is 2 deep so would be
     // shallow in copy operation
-    const newStyle = node.attrs && node.attrs.style && copyNode(node.attrs.style||{});
+    let newStyle;
+    if (node.attrs) {
+      const style = node.attrs.style;
+      if (style) {
+        newStyle = Object.keys(style).filter( k => style[k] !== '' ).reduce( (h,key) => h[key] = style[key], {} );
+      }
+    }
 
     const nodeFields = ['tag', 'fill', 'key', 'handle', 'comp', 'if', 'elseif', 'else',
-                        'foreach', 'forvar', 'on', 'when', 'attrs'];
+                        'foreach', 'forvar', 
+                        'isComponent', 'isElement', 'isPrepped',
+                        'on', 'when', 'attrs'];
 
     const newnode = copy( node, nodeFields );
+
+    newnode.recipe = node.recipe;
 
     newStyle && (newnode.attrs.style = newStyle);
 
     newnode.contents = (node.contents||[]).map( c => copyNode( c, recipe ) );
 
     id(newnode);
+
+    newnode.key = newnode.key.replace( /^(\d+)/, newnode.id );
+
 
     if (newnode.fill === true) {
       recipe.defaultFillNode = newnode;
@@ -310,21 +328,24 @@ const SP = window.SP ||= {};
   function createInstance( conNode, parentInstance, key ) {
     console.warn( 'chccck on rootNode here...is it quite right? only body has no key' );
     const inst = {
-      top: sp_top_state,
-      recipe: conNode.recipe,
-      namespace: conNode.recipe.namespace,
-      refresh: function() { refresh(this); },
-      rootNode: (key && conNode.recipe.contents[0]) || conNode,
+      _key2instance: {},
+      childInstances: {},
+      comp: {},
+      el: {},
+      fun: {},
+      idx: {},
       instNode: conNode,
       it: {},
-      idx: {},
-      el: {},
-      comp: {},
-      _key2instance: {},
-      fun: {},
-      childInstances: {},
       namedFillElement: {},
+      namespace: conNode.recipe.namespace,
+      postLoad: conNode.postLoad,
+      postRender: conNode.recipe.postRender,
+      recipe: conNode.recipe,
+      refresh: function() { refresh(this); },
+      rootNode: (key && conNode.recipe.contents[0]) || conNode,
+      top: sp_top_state,
     };
+
     id (inst);
 
     inst.attachEl = function(el) {
@@ -332,14 +353,16 @@ const SP = window.SP ||= {};
       el.dataset.spInstId = this.id;
     };
 
-    inst.broadcastListener = conNode && conNode.listen;
+    inst.broadcastListener = conNode && conNode.recipe.listen;
 
     inst.top = parentInstance ? parentInstance.top : inst;
 
     inst._propagateBroadcast = function(act, msg) {
-      let needsRefresh = false;
-      this.broadcastListener && this.broadcastListener(this, act, msg ) && (needsRefresh = true);
-      // propagates here and each child with the given message
+      if (this.broadcastListener) {
+        this.broadcastListener(this, act, msg );
+        needsRefresh = true;
+      }
+      // propagates here and each child with the given messagep
       Object.values( this._key2instance ).forEach( c => c._propagateBroadcast(act,msg) && (needsRefresh=true) );
       return needsRefresh;
     };
@@ -397,9 +420,7 @@ const SP = window.SP ||= {};
     }
 
     // run the instance init  
-    if (conNode.init) {
-      conNode.init( inst );
-    }
+    conNode.init && conNode.init( inst );
 
     return inst;
   } // createInstance function
@@ -424,6 +445,7 @@ const SP = window.SP ||= {};
   /** create document element based on the node */
   function createElement( inst, conNode ) {
     const rootNode = conNode.isComponent ? conNode.recipe.contents[0] : conNode;
+
     const el = document.createElement( rootNode.tag );
     el.dataset.spid = conNode.id;
 
@@ -452,9 +474,15 @@ const SP = window.SP ||= {};
   }
 
   /** refresh recipe component bound to instance. */
-  function refresh( inst ) {
+  function refresh( inst, firstTime ) {
     const el = inst.rootEl;
     _refresh_el( inst, el, inst.rootNode, inst.instNode );
+    firstTime && callPostRender( inst );
+  }
+
+  function callPostRender(inst) {
+    inst.postRender && inst.postRender(inst);
+    Object.values( inst.childInstances ).forEach( chld => callPostRender(chld) );
   }
 
   function _refresh_el( inst, el, elNode, instNode ) {
@@ -531,9 +559,7 @@ const SP = window.SP ||= {};
         // create the element if need be
         if (!con_E) {
           if (con_B.isComponent) {
-            if (!con_I) {
-              con_I = inst._key2instance[key] = createInstance(con_B, inst, key);
-            }
+            con_I = inst._key2instance[key] = createInstance(con_B, inst, key);
 
             // if this node has a handle, it means
             // that the component instance has a
@@ -552,6 +578,7 @@ const SP = window.SP ||= {};
             }
 
             con_I.attachEl( con_E );
+            con_I.postLoad && con_I.postLoad( bodyInst );
           }
           else { // it is an element,  not an instance
             con_E = createElement( inst, con_B );
@@ -655,13 +682,16 @@ const SP = window.SP ||= {};
                 else {
                   if (con_B.isComponent) {
                     let for_I = inst.childInstances[forIDKey];
+                    let postLoad = false;
                     if (!for_I) {
                       for_I = inst._key2instance[key] = createInstance(con_B,inst,con_B.key);
+                      postLoad = for_I.postLoad;
                     }
                     forInstances.push( for_I );
                     for_E = createElement( for_I, con_B );
                     key2el[forIDKey] = for_E;
                     for_I.attachEl(for_E);
+                    postLoad && postLoad( for_I );
                   } else {
                     for_E = createElement( inst, con_B );
                   }
@@ -810,21 +840,22 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     console.warn( 'can there be anything in the javascript in the head that would impact creating an instace here?' );
     pageNS.defaultFillNode = pageNS.contents[0];
     const bodyInst = SP.bodyInstance = createInstance( pageNS.contents[0] );
- 
-    bodyInst.attachEl( attachPoint || document.body );
-    bodyInst.defaultFillElement = pageNS.contents[0];
     bodyInst.namespace = pageNS;
+    bodyInst.defaultFillElement = pageNS.contents[0];
+
+    bodyInst.postLoad && bodyInst.postLoad( bodyInst );
 
     console.log( 'install head ' + pageNS.name );
     const prom = pageNS.installHead();
     prom.then( () => {
-        refresh( bodyInst );
-        if (useTest) {
-          console.log( 'to test ' + pageNS.name );
-          pageNS.test();
-        }
+      bodyInst.attachEl( attachPoint || document.body );
+      refresh( bodyInst, 'firstTime' );
+      if (useTest) {
+        console.log( 'to test ' + pageNS.name );
+        pageNS.test();
+      }
       return pageNS;
-      } );
+    } );
     return prom;
   } // init
 
@@ -841,6 +872,7 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
     id( node );
 
     const compoRecipe = namespace.recipeForTag( node.tag );
+
     if (compoRecipe) {
       node.recipe = compoRecipe;
       node.namespace = compoRecipe.namespace;
@@ -1059,11 +1091,13 @@ console.warn( 'need to make sure instNode has all the attrs from elNode overlaye
         contents: body.contents || [],
         init: body.init,
         postLoad: body.postLoad,
+        postRender: body.postRender,
       };
 
       NS.contents.push( rootNode );
 
-      [ 'listen', 'postLoad', 'when' ]
+      [ 'listen', 'postLoad', 'postRender', 'when' ]
+//      [ 'listen', 'when' ]
         .forEach( fld => ( rootNode[fld] = body[fld] ) );
 
     } // if the namespace has html
