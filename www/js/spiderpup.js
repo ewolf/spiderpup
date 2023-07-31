@@ -774,7 +774,8 @@ const SP = window.SP ||= {};
         // this line sometimes fails due to out of orderness
         root_N = prepNode(root_N, root_R.namespace,root_R);
       } else {
-        root_N = prepNode(root_N, node.recipe.namespace,root_N.recipe);
+//        root_N = prepNode(root_N, node.recipe.namespace,root_N.recipe);
+        root_N = prepNode(root_N, node.recipe.namespace, node.recipe);
       }
       node.key = node.forvar ? `${node.id}_0` : node.id;
       if (node.key === undefined) debugger;
