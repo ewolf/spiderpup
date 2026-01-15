@@ -1,5 +1,8 @@
 title: Foo Page
 import:
   fred: /fred.yaml
+vars:
+  color:
 html: |
   <h1>WELCOME FOO</h1>
+  COLOR IS {color}

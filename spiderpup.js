@@ -1,12 +1,15 @@
 const moduleRegistry = [];
+if (typeof window !== 'undefined') window.moduleRegistry = moduleRegistry;
 
 class Module {
     vars = {};
     dirty = false;
     conditions = [];
+    handlers = [];
     moduleId = null;
     updatables = [];
     eventHandlers = [];
+    imports = {};
 
     constructor() {
         this.moduleId = moduleRegistry.length;
@@ -42,12 +45,18 @@ class Module {
 
     refresh() {
         for (const updatable of this.updatables) {
+            // Refresh child modules (like Conditionals)
             const moduleId = updatable.moduleId;
             if (moduleId !== undefined && moduleId !== this.moduleId) {
                 const module = moduleRegistry[moduleId];
                 if (module) {
                     module.refresh();
                 }
+            }
+            // Update text nodes with new interpolated values
+            if (updatable.node && updatable.item && updatable.item.type === 'text') {
+                const [newText] = this._interpolate(updatable.item.content);
+                updatable.node.textContent = newText;
             }
         }
     }
@@ -83,21 +92,37 @@ class Module {
             return [null, false];
         }
 
+        // Handle imported module tags
+        if (this.imports[item.tag]) {
+            const ImportedClass = this.imports[item.tag];
+            const componentInstance = new ComponentInstance(ImportedClass, item.attributes || {}, this);
+
+            // Register as updatable with parent module
+            const owner = moduleRegistry[ownerModuleId];
+            if (owner) {
+                owner.updatables.push({ node: null, item: null, moduleId: componentInstance.moduleId });
+            }
+
+            return componentInstance.render();
+        }
+
         const node = document.createElement(item.tag);
         for (const [attr, value] of Object.entries(item.attributes || {})) {
-            if (attr.startsWith('on')) {
-                // Event handler attribute
-                const eventName = attr.slice(2).toLowerCase();
-                const originalHandler = eval(value);
-                const module = this;
-                const wrappedHandler = function(event) {
-                    originalHandler.call(module, module);
-                    module.refresh();
-                };
-                this.eventHandlers.push({ node, eventName, handler: wrappedHandler });
-                node.addEventListener(eventName, wrappedHandler);
-                debugger;
-            } else {
+            if (attr.startsWith('_on') && attr.endsWith('Index')) {
+                // Event handler from handlers array
+                const handlerInfo = this.handlers[value];
+                if (handlerInfo) {
+                    const eventName = handlerInfo.event.slice(2).toLowerCase();
+                    const originalHandler = handlerInfo.handler;
+                    const module = this;
+                    const wrappedHandler = function(event) {
+                        originalHandler.call(module, module);
+                        module.refresh();
+                    };
+                    this.eventHandlers.push({ node, eventName, handler: wrappedHandler });
+                    node.addEventListener(eventName, wrappedHandler);
+                }
+            } else if (!attr.startsWith('_')) {
                 node.setAttribute(attr, value);
             }
         }
@@ -260,6 +285,11 @@ class Conditional extends Module {
                             module.refresh();
                         }
                     }
+                    // Update text nodes with new interpolated values (using ownerModule's vars)
+                    if (updatable.node && updatable.item && updatable.item.type === 'text') {
+                        const [newText] = this.ownerModule._interpolate(updatable.item.content);
+                        updatable.node.textContent = newText;
+                    }
                 }
             }
         } else {
@@ -300,5 +330,67 @@ class Conditional extends Module {
             wrapper.appendChild(childNode);
         }
         return [wrapper, true];
+    }
+}
+
+class ComponentInstance extends Module {
+    rootElement = null;
+    ownerModule = null;
+    sourceClass = null;
+
+    constructor(SourceClass, attributes, ownerModule) {
+        super();
+        this.sourceClass = SourceClass;
+        this.ownerModule = ownerModule;
+
+        // Create a temporary instance to get the class properties
+        const template = new SourceClass();
+
+        // Copy structure, conditions, handlers, and imports from template
+        this.structure = template.structure;
+        this.conditions = template.conditions;
+        this.handlers = template.handlers;
+        this.imports = template.imports;
+
+        // Initialize vars from template defaults
+        for (const [name, value] of Object.entries(template.vars)) {
+            this.vars[name] = value;
+        }
+
+        // Override vars with attributes from the tag
+        for (const [attr, value] of Object.entries(attributes)) {
+            if (!attr.startsWith('_')) {
+                this.vars[attr] = value;
+            }
+        }
+    }
+
+    render() {
+        const wrapper = document.createElement('div');
+        this.rootElement = wrapper;
+        wrapper.setAttribute('data-module-id', this.moduleId);
+
+        const [children] = this._buildChildren(this.structure.elements || [], this.moduleId);
+        for (const childNode of children) {
+            wrapper.appendChild(childNode);
+        }
+
+        return [wrapper, true];
+    }
+
+    refresh() {
+        for (const updatable of this.updatables) {
+            const moduleId = updatable.moduleId;
+            if (moduleId !== undefined && moduleId !== this.moduleId) {
+                const module = moduleRegistry[moduleId];
+                if (module) {
+                    module.refresh();
+                }
+            }
+            if (updatable.node && updatable.item && updatable.item.type === 'text') {
+                const [newText] = this._interpolate(updatable.item.content);
+                updatable.node.textContent = newText;
+            }
+        }
     }
 }

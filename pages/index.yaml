@@ -3,10 +3,21 @@ import:
   foo: /foo.yaml
   bar: /bar.yaml
 vars:
-  version: '.01'
+  version: 0.01
 methods:
   rando: () => this.set_version(Math.round(Math.random()*100))
 html: |
   <h1>Hello, World!</h1>
   <p>Welcome to the Perl web server, version {version}</p>
-  <button type="button" onClick="(this)=>this.rando()" value="click">clicky</button>
+  <button type="button" onClick="() => this.rando()" value="click">clicky</button>
+  <if condition="() => this.get_version() < 20">
+    <div>version {version} is SMALL</div>
+  </if>
+  <elseif condition="() => this.get_version() < 80">
+    <div>version {version} is MEDIUM</div>
+  </elseif>
+  <else>
+    <div>version {version} is LARGE</div>
+  </else>
+  <foo color="blue"/>
+  <foo color="red"/>

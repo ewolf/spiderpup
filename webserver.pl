@@ -10,6 +10,9 @@ use File::Spec;
 # Directory for page YAML files
 my $PAGES_DIR = File::Spec->catdir(dirname(__FILE__), 'pages');
 
+# Webserver root path prefix (default: empty)
+my $WEBSERVER_ROOT = '';
+
 # Simple YAML parser for our format:
 #   - key: value (single line)
 #   - key: | (multiline string)
@@ -93,6 +96,31 @@ sub extract_conditions {
     }
 }
 
+# Extract event handler functions from structure, replace with indices
+sub extract_handlers {
+    my ($node, $handlers) = @_;
+
+    return unless ref $node eq 'HASH';
+
+    # Handle event handler attributes (onClick, onMouseOver, etc.)
+    if ($node->{attributes}) {
+        for my $attr (keys %{$node->{attributes}}) {
+            if ($attr =~ /^on[A-Z]/) {
+                my $handler = $node->{attributes}{$attr};
+                push @$handlers, { event => $attr, handler => $handler };
+                $node->{attributes}{"_${attr}Index"} = $#$handlers;
+                delete $node->{attributes}{$attr};
+            }
+        }
+    }
+
+    # Recurse into children (top-level uses 'elements', element nodes use 'children')
+    my $children = $node->{children} // $node->{elements} // [];
+    for my $child (@$children) {
+        extract_handlers($child, $handlers);
+    }
+}
+
 # Load a page from the pages directory
 sub load_page {
     my ($path) = @_;
@@ -165,10 +193,21 @@ sub generate_js_classes {
         my @conditions;
         extract_conditions($structure, \@conditions);
 
+        # Extract event handlers and replace with indices
+        my @handlers;
+        extract_handlers($structure, \@handlers);
+
         my $structure_json = encode_json($structure);
 
         # Build conditions array as actual JS functions
         my $conditions_js = '[' . join(', ', @conditions) . ']';
+
+        # Build handlers array as actual JS functions
+        my @handler_entries;
+        for my $h (@handlers) {
+            push @handler_entries, "{ event: '$h->{event}', handler: $h->{handler} }";
+        }
+        my $handlers_js = '[' . join(', ', @handler_entries) . ']';
 
         # Build imports mapping (namespace -> ClassName)
         my $imports_obj = '{}';
@@ -206,7 +245,7 @@ sub generate_js_classes {
             $methods_str = "\n" . join("\n", @var_methods, @custom_methods) . "\n";
         }
 
-        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;\n    conditions = $conditions_js;$methods_str}";
+        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;\n    conditions = $conditions_js;\n    handlers = $handlers_js;$methods_str}";
     }
 
     return join("\n\n", @classes);
@@ -242,13 +281,15 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 INIT
 
+    my $spiderpup_src = $WEBSERVER_ROOT ? "$WEBSERVER_ROOT/spiderpup.js" : "spiderpup.js";
+
     return <<"HTML";
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>$title</title>
-    <script src="/spiderpup.js"></script>
+    <script src="$spiderpup_src"></script>
     $script
     $init_script
 </head>
@@ -279,7 +320,7 @@ sub parse_html {
     my @stack = (\%result);  # Stack of parent elements
     my $pos = 0;
 
-    while ($html =~ /(<[^>]+>|[^<]+)/g) {
+    while ($html =~ /(<(?:[^>"']|"[^"]*"|'[^']*')+>|[^<]+)/g) {
         my $token = $1;
 
         if ($token =~ /^<\/(\w+)>$/) {
@@ -287,7 +328,7 @@ sub parse_html {
             my $tag = lc($1);
             pop @stack if @stack > 1;
         }
-        elsif ($token =~ /^<(\w+)([^>]*?)(\/?)>$/) {
+        elsif ($token =~ /^<(\w+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>$/) {
             # Opening tag
             my $tag = lc($1);
             my $attr_str = $2 // '';
@@ -461,6 +502,13 @@ $SIG{CHLD} = 'IGNORE';
 # Demo the parse_html function
 sub main {
     my $demo = grep { $_ eq '--demo' } @ARGV;
+
+    # Parse --root argument
+    for my $i (0 .. $#ARGV) {
+        if ($ARGV[$i] eq '--root' && defined $ARGV[$i + 1]) {
+            $WEBSERVER_ROOT = $ARGV[$i + 1];
+        }
+    }
 
     if ($demo) {
         print "Parsing hello_html:\n";
