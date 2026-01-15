@@ -1,0 +1,7 @@
+title: Hello World
+import:
+  foo: /foo.yaml
+  bar: /bar.yaml
+html: |
+  <h1>Hello, World!</h1>
+  <p>Welcome to the Perl web server.</p>

@@ -1,6 +1,7 @@
 #!/usr/bin/env raku
 
 use v6;
+use JSON::Fast;
 
 # Function that takes HTML text and returns a data structure
 sub parse-html(Str $html --> Hash) is export {
@@ -106,6 +107,13 @@ sub run-server(Int $port = 5000) {
 
 # Demo the parse-html function
 sub MAIN(Bool :$demo = False) {
+    if 1 {
+      say "HI HI";
+      my %x = parse-html( "<body className=\"woofy boofy\"><div>Hello World</div></body>" );
+      say to-json(%x);
+      exit;
+      say "BYBY";
+    }
     if $demo {
         say "Parsing hello-html:";
         my %parsed = parse-html($hello-html);

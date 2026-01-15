@@ -1,0 +1,5 @@
+title: Bar Page
+import:
+  fred: /fred.yaml
+html: |
+  <h1>WELCOME BAR</h1>
