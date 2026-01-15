@@ -70,6 +70,29 @@ sub _save_block {
     }
 }
 
+# Extract condition functions from structure, replace with indices
+sub extract_conditions {
+    my ($node, $conditions) = @_;
+
+    return unless ref $node eq 'HASH';
+
+    # Handle if/elseif condition extraction
+    if ($node->{tag} && ($node->{tag} eq 'if' || $node->{tag} eq 'elseif')) {
+        if (exists $node->{attributes}{condition}) {
+            my $condition = $node->{attributes}{condition};
+            push @$conditions, $condition;
+            $node->{attributes}{_conditionIndex} = $#$conditions;
+            delete $node->{attributes}{condition};
+        }
+    }
+
+    # Recurse into children (top-level uses 'elements', element nodes use 'children')
+    my $children = $node->{children} // $node->{elements} // [];
+    for my $child (@$children) {
+        extract_conditions($child, $conditions);
+    }
+}
+
 # Load a page from the pages directory
 sub load_page {
     my ($path) = @_;
@@ -144,6 +167,13 @@ class Module {
         return elements;
     }
 
+    initUI() {
+        const elements = this.buildElements(this.structure);
+        for (const el of elements) {
+            document.body.appendChild(el);
+        }
+    }
+
     _interpolate(text) {
         let hasInterpolation = false;
         const result = text.replace(/\{(\w+)\}/g, (match, varName) => {
@@ -196,7 +226,15 @@ sub generate_js_classes {
 
         # Parse HTML to structure
         my $structure = parse_html($html_raw);
+
+        # Extract conditions and replace with indices
+        my @conditions;
+        extract_conditions($structure, \@conditions);
+
         my $structure_json = encode_json($structure);
+
+        # Build conditions array as actual JS functions
+        my $conditions_js = '[' . join(', ', @conditions) . ']';
 
         # Build imports mapping (namespace -> ClassName)
         my $imports_obj = '{}';
@@ -265,10 +303,7 @@ sub build_html {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const page = new $class_name();
-    const elements = page.buildElements(page.structure);
-    for (const el of elements) {
-        document.body.appendChild(el);
-    }
+    page.initUI();
 });
 </script>
 INIT
