@@ -101,7 +101,7 @@ class Module {
         // Handle imported module tags
         if (this.imports[item.tag]) {
             const ImportedClass = this.imports[item.tag];
-            const componentInstance = new ComponentInstance(ImportedClass, item.attributes || {}, this);
+            const componentInstance = new ComponentInstance(ImportedClass, item.attributes || {}, this, item.tag);
 
             // Register as updatable with parent module
             const owner = moduleRegistry[ownerModuleId];
@@ -363,11 +363,13 @@ class ComponentInstance extends Module {
     rootElement = null;
     ownerModule = null;
     sourceClass = null;
+    namespace = null;
 
-    constructor(SourceClass, attributes, ownerModule) {
+    constructor(SourceClass, attributes, ownerModule, namespace) {
         super();
         this.sourceClass = SourceClass;
         this.ownerModule = ownerModule;
+        this.namespace = namespace;
 
         // Create a temporary instance to get the class properties
         const template = new SourceClass();
@@ -396,6 +398,9 @@ class ComponentInstance extends Module {
         const wrapper = document.createElement('div');
         this.rootElement = wrapper;
         wrapper.setAttribute('data-module-id', this.moduleId);
+        if (this.namespace) {
+            wrapper.classList.add(this.namespace);
+        }
 
         const [children] = this._buildChildren(this.structure.elements || [], this.moduleId);
         for (const childNode of children) {

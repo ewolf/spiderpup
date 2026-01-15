@@ -1,4 +1,6 @@
 title: Hello World
+css: |
+  button { background-color: skyblue; }
 import:
   foo: /foo.yaml
   bar: /bar.yaml

@@ -1,4 +1,6 @@
 title: Bar Page
+css: |
+  h1 { color: red; }
 import:
   fred: /fred.yaml
 html: |

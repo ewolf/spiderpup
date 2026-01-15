@@ -1,4 +1,6 @@
 title: Foo Page
+css: |
+  h1 { color: green; }
 import:
   fred: /fred.yaml
 vars:

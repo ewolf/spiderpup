@@ -286,6 +286,27 @@ sub generate_js_classes {
     return join("\n\n", @classes);
 }
 
+# Generate CSS with class-scoped selectors for all loaded pages
+sub generate_css {
+    my ($loaded_pages) = @_;
+
+    my @css_blocks;
+
+    for my $namespace (sort keys %$loaded_pages) {
+        my $page = $loaded_pages->{$namespace};
+        my $css = $page->{css};
+        next unless $css;
+
+        # Scope each CSS rule with the namespace class
+        # Simple approach: wrap in .namespace { ... }
+        $css =~ s/^\s+//;
+        $css =~ s/\s+$//;
+        push @css_blocks, ".$namespace { $css }";
+    }
+
+    return join("\n", @css_blocks);
+}
+
 # Build full HTML document from page data
 sub build_html {
     my ($page_data, $page_name) = @_;
@@ -301,16 +322,24 @@ sub build_html {
     $loaded_pages->{$page_name} = $page_data;
 
     my $js_classes = generate_js_classes($loaded_pages);
+    my $css = generate_css($loaded_pages);
 
     my $script = '';
     if ($js_classes) {
         $script = "<script>\n$js_classes\n</script>";
     }
 
+    my $style = '';
+    if ($css) {
+        $style = "<style>\n$css\n</style>";
+    }
+
     my $init_script = <<"INIT";
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const page = new $class_name();
+    page.pageName = '$page_name';
+    document.body.classList.add('$page_name');
     page.initUI();
 });
 </script>
@@ -324,6 +353,7 @@ INIT
 <head>
     <meta charset="UTF-8">
     <title>$title</title>
+    $style
     <script src="$spiderpup_src"></script>
     $script
     $init_script
