@@ -6,6 +6,7 @@ class Module {
     dirty = false;
     conditions = [];
     handlers = [];
+    loops = [];
     moduleId = null;
     updatables = [];
     eventHandlers = [];
@@ -92,6 +93,11 @@ class Module {
             return [null, false];
         }
 
+        // Handle for loops - these are processed by _buildChildren
+        if (item.tag === 'for') {
+            return [null, false];
+        }
+
         // Handle imported module tags
         if (this.imports[item.tag]) {
             const ImportedClass = this.imports[item.tag];
@@ -160,6 +166,26 @@ class Module {
                     result.push(branchNode);
                     if (branchUpdatable) isUpdatable = true;
                 }
+            } else if (child.tag === 'for') {
+                // Build Loop
+                const itemsIndex = child.attributes?._itemsIndex;
+                const items = itemsIndex !== undefined ? this.loops[itemsIndex] : [];
+
+                const loop = new Loop(items, child.children || [], this);
+
+                // Register the loop as updatable with parent module
+                const owner = moduleRegistry[ownerModuleId];
+                if (owner) {
+                    owner.updatables.push({ node: null, item: null, moduleId: loop.moduleId });
+                }
+
+                // Render the loop
+                const [loopNode, loopUpdatable] = loop.render();
+                if (loopNode) {
+                    result.push(loopNode);
+                    if (loopUpdatable) isUpdatable = true;
+                }
+                i++;
             } else {
                 const [node, nodeUpdatable] = this._buildNode(child, ownerModuleId);
                 if (node) {
@@ -346,10 +372,11 @@ class ComponentInstance extends Module {
         // Create a temporary instance to get the class properties
         const template = new SourceClass();
 
-        // Copy structure, conditions, handlers, and imports from template
+        // Copy structure, conditions, handlers, loops, and imports from template
         this.structure = template.structure;
         this.conditions = template.conditions;
         this.handlers = template.handlers;
+        this.loops = template.loops;
         this.imports = template.imports;
 
         // Initialize vars from template defaults
@@ -391,6 +418,101 @@ class ComponentInstance extends Module {
                 const [newText] = this._interpolate(updatable.item.content);
                 updatable.node.textContent = newText;
             }
+        }
+    }
+}
+
+class Loop extends Module {
+    rootElement = null;
+    ownerModule = null;
+    items = null;
+    loopChildren = [];
+
+    constructor(items, children, ownerModule) {
+        super();
+        this.items = items;
+        this.loopChildren = children;
+        this.ownerModule = ownerModule;
+    }
+
+    _getItems() {
+        // items can be an array or a function that returns an array
+        if (typeof this.items === 'function') {
+            return this.items.call(this.ownerModule);
+        }
+        return this.items || [];
+    }
+
+    render() {
+        const wrapper = document.createElement('div');
+        this.rootElement = wrapper;
+        wrapper.setAttribute('data-module-id', this.moduleId);
+
+        const items = this._getItems();
+        for (let idx = 0; idx < items.length; idx++) {
+            const item = items[idx];
+            this._renderIteration(wrapper, item, idx);
+        }
+
+        return [wrapper, true];
+    }
+
+    _renderIteration(container, item, idx) {
+        for (const child of this.loopChildren) {
+            const node = this._buildLoopNode(child, item, idx);
+            if (node) {
+                container.appendChild(node);
+            }
+        }
+    }
+
+    _buildLoopNode(child, item, idx) {
+        if (child.type === 'text') {
+            const [text] = this.ownerModule._interpolate(child.content);
+            return document.createTextNode(text);
+        }
+
+        const node = document.createElement(child.tag);
+
+        for (const [attr, value] of Object.entries(child.attributes || {})) {
+            if (attr === '_textContentIndex') {
+                // textContent is a function (this, item, idx) => string
+                const handlerInfo = this.ownerModule.handlers[value];
+                if (handlerInfo && typeof handlerInfo.handler === 'function') {
+                    node.textContent = handlerInfo.handler.call(this.ownerModule, this.ownerModule, item, idx);
+                    // Store for refresh
+                    this.updatables.push({ node, handlerInfo, item, idx });
+                }
+            } else if (!attr.startsWith('_')) {
+                node.setAttribute(attr, value);
+            }
+        }
+
+        // Recursively build children
+        for (const grandchild of (child.children || [])) {
+            const childNode = this._buildLoopNode(grandchild, item, idx);
+            if (childNode) {
+                node.appendChild(childNode);
+            }
+        }
+
+        return node;
+    }
+
+    refresh() {
+        // Re-evaluate items and rebuild if needed
+        const items = this._getItems();
+
+        // Clear existing content
+        while (this.rootElement.firstChild) {
+            this.rootElement.removeChild(this.rootElement.firstChild);
+        }
+        this.updatables = [];
+
+        // Rebuild
+        for (let idx = 0; idx < items.length; idx++) {
+            const item = items[idx];
+            this._renderIteration(this.rootElement, item, idx);
         }
     }
 }

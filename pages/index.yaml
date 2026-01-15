@@ -4,6 +4,7 @@ import:
   bar: /bar.yaml
 vars:
   version: 0.01
+  colors: ["red","green","blue"]
 methods:
   rando: () => this.set_version(Math.round(Math.random()*100))
 html: |
@@ -21,3 +22,9 @@ html: |
   </else>
   <foo color="blue"/>
   <foo color="red"/>
+  <for items="[2,4,9]">
+    <div textContent="(mod,item,idx) => `${idx} is ${item}`"></div>
+  </for>
+  <for items="() => this.get_colors()">
+    <div textContent="(mod,item,idx) => `color ${idx} is ${item}`"></div>
+  </for>

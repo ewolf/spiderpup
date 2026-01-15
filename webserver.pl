@@ -52,7 +52,12 @@ sub parse_yaml {
             push @multiline_content, $1;
         } elsif ($mode eq 'map' && $line =~ /^  (\w+):\s*(.*)$/) {
             # Indented key: value for nested map
-            $map_content{$1} = $2;
+            my ($key, $val) = ($1, $2);
+            # Parse JSON arrays/objects
+            if ($val =~ /^\[.*\]$/ || $val =~ /^\{.*\}$/) {
+                eval { $val = decode_json($val); };
+            }
+            $map_content{$key} = $val;
         }
     }
 
@@ -102,10 +107,10 @@ sub extract_handlers {
 
     return unless ref $node eq 'HASH';
 
-    # Handle event handler attributes (onClick, onMouseOver, etc.)
+    # Handle event handler attributes (onClick, onMouseOver, etc.) and textContent functions
     if ($node->{attributes}) {
         for my $attr (keys %{$node->{attributes}}) {
-            if ($attr =~ /^on[A-Z]/) {
+            if ($attr =~ /^on[A-Z]/ || $attr eq 'textContent') {
                 my $handler = $node->{attributes}{$attr};
                 push @$handlers, { event => $attr, handler => $handler };
                 $node->{attributes}{"_${attr}Index"} = $#$handlers;
@@ -118,6 +123,29 @@ sub extract_handlers {
     my $children = $node->{children} // $node->{elements} // [];
     for my $child (@$children) {
         extract_handlers($child, $handlers);
+    }
+}
+
+# Extract loop items from structure, replace with indices
+sub extract_loops {
+    my ($node, $loops) = @_;
+
+    return unless ref $node eq 'HASH';
+
+    # Handle for loop items extraction
+    if ($node->{tag} && $node->{tag} eq 'for') {
+        if (exists $node->{attributes}{items}) {
+            my $items = $node->{attributes}{items};
+            push @$loops, $items;
+            $node->{attributes}{_itemsIndex} = $#$loops;
+            delete $node->{attributes}{items};
+        }
+    }
+
+    # Recurse into children (top-level uses 'elements', element nodes use 'children')
+    my $children = $node->{children} // $node->{elements} // [];
+    for my $child (@$children) {
+        extract_loops($child, $loops);
     }
 }
 
@@ -197,6 +225,10 @@ sub generate_js_classes {
         my @handlers;
         extract_handlers($structure, \@handlers);
 
+        # Extract loop items and replace with indices
+        my @loops;
+        extract_loops($structure, \@loops);
+
         my $structure_json = encode_json($structure);
 
         # Build conditions array as actual JS functions
@@ -208,6 +240,9 @@ sub generate_js_classes {
             push @handler_entries, "{ event: '$h->{event}', handler: $h->{handler} }";
         }
         my $handlers_js = '[' . join(', ', @handler_entries) . ']';
+
+        # Build loops array (items can be arrays or functions)
+        my $loops_js = '[' . join(', ', @loops) . ']';
 
         # Build imports mapping (namespace -> ClassName)
         my $imports_obj = '{}';
@@ -245,7 +280,7 @@ sub generate_js_classes {
             $methods_str = "\n" . join("\n", @var_methods, @custom_methods) . "\n";
         }
 
-        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;\n    conditions = $conditions_js;\n    handlers = $handlers_js;$methods_str}";
+        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;\n    conditions = $conditions_js;\n    handlers = $handlers_js;\n    loops = $loops_js;$methods_str}";
     }
 
     return join("\n\n", @classes);
