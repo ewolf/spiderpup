@@ -77,6 +77,7 @@ sub load_page {
     # Normalize path: / or /index.html -> index
     $path =~ s|^/||;
     $path =~ s|\.html$||;
+    $path =~ s|\.yaml$||;
     $path = 'index' if $path eq '' || $path eq 'index.html';
 
     my $yaml_file = File::Spec->catfile($PAGES_DIR, "$path.yaml");
@@ -90,6 +91,62 @@ sub load_page {
     return parse_yaml($content);
 }
 
+# Recursively resolve imports, loading each page only once
+sub resolve_imports {
+    my ($page_data, $loaded) = @_;
+    $loaded //= {};
+
+    my $imports = $page_data->{import} // {};
+
+    for my $namespace (keys %$imports) {
+        next if exists $loaded->{$namespace};  # Already loaded
+
+        my $import_path = $imports->{$namespace};
+        my $imported_page = load_page($import_path);
+
+        if ($imported_page) {
+            $loaded->{$namespace} = $imported_page;
+            # Recursively resolve imports from this page
+            resolve_imports($imported_page, $loaded);
+        }
+    }
+
+    return $loaded;
+}
+
+# Generate JavaScript classes for all loaded pages
+sub generate_js_classes {
+    my ($loaded_pages) = @_;
+
+    my @classes;
+    for my $namespace (sort keys %$loaded_pages) {
+        my $page = $loaded_pages->{$namespace};
+        my $class_name = ucfirst($namespace);
+
+        # Escape for JavaScript strings
+        my $title = $page->{title} // '';
+        my $html = $page->{html} // '';
+        $title =~ s/\\/\\\\/g; $title =~ s/'/\\'/g;
+        $html =~ s/\\/\\\\/g; $html =~ s/'/\\'/g;
+        $html =~ s/\n/\\n/g;
+
+        # Build imports mapping (namespace -> ClassName)
+        my $imports_obj = '{}';
+        if ($page->{import} && keys %{$page->{import}}) {
+            my @import_pairs;
+            for my $imp_name (sort keys %{$page->{import}}) {
+                my $imp_class = ucfirst($imp_name);
+                push @import_pairs, "$imp_name: $imp_class";
+            }
+            $imports_obj = '{ ' . join(', ', @import_pairs) . ' }';
+        }
+
+        push @classes, "class $class_name {\n    title = '$title';\n    html = '$html';\n    imports = $imports_obj;\n}";
+    }
+
+    return join("\n\n", @classes);
+}
+
 # Build full HTML document from page data
 sub build_html {
     my ($page_data) = @_;
@@ -97,12 +154,22 @@ sub build_html {
     my $title = $page_data->{title} // 'Untitled';
     my $body  = $page_data->{html}  // '';
 
+    # Resolve imports and generate JavaScript classes
+    my $loaded_pages = resolve_imports($page_data);
+    my $js_classes = generate_js_classes($loaded_pages);
+
+    my $script = '';
+    if ($js_classes) {
+        $script = "<script>\n$js_classes\n</script>";
+    }
+
     return <<"HTML";
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>$title</title>
+    $script
 </head>
 <body>
 $body</body>

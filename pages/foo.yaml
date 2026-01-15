@@ -1,3 +1,5 @@
 title: Foo Page
+import:
+  fred: /fred.yaml
 html: |
   <h1>WELCOME FOO</h1>
