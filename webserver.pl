@@ -5,6 +5,7 @@ use warnings;
 use IO::Socket::INET;
 use JSON::PP;
 use File::Basename;
+use CSS::LESSp;
 use File::Spec;
 
 # Directory for page YAML files
@@ -294,7 +295,15 @@ sub generate_css {
 
     for my $namespace (sort keys %$loaded_pages) {
         my $page = $loaded_pages->{$namespace};
-        my $css = $page->{css};
+        my $css = $page->{css} // '';
+        my $less = $page->{less};
+
+        # Compile LESS to CSS and append
+        if ($less) {
+            my @compiled = CSS::LESSp->parse($less);
+            $css .= join('', @compiled);
+        }
+
         next unless $css;
 
         # Scope each CSS rule with the namespace class

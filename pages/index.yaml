@@ -1,6 +1,7 @@
 title: Hello World
 css: |
   button { background-color: skyblue; }
+less: background-color: goldenrod;
 import:
   foo: /foo.yaml
   bar: /bar.yaml
