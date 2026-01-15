@@ -114,21 +114,89 @@ sub resolve_imports {
     return $loaded;
 }
 
+# Base Module class definition
+my $MODULE_CLASS = <<'JS';
+class Module {
+    vars = {};
+    dirty = false;
+
+    get(name, defaultValue) {
+        if (!(name in this.vars)) {
+            this.vars[name] = defaultValue;
+            this.dirty = true;
+        }
+        return this.vars[name];
+    }
+
+    set(name, value) {
+        if (this.vars[name] !== value) {
+            this.vars[name] = value;
+            this.dirty = true;
+        }
+    }
+
+    buildElements(structure) {
+        const elements = [];
+        for (const item of (structure.elements || [])) {
+            const [node, updatable] = this._buildNode(item);
+            if (node) elements.push(node);
+        }
+        return elements;
+    }
+
+    _interpolate(text) {
+        let hasInterpolation = false;
+        const result = text.replace(/\{(\w+)\}/g, (match, varName) => {
+            hasInterpolation = true;
+            return (varName in this.vars) ? this.vars[varName] : '';
+        });
+        return [result, hasInterpolation];
+    }
+
+    _buildNode(item) {
+        if (item.type === 'text') {
+            const [text, hasInterpolation] = this._interpolate(item.content);
+            return [document.createTextNode(text), hasInterpolation];
+        }
+        const node = document.createElement(item.tag);
+        for (const [attr, value] of Object.entries(item.attributes || {})) {
+            node.setAttribute(attr, value);
+        }
+        let updatable = false;
+        for (const child of (item.children || [])) {
+            const [childNode, childUpdatable] = this._buildNode(child);
+            if (childNode) node.appendChild(childNode);
+            if (childUpdatable) updatable = true;
+        }
+        return [node, updatable];
+    }
+}
+JS
+
 # Generate JavaScript classes for all loaded pages
 sub generate_js_classes {
     my ($loaded_pages) = @_;
 
     my @classes;
+
+    # Add base Module class first
+    push @classes, $MODULE_CLASS;
+
     for my $namespace (sort keys %$loaded_pages) {
         my $page = $loaded_pages->{$namespace};
         my $class_name = ucfirst($namespace);
 
         # Escape for JavaScript strings
         my $title = $page->{title} // '';
-        my $html = $page->{html} // '';
+        my $html_raw = $page->{html} // '';
+        my $html = $html_raw;
         $title =~ s/\\/\\\\/g; $title =~ s/'/\\'/g;
         $html =~ s/\\/\\\\/g; $html =~ s/'/\\'/g;
         $html =~ s/\n/\\n/g;
+
+        # Parse HTML to structure
+        my $structure = parse_html($html_raw);
+        my $structure_json = encode_json($structure);
 
         # Build imports mapping (namespace -> ClassName)
         my $imports_obj = '{}';
@@ -141,7 +209,32 @@ sub generate_js_classes {
             $imports_obj = '{ ' . join(', ', @import_pairs) . ' }';
         }
 
-        push @classes, "class $class_name {\n    title = '$title';\n    html = '$html';\n    imports = $imports_obj;\n}";
+        # Build vars object and generate get_/set_ methods
+        my $vars_json = '{}';
+        my @var_methods;
+        if ($page->{vars} && keys %{$page->{vars}}) {
+            $vars_json = encode_json($page->{vars});
+            for my $var_name (sort keys %{$page->{vars}}) {
+                push @var_methods, "    get_$var_name(defaultValue) { return this.get('$var_name', defaultValue); }";
+                push @var_methods, "    set_$var_name(value) { return this.set('$var_name', value); }";
+            }
+        }
+
+        # Build custom methods
+        my @custom_methods;
+        if ($page->{methods} && keys %{$page->{methods}}) {
+            for my $method_name (sort keys %{$page->{methods}}) {
+                my $method_code = $page->{methods}{$method_name};
+                push @custom_methods, "    $method_name = $method_code;";
+            }
+        }
+
+        my $methods_str = '';
+        if (@var_methods || @custom_methods) {
+            $methods_str = "\n" . join("\n", @var_methods, @custom_methods) . "\n";
+        }
+
+        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;$methods_str}";
     }
 
     return join("\n\n", @classes);
@@ -149,19 +242,36 @@ sub generate_js_classes {
 
 # Build full HTML document from page data
 sub build_html {
-    my ($page_data) = @_;
+    my ($page_data, $page_name) = @_;
+    $page_name //= 'page';
 
     my $title = $page_data->{title} // 'Untitled';
-    my $body  = $page_data->{html}  // '';
+    my $class_name = ucfirst($page_name);
 
     # Resolve imports and generate JavaScript classes
     my $loaded_pages = resolve_imports($page_data);
+
+    # Add the main page itself
+    $loaded_pages->{$page_name} = $page_data;
+
     my $js_classes = generate_js_classes($loaded_pages);
 
     my $script = '';
     if ($js_classes) {
         $script = "<script>\n$js_classes\n</script>";
     }
+
+    my $init_script = <<"INIT";
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const page = new $class_name();
+    const elements = page.buildElements(page.structure);
+    for (const el of elements) {
+        document.body.appendChild(el);
+    }
+});
+</script>
+INIT
 
     return <<"HTML";
 <!DOCTYPE html>
@@ -170,21 +280,21 @@ sub build_html {
     <meta charset="UTF-8">
     <title>$title</title>
     $script
+    $init_script
 </head>
 <body>
-$body</body>
+</body>
 </html>
 HTML
 }
 
-# Function that takes HTML text and returns a data structure
+# Function that takes HTML text and returns a hierarchical data structure
 sub parse_html {
     my ($html) = @_;
 
     my %result = (
         doctype => undef,
         elements => [],
-        'text-content' => '',
     );
 
     # Extract doctype if present
@@ -192,32 +302,62 @@ sub parse_html {
         $result{doctype} = $1;
     }
 
-    # Extract all tags with their attributes
-    my @elements;
+    # Self-closing tags
+    my %void_tags = map { $_ => 1 } qw(area base br col embed hr img input link meta param source track wbr);
 
-    while ($html =~ /<([^\s>\/]+)([^>]*)>/g) {
-        my $tag_name = $1;
-        my $attr_str = $2 // '';
+    # Parse HTML into hierarchical structure
+    my @stack = (\%result);  # Stack of parent elements
+    my $pos = 0;
 
-        next if $tag_name =~ /^!/;  # Skip comments/doctype
+    while ($html =~ /(<[^>]+>|[^<]+)/g) {
+        my $token = $1;
 
-        my %attrs;
-        while ($attr_str =~ /(\w+)="([^"]*)"/g) {
-            $attrs{$1} = $2;
+        if ($token =~ /^<\/(\w+)>$/) {
+            # Closing tag - pop stack
+            my $tag = lc($1);
+            pop @stack if @stack > 1;
         }
+        elsif ($token =~ /^<(\w+)([^>]*?)(\/?)>$/) {
+            # Opening tag
+            my $tag = lc($1);
+            my $attr_str = $2 // '';
+            my $self_close = $3;
 
-        push @elements, {
-            tag => lc($tag_name),
-            attributes => \%attrs,
-        };
+            next if $tag =~ /^!/;  # Skip comments/doctype
+
+            my %attrs;
+            while ($attr_str =~ /(\w+)="([^"]*)"/g) {
+                $attrs{$1} = $2;
+            }
+
+            my $element = {
+                tag => $tag,
+                attributes => \%attrs,
+                children => [],
+            };
+
+            # Add to current parent's children
+            my $parent = $stack[-1];
+            push @{$parent->{elements} // $parent->{children}}, $element;
+
+            # Push onto stack unless self-closing or void element
+            unless ($self_close || $void_tags{$tag}) {
+                push @stack, $element;
+            }
+        }
+        elsif ($token !~ /^\s*$/) {
+            # Text node (non-empty)
+            my $text = $token;
+            $text =~ s/^\s+|\s+$//g;
+            if ($text ne '') {
+                my $parent = $stack[-1];
+                push @{$parent->{elements} // $parent->{children}}, {
+                    type => 'text',
+                    content => $text,
+                };
+            }
+        }
     }
-    $result{elements} = \@elements;
-
-    # Extract text content (strip all tags)
-    my $text = $html;
-    $text =~ s/<[^>]*>//g;
-    $text =~ s/^\s+|\s+$//g;
-    $result{'text-content'} = $text;
 
     return \%result;
 }
@@ -283,7 +423,14 @@ sub run_server {
                 my $response;
 
                 if (defined $page_data) {
-                    my $body = build_html($page_data);
+                    # Get page name from path for the class name
+                    my $page_name = $path;
+                    $page_name =~ s|^/||;
+                    $page_name =~ s|\.html$||;
+                    $page_name =~ s|\.yaml$||;
+                    $page_name = 'index' if $page_name eq '';
+
+                    my $body = build_html($page_data, $page_name);
                     my $content_length = length($body);
                     $response = "HTTP/1.1 200 OK\r\n";
                     $response .= "Content-Type: text/html; charset=utf-8\r\n";

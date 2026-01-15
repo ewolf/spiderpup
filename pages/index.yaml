@@ -2,6 +2,10 @@ title: Hello World
 import:
   foo: /foo.yaml
   bar: /bar.yaml
+vars:
+  version: '.01'
+methods:
+  rando: () => this.set_version(Math.round(Math.random()*100))
 html: |
   <h1>Hello, World!</h1>
-  <p>Welcome to the Perl web server.</p>
+  <p>Welcome to the Perl web server, version {version}</p>
