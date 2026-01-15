@@ -137,80 +137,14 @@ sub resolve_imports {
     return $loaded;
 }
 
-# Base Module class definition
-my $MODULE_CLASS = <<'JS';
-class Module {
-    vars = {};
-    dirty = false;
-
-    get(name, defaultValue) {
-        if (!(name in this.vars)) {
-            this.vars[name] = defaultValue;
-            this.dirty = true;
-        }
-        return this.vars[name];
-    }
-
-    set(name, value) {
-        if (this.vars[name] !== value) {
-            this.vars[name] = value;
-            this.dirty = true;
-        }
-    }
-
-    buildElements(structure) {
-        const elements = [];
-        for (const item of (structure.elements || [])) {
-            const [node, updatable] = this._buildNode(item);
-            if (node) elements.push(node);
-        }
-        return elements;
-    }
-
-    initUI() {
-        const elements = this.buildElements(this.structure);
-        for (const el of elements) {
-            document.body.appendChild(el);
-        }
-    }
-
-    _interpolate(text) {
-        let hasInterpolation = false;
-        const result = text.replace(/\{(\w+)\}/g, (match, varName) => {
-            hasInterpolation = true;
-            return (varName in this.vars) ? this.vars[varName] : '';
-        });
-        return [result, hasInterpolation];
-    }
-
-    _buildNode(item) {
-        if (item.type === 'text') {
-            const [text, hasInterpolation] = this._interpolate(item.content);
-            return [document.createTextNode(text), hasInterpolation];
-        }
-        const node = document.createElement(item.tag);
-        for (const [attr, value] of Object.entries(item.attributes || {})) {
-            node.setAttribute(attr, value);
-        }
-        let updatable = false;
-        for (const child of (item.children || [])) {
-            const [childNode, childUpdatable] = this._buildNode(child);
-            if (childNode) node.appendChild(childNode);
-            if (childUpdatable) updatable = true;
-        }
-        return [node, updatable];
-    }
-}
-JS
+# Directory for static files
+my $STATIC_DIR = dirname(__FILE__);
 
 # Generate JavaScript classes for all loaded pages
 sub generate_js_classes {
     my ($loaded_pages) = @_;
 
     my @classes;
-
-    # Add base Module class first
-    push @classes, $MODULE_CLASS;
 
     for my $namespace (sort keys %$loaded_pages) {
         my $page = $loaded_pages->{$namespace};
@@ -272,7 +206,7 @@ sub generate_js_classes {
             $methods_str = "\n" . join("\n", @var_methods, @custom_methods) . "\n";
         }
 
-        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;$methods_str}";
+        push @classes, "class $class_name extends Module {\n    title = '$title';\n    html = '$html';\n    structure = $structure_json;\n    vars = $vars_json;\n    imports = $imports_obj;\n    conditions = $conditions_js;$methods_str}";
     }
 
     return join("\n\n", @classes);
@@ -314,6 +248,7 @@ INIT
 <head>
     <meta charset="UTF-8">
     <title>$title</title>
+    <script src="/spiderpup.js"></script>
     $script
     $init_script
 </head>
@@ -453,35 +388,56 @@ sub run_server {
 
                 print "Request: $method $path\n";
 
-                # Load page from YAML file
-                my $page_data = load_page($path);
                 my $response;
 
-                if (defined $page_data) {
-                    # Get page name from path for the class name
-                    my $page_name = $path;
-                    $page_name =~ s|^/||;
-                    $page_name =~ s|\.html$||;
-                    $page_name =~ s|\.yaml$||;
-                    $page_name = 'index' if $page_name eq '';
+                # Serve static JS files
+                if ($path =~ /^\/(.+\.js)$/) {
+                    my $js_file = File::Spec->catfile($STATIC_DIR, $1);
+                    if (-f $js_file) {
+                        open my $fh, '<', $js_file or die "Cannot open $js_file: $!";
+                        my $body = do { local $/; <$fh> };
+                        close $fh;
+                        my $content_length = length($body);
+                        $response = "HTTP/1.1 200 OK\r\n";
+                        $response .= "Content-Type: application/javascript; charset=utf-8\r\n";
+                        $response .= "Content-Length: $content_length\r\n";
+                        $response .= "Connection: close\r\n";
+                        $response .= "\r\n";
+                        $response .= $body;
+                    }
+                }
 
-                    my $body = build_html($page_data, $page_name);
-                    my $content_length = length($body);
-                    $response = "HTTP/1.1 200 OK\r\n";
-                    $response .= "Content-Type: text/html; charset=utf-8\r\n";
-                    $response .= "Content-Length: $content_length\r\n";
-                    $response .= "Connection: close\r\n";
-                    $response .= "\r\n";
-                    $response .= $body;
-                } else {
-                    my $not_found = "<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>";
-                    my $content_length = length($not_found);
-                    $response = "HTTP/1.1 404 Not Found\r\n";
-                    $response .= "Content-Type: text/html; charset=utf-8\r\n";
-                    $response .= "Content-Length: $content_length\r\n";
-                    $response .= "Connection: close\r\n";
-                    $response .= "\r\n";
-                    $response .= $not_found;
+                # Load page from YAML file
+                if (!$response) {
+                    my $page_data = load_page($path);
+
+                    if (defined $page_data) {
+                        # Get page name from path for the class name
+                        my $page_name = $path;
+                        $page_name =~ s|^/||;
+                        $page_name =~ s|\.html$||;
+                        $page_name =~ s|\.yaml$||;
+                        $page_name = 'index' if $page_name eq '';
+
+                        my $body = build_html($page_data, $page_name);
+                        my $content_length = length($body);
+                        $response = "HTTP/1.1 200 OK\r\n";
+                        $response .= "Content-Type: text/html; charset=utf-8\r\n";
+                        $response .= "Content-Length: $content_length\r\n";
+                        $response .= "Connection: close\r\n";
+                        $response .= "\r\n";
+                        $response .= $body;
+                        print STDERR Data::Dumper->Dump([$body]);
+                    } else {
+                        my $not_found = "<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>";
+                        my $content_length = length($not_found);
+                        $response = "HTTP/1.1 404 Not Found\r\n";
+                        $response .= "Content-Type: text/html; charset=utf-8\r\n";
+                        $response .= "Content-Length: $content_length\r\n";
+                        $response .= "Connection: close\r\n";
+                        $response .= "\r\n";
+                        $response .= $not_found;
+                    }
                 }
 
                 $conn->send($response);

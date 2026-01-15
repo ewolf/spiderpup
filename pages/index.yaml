@@ -9,3 +9,4 @@ methods:
 html: |
   <h1>Hello, World!</h1>
   <p>Welcome to the Perl web server, version {version}</p>
+  <button type="button" onClick="(this)=>this.rando()" value="click">clicky</button>
