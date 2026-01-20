@@ -622,6 +622,68 @@ Key points:
 - Multiple receivers can listen to the same channel
 - Useful for cross-component state sync, notifications, events
 
+### Event Bubbling
+
+Emit events that propagate up the component hierarchy (like DOM events):
+
+```yaml
+# Child component - emits events
+methods:
+  handleClick: |
+    () => {
+      // Emit event that bubbles up to parents
+      this.emit('item-selected', { id: 42, name: 'Example' });
+    }
+  handleDelete: |
+    () => {
+      this.emit('item-deleted', { id: 42 });
+    }
+
+html: |
+  <button onClick="() => this.handleClick()">Select</button>
+  <button onClick="() => this.handleDelete()">Delete</button>
+```
+
+```yaml
+# Parent component - handles events from children
+import:
+  childItem: /components/child-item.yaml
+
+lifecycle:
+  onMount: |
+    () => {
+      // Handle event and allow it to continue bubbling
+      this.on('item-selected', (event) => {
+        console.log('Item selected:', event.data);
+        // Event continues to bubble up
+      });
+
+      // Handle event and stop propagation
+      this.on('item-deleted', (event) => {
+        console.log('Item deleted:', event.data);
+        event.stopPropagation();  // Stop bubbling here
+        // Or: return false;      // Also stops propagation
+      });
+    }
+
+html: |
+  <div>
+    <childItem/>
+    <childItem/>
+  </div>
+```
+
+Event object properties:
+- `event.name` - The event name
+- `event.data` - The data passed to emit()
+- `event.source` - The module that emitted the event
+- `event.stopPropagation()` - Stop the event from bubbling further
+
+Methods:
+- `emit(name, data)` - Emit an event that bubbles up
+- `on(name, handler)` - Register an event handler
+- `off(name, handler?)` - Remove event handler(s)
+
 ## Client-Side Routing
 
 Build single-page applications with client-side navigation.

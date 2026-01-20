@@ -195,6 +195,20 @@ if (typeof window !== 'undefined') {
     });
 }
 
+// Event class for bubbling events
+class SpiderpupEvent {
+    constructor(name, data, source) {
+        this.name = name;
+        this.data = data;
+        this.source = source;
+        this.propagationStopped = false;
+    }
+
+    stopPropagation() {
+        this.propagationStopped = true;
+    }
+}
+
 class Module {
     vars = {};
     dirty = false;
@@ -211,10 +225,60 @@ class Module {
     classBindings = [];  // For class:* bindings
     styleBindings = [];  // For style:* bindings
     receivers = {};  // For broadcast/receive messaging
+    parentModule = null;  // For event bubbling
+    eventListeners = {};  // For on/emit events
 
     constructor() {
         this.moduleId = moduleRegistry.length;
         moduleRegistry.push(this);
+    }
+
+    // Register an event listener (for bubbling events)
+    on(eventName, handler) {
+        if (!this.eventListeners[eventName]) {
+            this.eventListeners[eventName] = [];
+        }
+        this.eventListeners[eventName].push(handler);
+    }
+
+    // Remove an event listener
+    off(eventName, handler) {
+        if (!this.eventListeners[eventName]) return;
+        if (handler) {
+            this.eventListeners[eventName] = this.eventListeners[eventName].filter(h => h !== handler);
+        } else {
+            delete this.eventListeners[eventName];
+        }
+    }
+
+    // Emit an event that bubbles up to parent modules
+    emit(eventName, data) {
+        const event = new SpiderpupEvent(eventName, data, this);
+        this._bubbleEvent(event);
+        return event;
+    }
+
+    // Internal: bubble event up the parent chain
+    _bubbleEvent(event) {
+        // Start with parent (don't handle on self)
+        let current = this.parentModule;
+
+        while (current && !event.propagationStopped) {
+            // Check if this module has listeners for this event
+            if (current.eventListeners && current.eventListeners[event.name]) {
+                for (const handler of current.eventListeners[event.name]) {
+                    // Call handler with event
+                    const result = handler.call(current, event);
+                    // If handler returns false, stop propagation
+                    if (result === false) {
+                        event.stopPropagation();
+                    }
+                    if (event.propagationStopped) break;
+                }
+            }
+            // Move up to next parent
+            current = current.parentModule;
+        }
     }
 
     // Register a receiver for a channel
@@ -642,6 +706,7 @@ class Conditional extends Module {
         this.condition = condition;
         this.branchChildren = children;
         this.ownerModule = ownerModule;
+        this.parentModule = ownerModule;  // For event bubbling
         this.transition = transition;
         if (transition) {
             injectTransitionStyles();
@@ -787,6 +852,7 @@ class ComponentInstance extends Module {
         super();
         this.sourceClass = SourceClass;
         this.ownerModule = ownerModule;
+        this.parentModule = ownerModule;  // For event bubbling
         this.namespace = namespace;
         this.slotChildren = slotChildren;
 
@@ -876,6 +942,7 @@ class Loop extends Module {
         this.items = items;
         this.loopChildren = children;
         this.ownerModule = ownerModule;
+        this.parentModule = ownerModule;  // For event bubbling
     }
 
     _getItems() {
