@@ -6,6 +6,7 @@ A lightweight YAML-based web framework with reactive components, written in Perl
 
 - **Declarative YAML components** - Define UI with simple YAML syntax
 - **Reactive data binding** - Two-way binding, computed properties, watchers
+- **Shorthand syntax** - `$var` for getters/setters, `@click` for events, implicit `this`
 - **LESS compiler** - Variables, nesting, mixins, color functions, math
 - **Component composition** - Imports, slots, refs, broadcast/receive
 - **SPA routing** - Client-side navigation with route parameters
@@ -65,10 +66,10 @@ vars:
   count: 0
   name: "World"
 methods:
-  increment: () => this.set_count(this.get_count() + 1)
+  increment: () => { $count = $count + 1 }
 html: |
   <h1>Hello, {name}!</h1>
-  <button onClick="() => this.increment()">Click me</button>
+  <button @click="increment()">Click me</button>
 ```
 
 ### Fields Reference
@@ -296,13 +297,17 @@ html: |
 
 ### Accessing Variables in Methods
 
-Auto-generated getters and setters:
+Use shorthand `$var` syntax or auto-generated getters/setters:
 
 ```yaml
 methods:
-  increment: () => this.set_count(this.get_count() + 1)
-  reset: () => this.set_count(0)
-  greet: () => alert('Hello, ' + this.get_name())
+  # Shorthand syntax
+  increment: () => { $count = $count + 1 }
+  reset: () => { $count = 0 }
+  greet: () => alert('Hello, ' + $name)
+
+  # Traditional syntax (also works)
+  # increment: () => this.set_count(this.get_count() + 1)
 ```
 
 ### Two-Way Binding
@@ -333,9 +338,9 @@ vars:
   items: []
 
 computed:
-  fullName: () => `${this.get_firstName()} ${this.get_lastName()}`
-  itemCount: () => this.get_items().length
-  isEmpty: () => this.get_items().length === 0
+  fullName: () => `${$firstName} ${$lastName}`
+  itemCount: () => $items.length
+  isEmpty: () => $items.length === 0
 
 html: |
   <h1>Welcome, {fullName}!</h1>
@@ -353,7 +358,7 @@ vars:
 
 watch:
   count: (newVal, oldVal) => console.log(`Count changed: ${oldVal} → ${newVal}`)
-  searchQuery: (newVal) => this.performSearch(newVal)
+  searchQuery: (newVal) => performSearch(newVal)
 
 methods:
   performSearch: (query) => console.log('Searching for:', query)
@@ -369,11 +374,11 @@ vars:
   hasError: false
 
 html: |
-  <div class:active="() => this.get_isActive()"
-       class:error="() => this.get_hasError()">
+  <div class:active="() => $isActive"
+       class:error="() => $hasError">
     Status indicator
   </div>
-  <button onClick="() => this.set_isActive(!this.get_isActive())">
+  <button @click="$isActive = !$isActive">
     Toggle
   </button>
 ```
@@ -392,7 +397,7 @@ html: |
   <p style:color="textColor">Colored text</p>
 
   <!-- Function binding -->
-  <p style:fontSize="() => this.get_fontSize() + 'px'">Sized text</p>
+  <p style:fontSize="() => $fontSize + 'px'">Sized text</p>
 ```
 
 ## Event Handlers
@@ -408,6 +413,166 @@ html: |
 
 The UI automatically refreshes after event handlers execute.
 
+## Shorthand Syntax
+
+Spiderpup provides shorthand syntax to reduce boilerplate and improve readability. All transformations happen at compile time, and the traditional syntax remains fully supported.
+
+### Variable Shorthand (`$var`)
+
+Use `$var` instead of `this.get_var()` and `$var = value` instead of `this.set_var(value)`:
+
+```yaml
+# Traditional syntax
+methods:
+  increment: () => this.set_count(this.get_count() + 1)
+  double: () => this.set_count(this.get_count() * 2)
+
+# Shorthand syntax
+methods:
+  increment: () => { $count = $count + 1 }
+  double: () => { $count = $count * 2 }
+```
+
+Works in methods, computed properties, watchers, lifecycle hooks, conditions, and event handlers:
+
+```yaml
+computed:
+  doubleCount: () => $count * 2
+  greeting: () => "Hello, " + $name + "!"
+
+watch:
+  count: (newVal) => console.log("Count is now:", newVal)
+
+html: |
+  <if condition="() => $count > 10">
+    <p>Count is high!</p>
+  </if>
+```
+
+Complex assignments are supported:
+
+```yaml
+methods:
+  addItem: () => { $items = [...$items, "New Item"] }
+  reset: () => { $count = 0; $name = "Guest" }
+```
+
+### Event Shorthand (`@event`)
+
+Use `@click` instead of `onClick="() => ..."`:
+
+```yaml
+# Traditional syntax
+html: |
+  <button onClick="() => this.increment()">+1</button>
+  <button onClick="() => this.set_count(0)">Reset</button>
+
+# Shorthand syntax
+html: |
+  <button @click="increment()">+1</button>
+  <button @click="$count = 0">Reset</button>
+```
+
+The `@event` syntax:
+- Converts `@click` to `onClick`, `@mouseover` to `onMouseover`, etc.
+- Automatically wraps the value in `() =>` if not already an arrow function
+- Combines well with `$var` and implicit `this`
+
+All standard DOM events work: `@click`, `@input`, `@change`, `@mouseover`, `@keydown`, etc.
+
+### Implicit `this`
+
+Bare method calls are automatically prefixed with `this.`:
+
+```yaml
+# Traditional syntax
+html: |
+  <button onClick="() => this.increment()">+1</button>
+  <button onClick="() => this.reset()">Reset</button>
+
+# Shorthand syntax (implicit this)
+html: |
+  <button @click="increment()">+1</button>
+  <button @click="reset()">Reset</button>
+```
+
+JavaScript globals (`console`, `Math`, `JSON`, `Date`, `fetch`, `Promise`, etc.) and arrow function parameters are not prefixed:
+
+```yaml
+methods:
+  log: () => console.log("Count:", $count)  # console is not prefixed
+  process: (items) => items.map(x => x * 2)  # items and x are not prefixed
+```
+
+### Combined Example
+
+Before (traditional):
+
+```yaml
+vars:
+  count: 0
+  name: "World"
+
+methods:
+  increment: () => this.set_count(this.get_count() + 1)
+  reset: () => this.set_count(0)
+
+computed:
+  greeting: () => "Hello, " + this.get_name()
+
+html: |
+  <p>{greeting}</p>
+  <p>Count: {count}</p>
+  <button onClick="() => this.increment()">+1</button>
+  <button onClick="() => this.set_count(this.get_count() - 1)">-1</button>
+  <button onClick="() => this.reset()">Reset</button>
+  <input bind="name" />
+  <if condition="() => this.get_count() > 5">
+    <p>Count is high!</p>
+  </if>
+```
+
+After (shorthand):
+
+```yaml
+vars:
+  count: 0
+  name: "World"
+
+methods:
+  increment: () => { $count = $count + 1 }
+  reset: () => { $count = 0 }
+
+computed:
+  greeting: () => "Hello, " + $name
+
+html: |
+  <p>{greeting}</p>
+  <p>Count: {count}</p>
+  <button @click="increment()">+1</button>
+  <button @click="$count = $count - 1">-1</button>
+  <button @click="reset()">Reset</button>
+  <input bind="name" />
+  <if condition="() => $count > 5">
+    <p>Count is high!</p>
+  </if>
+```
+
+### Backward Compatibility
+
+All traditional syntax continues to work:
+
+```yaml
+# You can mix styles freely
+methods:
+  increment: () => { $count = $count + 1 }                    # shorthand
+  decrement: () => this.set_count(this.get_count() - 1)       # traditional
+
+html: |
+  <button @click="increment()">+1 (shorthand)</button>
+  <button onClick="() => this.decrement()">-1 (traditional)</button>
+```
+
 ## Control Flow
 
 ### Conditionals
@@ -416,10 +581,10 @@ Use `<if>`, `<elseif>`, and `<else>` tags:
 
 ```yaml
 html: |
-  <if condition="() => this.get_count() < 10">
+  <if condition="() => $count < 10">
     <p>Count is small</p>
   </if>
-  <elseif condition="() => this.get_count() < 50">
+  <elseif condition="() => $count < 50">
     <p>Count is medium</p>
   </elseif>
   <else>
@@ -433,11 +598,11 @@ Add animations when conditionals change:
 
 ```yaml
 html: |
-  <if condition="() => this.get_isVisible()" transition="fade">
+  <if condition="() => $isVisible" transition="fade">
     <div>This content fades in/out</div>
   </if>
 
-  <if condition="() => this.get_isOpen()" transition="slide">
+  <if condition="() => $isOpen" transition="slide">
     <div>This content slides in/out</div>
   </if>
 ```
@@ -455,7 +620,12 @@ html: |
     <div textContent="(mod, item, idx) => `Item ${idx}: ${item}`"></div>
   </for>
 
-  <!-- Dynamic from vars -->
+  <!-- Dynamic from vars (shorthand) -->
+  <for items="$items">
+    <div textContent="(mod, item, idx) => item.toUpperCase()"></div>
+  </for>
+
+  <!-- Dynamic from vars (traditional) -->
   <for items="() => this.get_items()">
     <div textContent="(mod, item, idx) => item.toUpperCase()"></div>
   </for>
@@ -548,8 +718,8 @@ methods:
 
 html: |
   <input ref="myInput" bind="value"/>
-  <button onClick="() => this.focusInput()">Focus</button>
-  <button onClick="() => this.clearInput()">Clear</button>
+  <button @click="focusInput()">Focus</button>
+  <button @click="clearInput()">Clear</button>
 ```
 
 For components, `ref` gives you the component instance:
@@ -595,7 +765,7 @@ methods:
     }
 
 html: |
-  <button onClick="() => this.notifyAll()">Notify All</button>
+  <button @click="notifyAll()">Notify All</button>
 ```
 
 ```yaml
@@ -605,7 +775,7 @@ lifecycle:
     () => {
       this.receive('user-updated', (data, sender) => {
         console.log('User updated:', data);
-        this.set_userName(data.name);
+        $userName = data.name;
         this.refresh();
       });
 
@@ -640,8 +810,8 @@ methods:
     }
 
 html: |
-  <button onClick="() => this.handleClick()">Select</button>
-  <button onClick="() => this.handleDelete()">Delete</button>
+  <button @click="handleClick()">Select</button>
+  <button @click="handleDelete()">Delete</button>
 ```
 
 ```yaml
@@ -772,18 +942,18 @@ vars:
 methods:
   addTodo: |
     () => {
-      const todo = this.get_newTodo();
+      const todo = $newTodo;
       if (todo) {
-        this.get_todos().push({ text: todo, done: false });
-        this.set_newTodo('');
+        $todos.push({ text: todo, done: false });
+        $newTodo = '';
       }
     }
 html: |
   <div class="todo-app">
     <h1>Todo List</h1>
-    <input value="{newTodo}" onInput="(e) => this.set_newTodo(e.target.value)" />
-    <button onClick="() => this.addTodo()">Add</button>
-    <for items="() => this.get_todos()">
+    <input bind="newTodo" placeholder="Enter a todo" />
+    <button @click="addTodo()">Add</button>
+    <for items="$todos">
       <div textContent="(mod, item) => item.text"></div>
     </for>
   </div>
