@@ -1,0 +1,27 @@
+title: Spiderpup Routing Test
+
+import:
+  home: home
+  about: about
+  user: user
+
+routes:
+  /test-routing: home
+  /test-routing/about: about
+  /test-routing/user/:id: user
+
+css: |
+  nav { margin-bottom: 20px; }
+  nav a { margin-right: 15px; color: blue; text-decoration: underline; cursor: pointer; }
+
+html: |
+  <div>
+    <h1>Routing Demo</h1>
+    <nav>
+      <link to="/test-routing">Home</link>
+      <link to="/test-routing/about">About</link>
+      <link to="/test-routing/user/123">User 123</link>
+      <link to="/test-routing/user/456">User 456</link>
+    </nav>
+    <router-view/>
+  </div>

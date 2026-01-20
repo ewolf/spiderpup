@@ -360,6 +360,10 @@ my $WEBSERVER_ROOT = '';
 my %file_mtimes;
 my $last_change_time = 0;
 
+# HTML compilation cache directory
+my $CACHE_DIR = File::Spec->catdir(File::Spec->tmpdir(), 'spiderpup_cache');
+mkdir $CACHE_DIR unless -d $CACHE_DIR;
+
 sub update_file_mtimes {
     my $changed = 0;
     opendir(my $dh, $PAGES_DIR) or return 0;
@@ -382,6 +386,110 @@ sub update_file_mtimes {
 # Check if dev mode is enabled
 sub is_dev_mode {
     return $ENV{SPIDERPUP_DEV} ? 1 : 0;
+}
+
+# Get cache file paths for a page
+sub get_cache_paths {
+    my ($page_name) = @_;
+    my $safe_name = $page_name;
+    $safe_name =~ s/[^a-zA-Z0-9_-]/_/g;
+    return (
+        html => File::Spec->catfile($CACHE_DIR, "$safe_name.html"),
+        meta => File::Spec->catfile($CACHE_DIR, "$safe_name.meta"),
+    );
+}
+
+# Collect all YAML files referenced by a page (including imports recursively)
+sub collect_yaml_files {
+    my ($page_data, $page_name, $collected) = @_;
+    $collected //= {};
+
+    # Add this page
+    my $yaml_file = File::Spec->catfile($PAGES_DIR, "$page_name.yaml");
+    if (-f $yaml_file) {
+        $collected->{$yaml_file} = (stat($yaml_file))[9];
+    }
+
+    # Recursively collect imports
+    my $imports = $page_data->{import} // {};
+    for my $namespace (keys %$imports) {
+        my $import_file = File::Spec->catfile($PAGES_DIR, "$namespace.yaml");
+        next if exists $collected->{$import_file};
+        my $import_path = $imports->{$namespace};
+        my $imported_page = load_page($import_path);
+        if ($imported_page) {
+            collect_yaml_files($imported_page, $namespace, $collected);
+        }
+    }
+
+    return $collected;
+}
+
+# Check if cached HTML is still valid (file-based)
+sub is_cache_valid {
+    my ($page_name, $page_data) = @_;
+    my %paths = get_cache_paths($page_name);
+
+    # Check if cache files exist
+    return 0 unless -f $paths{html} && -f $paths{meta};
+
+    # Read metadata (stored mtimes)
+    open my $fh, '<', $paths{meta} or return 0;
+    my $meta_content = do { local $/; <$fh> };
+    close $fh;
+
+    my $cached_mtimes;
+    eval { $cached_mtimes = decode_json($meta_content); };
+    return 0 if $@ || !$cached_mtimes;
+
+    # Get current mtimes for all referenced files
+    my $current_mtimes = collect_yaml_files($page_data, $page_name);
+
+    # Check if file sets match and mtimes are unchanged
+    return 0 if keys %$cached_mtimes != keys %$current_mtimes;
+
+    for my $file (keys %$cached_mtimes) {
+        return 0 unless exists $current_mtimes->{$file};
+        return 0 if $current_mtimes->{$file} != $cached_mtimes->{$file};
+    }
+
+    return 1;
+}
+
+# Get cached HTML or build and cache it (file-based)
+sub get_cached_html {
+    my ($page_data, $page_name) = @_;
+    my %paths = get_cache_paths($page_name);
+
+    # Check cache validity
+    if (is_cache_valid($page_name, $page_data)) {
+        # Read cached HTML
+        open my $fh, '<', $paths{html} or goto BUILD;
+        my $html = do { local $/; <$fh> };
+        close $fh;
+        return $html;
+    }
+
+    BUILD:
+    # Build HTML
+    my $html = build_html($page_data, $page_name);
+
+    # Collect all referenced YAML files and their mtimes
+    my $mtimes = collect_yaml_files($page_data, $page_name);
+
+    # Write cache files
+    eval {
+        open my $html_fh, '>', $paths{html} or die "Cannot write $paths{html}: $!";
+        print $html_fh $html;
+        close $html_fh;
+
+        open my $meta_fh, '>', $paths{meta} or die "Cannot write $paths{meta}: $!";
+        print $meta_fh encode_json($mtimes);
+        close $meta_fh;
+    };
+    warn "Cache write failed: $@" if $@;
+
+    return $html;
 }
 
 # Simple YAML parser for our format:
@@ -1123,7 +1231,7 @@ ERRORHTML
 
                         my $body;
                         eval {
-                            $body = build_html($page_data, $page_name);
+                            $body = get_cached_html($page_data, $page_name);
                         };
                         if ($@) {
                             my $escaped_error = $@;

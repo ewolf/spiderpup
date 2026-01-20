@@ -1,0 +1,11 @@
+title: About
+
+lifecycle:
+  onMount: () => console.log('About mounted')
+  onDestroy: () => console.log('About destroyed')
+
+html: |
+  <div>
+    <h2>About Page</h2>
+    <p>This is the about page with information about Spiderpup.</p>
+  </div>

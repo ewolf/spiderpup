@@ -1,0 +1,91 @@
+title: Spiderpup Feature Test
+
+vars:
+  name: World
+  count: 0
+  isActive: true
+  textColor: blue
+  items: ["Apple", "Banana", "Cherry"]
+
+computed:
+  greeting: () => `Hello, ${this.get_name()}!`
+  doubled: () => this.get_count() * 2
+
+watch:
+  count: (newVal, oldVal) => console.log('Count changed from', oldVal, 'to', newVal)
+
+lifecycle:
+  onMount: () => console.log('Page mounted!')
+  onDestroy: () => console.log('Page destroyed!')
+
+methods:
+  increment: () => { this.set_count(this.get_count() + 1); }
+  toggleActive: () => { this.set_isActive(!this.get_isActive()); }
+  focusInput: () => { this.refs.myInput.focus(); }
+
+less: |
+  @primary: #3498db;
+  @spacing: 10px;
+
+  .border-radius(@r) {
+    border-radius: @r;
+  }
+
+  .container {
+    padding: @spacing * 2;
+    background: lighten(@primary, 40%);
+    .border-radius(8px);
+
+    h1 {
+      color: darken(@primary, 20%);
+    }
+
+    .btn {
+      background: @primary;
+      color: white;
+      padding: @spacing;
+      border: none;
+      cursor: pointer;
+      margin: 5px;
+      .border-radius(4px);
+
+      &:hover {
+        background: darken(@primary, 10%);
+      }
+    }
+  }
+
+html: |
+  <div class="container">
+    <h1>{greeting}</h1>
+
+    <div>
+      <label>Name: </label>
+      <input bind="name" ref="myInput"/>
+      <button class="btn" onClick="() => this.focusInput()">Focus Input</button>
+    </div>
+
+    <div>
+      <p>Count: {count} (Doubled: {doubled})</p>
+      <button class="btn" onClick="() => this.increment()">Increment</button>
+    </div>
+
+    <div>
+      <button class="btn" onClick="() => this.toggleActive()">Toggle Active</button>
+      <span class:active="() => this.get_isActive()" style:color="textColor">
+        Status indicator
+      </span>
+    </div>
+
+    <if condition="() => this.get_isActive()" transition="fade">
+      <p>Active content is visible!</p>
+    </if>
+    <else>
+      <p>Inactive content shown instead.</p>
+    </else>
+
+    <h3>Loop Demo:</h3>
+    <for items="() => this.get_items()">
+      <div textContent="(m, item, idx) => `${idx + 1}. ${item}`"></div>
+    </for>
+  </div>

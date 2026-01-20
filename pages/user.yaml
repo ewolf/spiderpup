@@ -1,0 +1,13 @@
+title: User Profile
+
+vars:
+  id: unknown
+
+lifecycle:
+  onMount: () => console.log('User page mounted with id:', this.get_id())
+
+html: |
+  <div>
+    <h2>User Profile</h2>
+    <p>Viewing user ID: {id}</p>
+  </div>

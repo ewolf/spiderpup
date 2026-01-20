@@ -1,0 +1,29 @@
+title: Slots Test
+
+import:
+  card: card
+
+vars:
+  dynamicContent: This is dynamic!
+
+html: |
+  <div>
+    <h1>Slots Demo</h1>
+
+    <card title="Static Content">
+      <p>This is static slot content inside the card.</p>
+    </card>
+
+    <card title="Dynamic Content">
+      <p>{dynamicContent}</p>
+      <button onClick="() => this.set_dynamicContent('Updated content!')">Update</button>
+    </card>
+
+    <card title="Nested Elements">
+      <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+      </ul>
+    </card>
+  </div>
