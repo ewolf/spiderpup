@@ -224,6 +224,7 @@ class Module {
     bindings = [];  // For two-way binding
     classBindings = [];  // For class:* bindings
     styleBindings = [];  // For style:* bindings
+    attrBindings = [];  // For dynamic function-based attributes
     receivers = {};  // For broadcast/receive messaging
     parentModule = null;  // For event bubbling
     eventListeners = {};  // For on/emit events
@@ -379,6 +380,18 @@ class Module {
             const { node, styleProp, getter } = sb;
             node.style[styleProp] = getter.call(this);
         }
+        // Update dynamic attribute bindings
+        for (const ab of this.attrBindings) {
+            const { node, attrName, getter } = ab;
+            const value = getter.call(this, this);
+            if (value === null || value === undefined || value === false) {
+                node.removeAttribute(attrName);
+            } else if (value === true) {
+                node.setAttribute(attrName, '');
+            } else {
+                node.setAttribute(attrName, value);
+            }
+        }
     }
 
     _registerUpdatable(node, item, ownerModuleId) {
@@ -401,6 +414,7 @@ class Module {
         this.bindings = [];
         this.classBindings = [];
         this.styleBindings = [];
+        this.attrBindings = [];
         this.updatables = [];
     }
 
@@ -444,11 +458,36 @@ class Module {
 
         // Handle slot tag - render slot children from owner module's context
         if (item.tag === 'slot') {
+            const slotName = item.attributes?._slotName || 'default';
+            let matchedChildren = [];
+
             if (this.slotChildren && this.slotChildren.length > 0) {
+                // Filter children by slot name
+                if (slotName === 'default') {
+                    // Default slot gets children without a slot attribute
+                    matchedChildren = this.slotChildren.filter(c => !c.attributes?._slot);
+                } else {
+                    // Named slot gets children with matching slot attribute
+                    matchedChildren = this.slotChildren.filter(c => c.attributes?._slot === slotName);
+                }
+            }
+
+            // If no matching content, use slot's own children as default content
+            if (matchedChildren.length === 0 && item.children && item.children.length > 0) {
                 const wrapper = document.createElement('span');
-                wrapper.setAttribute('data-slot', 'true');
+                wrapper.setAttribute('data-slot', slotName);
+                const [defaultChildren] = this._buildChildren(item.children, ownerModuleId);
+                for (const childNode of defaultChildren) {
+                    wrapper.appendChild(childNode);
+                }
+                return [wrapper, true];
+            }
+
+            if (matchedChildren.length > 0) {
+                const wrapper = document.createElement('span');
+                wrapper.setAttribute('data-slot', slotName);
                 // Render slot children using owner module's context
-                const [children] = this.ownerModule._buildChildren(this.slotChildren, this.ownerModule.moduleId);
+                const [children] = this.ownerModule._buildChildren(matchedChildren, this.ownerModule.moduleId);
                 for (const childNode of children) {
                     wrapper.appendChild(childNode);
                 }
@@ -570,6 +609,24 @@ class Module {
                     node.style[styleProp] = getter.call(this);
                     // Register for refresh updates
                     this.styleBindings.push({ node, styleProp, getter });
+                }
+            } else if (attr.startsWith('_attr:') && attr.endsWith('Index')) {
+                // Dynamic attribute binding (e.g., class="(module) => module.findClass()")
+                const attrName = attr.slice(6, -5); // Remove "_attr:" prefix and "Index" suffix
+                const handlerInfo = this.handlers[value];
+                if (handlerInfo) {
+                    const getter = handlerInfo.handler;
+                    // Apply initial attribute value - pass module as argument
+                    const attrValue = getter.call(this, this);
+                    if (attrValue !== null && attrValue !== undefined && attrValue !== false) {
+                        if (attrValue === true) {
+                            node.setAttribute(attrName, '');
+                        } else {
+                            node.setAttribute(attrName, attrValue);
+                        }
+                    }
+                    // Register for refresh updates
+                    this.attrBindings.push({ node, attrName, getter });
                 }
             } else if (!attr.startsWith('_')) {
                 node.setAttribute(attr, value);

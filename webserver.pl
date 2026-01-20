@@ -640,6 +640,27 @@ sub extract_handlers {
                 $node->{attributes}{"_style:${style_prop}Index"} = $#$handlers;
                 delete $node->{attributes}{$attr};
             }
+            # Handle slot attribute for named slots (on content elements)
+            elsif ($attr eq 'slot') {
+                $node->{attributes}{_slot} = $node->{attributes}{$attr};
+                delete $node->{attributes}{$attr};
+            }
+            # Handle dynamic function-based attributes (e.g., class="(module) => ...")
+            elsif ($node->{attributes}{$attr} =~ /^\s*\(.*?\)\s*=>/ ||
+                   $node->{attributes}{$attr} =~ /^\s*function\s*\(/) {
+                my $func = $node->{attributes}{$attr};
+                push @$handlers, { event => "attr:$attr", handler => $func };
+                $node->{attributes}{"_attr:${attr}Index"} = $#$handlers;
+                delete $node->{attributes}{$attr};
+            }
+        }
+    }
+
+    # Handle slot tag's name attribute for named slots
+    if ($node->{tag} && $node->{tag} eq 'slot') {
+        if (exists $node->{attributes}{name}) {
+            $node->{attributes}{_slotName} = $node->{attributes}{name};
+            delete $node->{attributes}{name};
         }
     }
 
