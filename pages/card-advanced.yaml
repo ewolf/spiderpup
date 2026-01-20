@@ -1,0 +1,37 @@
+title: Advanced Card
+
+css: |
+  .card {
+    border: 2px solid #333;
+    border-radius: 8px;
+    margin: 10px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: #333;
+    color: white;
+    padding: 10px;
+    font-weight: bold;
+  }
+  .card-body {
+    padding: 15px;
+  }
+  .card-footer {
+    background: #eee;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+    font-size: 0.9em;
+  }
+
+html: |
+  <div class="card">
+    <div class="card-header">
+      <slot name="header">Default Header</slot>
+    </div>
+    <div class="card-body">
+      <slot>No content provided</slot>
+    </div>
+    <div class="card-footer">
+      <slot name="footer">Default Footer</slot>
+    </div>
+  </div>

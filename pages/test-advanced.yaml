@@ -1,0 +1,101 @@
+title: Advanced Features Test
+
+import:
+  card: card-advanced
+
+vars:
+  currentClass: highlight
+  isActive: true
+  count: 0
+
+methods:
+  getBoxClass: () => this.get_isActive() ? 'box active' : 'box inactive'
+  toggleActive: () => this.set_isActive(!this.get_isActive())
+  increment: () => this.set_count(this.get_count() + 1)
+  getCountClass: () => this.get_count() > 5 ? 'high' : 'low'
+
+css: |
+  .container {
+    padding: 20px;
+    font-family: sans-serif;
+  }
+  h1 {
+    color: #333;
+  }
+  h2 {
+    color: #666;
+    margin-top: 30px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 5px;
+  }
+  .box {
+    padding: 20px;
+    margin: 10px 0;
+    border-radius: 8px;
+  }
+  .box.active {
+    background: #d4edda;
+    border: 2px solid #28a745;
+  }
+  .box.inactive {
+    background: #f8d7da;
+    border: 2px solid #dc3545;
+  }
+  .highlight {
+    background: yellow;
+    padding: 5px;
+  }
+  .counter {
+    font-size: 2em;
+    font-weight: bold;
+  }
+  .counter.low {
+    color: #28a745;
+  }
+  .counter.high {
+    color: #dc3545;
+  }
+  button {
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  button:hover {
+    background: #eee;
+  }
+
+html: |
+  <div class="container">
+    <h1>Advanced Features Test</h1>
+
+    <h2>1. Named Slots</h2>
+    <p>Card with all slots filled:</p>
+    <card>
+      <span slot="header">Custom Header Content</span>
+      <p>This is the main body content of the card.</p>
+      <p>It can have multiple elements.</p>
+      <span slot="footer">Custom Footer - Updated 2024</span>
+    </card>
+
+    <p>Card with only body content (header/footer use defaults):</p>
+    <card>
+      <p>Only body content here - header and footer are default.</p>
+    </card>
+
+    <p>Empty card (all slots use defaults):</p>
+    <card/>
+
+    <h2>2. Dynamic Function-Based Attributes</h2>
+    <p>The box below uses class="(module) => module.getBoxClass()":</p>
+    <div class="(module) => module.getBoxClass()">
+      <p>Current state: {isActive}</p>
+      <button onClick="() => this.toggleActive()">Toggle Active</button>
+    </div>
+
+    <h2>3. Dynamic Class on Counter</h2>
+    <p>Count: <span class="counter" class="(module) => 'counter ' + module.getCountClass()">{count}</span></p>
+    <p>Class changes from 'low' to 'high' when count > 5</p>
+    <button onClick="() => this.increment()">Increment Count</button>
+  </div>
