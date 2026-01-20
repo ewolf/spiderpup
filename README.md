@@ -7,7 +7,7 @@ A lightweight YAML-based web framework with reactive components, written in Perl
 - **Declarative YAML components** - Define UI with simple YAML syntax
 - **Reactive data binding** - Two-way binding, computed properties, watchers
 - **LESS compiler** - Variables, nesting, mixins, color functions, math
-- **Component composition** - Imports, slots, refs
+- **Component composition** - Imports, slots, refs, broadcast/receive
 - **SPA routing** - Client-side navigation with route parameters
 - **Transitions** - Animated conditional rendering
 - **Developer experience** - Hot reload, error overlays, HTML caching
@@ -577,6 +577,50 @@ lifecycle:
       // Cleanup timers, listeners, etc.
     }
 ```
+
+### Broadcast / Receive
+
+Enable communication between components using a pub/sub pattern:
+
+```yaml
+# Component A - broadcasts messages
+methods:
+  notifyAll: |
+    () => {
+      this.broadcast('user-updated', { id: 123, name: 'John' });
+    }
+  sendAlert: |
+    () => {
+      this.broadcast('alert', { type: 'warning', message: 'Something happened!' });
+    }
+
+html: |
+  <button onClick="() => this.notifyAll()">Notify All</button>
+```
+
+```yaml
+# Component B - receives messages
+lifecycle:
+  onMount: |
+    () => {
+      this.receive('user-updated', (data, sender) => {
+        console.log('User updated:', data);
+        this.set_userName(data.name);
+        this.refresh();
+      });
+
+      this.receive('alert', (data) => {
+        alert(data.message);
+      });
+    }
+```
+
+Key points:
+- `broadcast(channel, data)` sends to all modules except the sender
+- `receive(channel, callback)` registers a handler for a channel
+- Callback receives `(data, senderModule)` arguments
+- Multiple receivers can listen to the same channel
+- Useful for cross-component state sync, notifications, events
 
 ## Client-Side Routing
 

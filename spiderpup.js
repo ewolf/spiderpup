@@ -210,10 +210,33 @@ class Module {
     bindings = [];  // For two-way binding
     classBindings = [];  // For class:* bindings
     styleBindings = [];  // For style:* bindings
+    receivers = {};  // For broadcast/receive messaging
 
     constructor() {
         this.moduleId = moduleRegistry.length;
         moduleRegistry.push(this);
+    }
+
+    // Register a receiver for a channel
+    receive(channel, callback) {
+        if (!this.receivers[channel]) {
+            this.receivers[channel] = [];
+        }
+        this.receivers[channel].push(callback);
+    }
+
+    // Broadcast a message to all modules except self
+    broadcast(channel, data) {
+        for (const module of moduleRegistry) {
+            // Skip self
+            if (module.moduleId === this.moduleId) continue;
+            // Skip modules without receivers for this channel
+            if (!module.receivers || !module.receivers[channel]) continue;
+            // Call all receivers for this channel
+            for (const callback of module.receivers[channel]) {
+                callback.call(module, data, this);
+            }
+        }
     }
 
     get(name, defaultValue) {
