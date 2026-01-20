@@ -1,0 +1,53 @@
+title: Shorthand Syntax Test
+vars:
+  count: 0
+  name: World
+  items: ["Apple", "Banana", "Cherry"]
+methods:
+  increment: () => { $count = $count + 1 }
+  decrement: () => { $count = $count - 1 }
+  reset: () => { $count = 0 }
+  addItem: () => { $items = [...$items, "Item " + ($items.length + 1)] }
+computed:
+  doubleCount: () => $count * 2
+  greeting: () => "Hello, " + $name + "!"
+html: |
+  <div>
+    <h1>Shorthand Syntax Test</h1>
+
+    <h2>Counter Test</h2>
+    <p>Count: {count} (double: {doubleCount})</p>
+    <button @click="increment()">+1 (method)</button>
+    <button @click="$count = $count + 1">+1 (inline)</button>
+    <button @click="decrement()">-1 (method)</button>
+    <button @click="$count = $count - 1">-1 (inline)</button>
+    <button @click="reset()">Reset</button>
+
+    <if condition="() => $count > 5">
+      <p style="color: green;">Count is high!</p>
+    </if>
+    <elseif condition="() => $count < 0">
+      <p style="color: red;">Count is negative!</p>
+    </elseif>
+
+    <h2>Input Binding Test</h2>
+    <p>Greeting: {greeting}</p>
+    <input bind="name" placeholder="Enter your name" />
+
+    <h2>Loop Test</h2>
+    <button @click="addItem()">Add Item</button>
+    <ul>
+      <for items="$items" item="fruit">
+        <li>{fruit}</li>
+      </for>
+    </ul>
+
+    <h2>Mixed Syntax Test (backwards compatibility)</h2>
+    <button onClick="() => this.set_count(this.get_count() + 10)">+10 (old syntax)</button>
+  </div>
+css: |
+  h1 { color: #333; }
+  h2 { color: #666; margin-top: 20px; }
+  button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+  input { padding: 8px; margin: 5px; }
+  ul { list-style: disc; padding-left: 20px; }

@@ -1,0 +1,13 @@
+---
+# Component file with its own import-css/import-js
+import-css:
+  - /css/shared.css
+  - /css/component.css
+
+import-js:
+  - /js/shared.js
+  - /js/component.js
+
+components:
+  mycomp:
+    - div: component div

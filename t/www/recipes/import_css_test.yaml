@@ -1,0 +1,16 @@
+---
+# Main file that imports component file
+# Has overlapping CSS/JS to test deduplication
+import-css:
+  - /css/main.css
+  - /css/shared.css
+
+import-js:
+  - /js/main.js
+  - /js/shared.js
+
+import:
+  comp: import_css_comp
+
+body:
+  - comp.mycomp:
