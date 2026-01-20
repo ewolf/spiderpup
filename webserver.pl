@@ -502,33 +502,40 @@ sub parse_yaml {
 
     my @lines = split /\n/, $content;
     my $current_key;
-    my $mode = 'none';  # 'none', 'multiline', 'map'
+    my $mode = 'none';  # 'none', 'multiline', 'map', 'array'
     my @multiline_content;
     my %map_content;
+    my @array_content;
 
     for my $line (@lines) {
         # Check for top-level key (no leading whitespace)
-        if ($line =~ /^(\w+):\s*\|\s*$/) {
+        # Allow hyphenated keys like import-css, import-js
+        if ($line =~ /^([\w-]+):\s*\|\s*$/) {
             # Multiline string: key: |
-            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content);
+            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content, \@array_content);
             $current_key = $1;
             $mode = 'multiline';
             @multiline_content = ();
-        } elsif ($line =~ /^(\w+):\s*$/) {
-            # Nested map: key: (nothing after)
-            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content);
+        } elsif ($line =~ /^([\w-]+):\s*$/) {
+            # Nested map or array: key: (nothing after)
+            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content, \@array_content);
             $current_key = $1;
-            $mode = 'map';
+            $mode = 'map';  # Will switch to 'array' if we see '- ' entries
             %map_content = ();
-        } elsif ($line =~ /^(\w+):\s*(.+)$/) {
+            @array_content = ();
+        } elsif ($line =~ /^([\w-]+):\s*(.+)$/) {
             # Single line: key: value
-            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content);
+            _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content, \@array_content);
             $result{$1} = $2;
             $mode = 'none';
             $current_key = undef;
         } elsif ($mode eq 'multiline' && $line =~ /^  (.*)$/) {
             # Indented content for multiline
             push @multiline_content, $1;
+        } elsif (($mode eq 'map' || $mode eq 'array') && $line =~ /^  -\s+(.*)$/) {
+            # Array item: - value
+            $mode = 'array';
+            push @array_content, $1;
         } elsif ($mode eq 'map' && $line =~ /^  (.+?):\s+(.*)$/) {
             # Indented key: value for nested map (keys can contain /, :, etc. for routes)
             # Use non-greedy match and require space after colon to handle keys like /path/:id
@@ -542,20 +549,207 @@ sub parse_yaml {
     }
 
     # Save final block
-    _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content);
+    _save_block(\%result, $current_key, $mode, \@multiline_content, \%map_content, \@array_content);
 
     return \%result;
 }
 
 sub _save_block {
-    my ($result, $key, $mode, $multiline, $map) = @_;
+    my ($result, $key, $mode, $multiline, $map, $array) = @_;
     return unless defined $key;
 
     if ($mode eq 'multiline') {
         $result->{$key} = join("\n", @$multiline);
+    } elsif ($mode eq 'array') {
+        $result->{$key} = [ @$array ];
     } elsif ($mode eq 'map') {
         $result->{$key} = { %$map };
     }
+}
+
+# JavaScript globals (don't prefix with this.)
+my %js_globals = map { $_ => 1 } qw(
+    console Math JSON Date Array Object String Number Boolean
+    parseInt parseFloat isNaN isFinite undefined null true false
+    window document setTimeout setInterval clearTimeout clearInterval
+    fetch Promise Error event target Map Set Symbol RegExp
+    Infinity NaN arguments this
+);
+
+# Extract parameter names from arrow function syntax
+sub extract_arrow_params {
+    my ($expr) = @_;
+    my %params;
+
+    # Match arrow functions: (param1, param2) => or param =>
+    while ($expr =~ /\(([^)]*)\)\s*=>/g) {
+        my $param_str = $1;
+        for my $param (split /,/, $param_str) {
+            $param =~ s/^\s+|\s+$//g;
+            $param =~ s/\s*=.*//;  # Remove default values
+            $params{$param} = 1 if $param =~ /^\w+$/;
+        }
+    }
+    # Single param without parens: x =>
+    while ($expr =~ /\b(\w+)\s*=>/g) {
+        $params{$1} = 1;
+    }
+
+    return \%params;
+}
+
+# Transform $var syntax to this.get_var() / this.set_var()
+sub transform_dollar_vars {
+    my ($expr) = @_;
+    return $expr unless defined $expr;
+
+    # Track positions to avoid transforming inside strings
+    my @protected_ranges;
+
+    # Find string literals (both single and double quoted)
+    while ($expr =~ /(['"])(?:[^\\]|\\.)*?\1/g) {
+        push @protected_ranges, [$-[0], $+[0]];
+    }
+    # Find template literals
+    while ($expr =~ /`(?:[^\\`]|\\.)*`/g) {
+        push @protected_ranges, [$-[0], $+[0]];
+    }
+
+    my $is_protected = sub {
+        my ($pos) = @_;
+        for my $range (@protected_ranges) {
+            return 1 if $pos >= $range->[0] && $pos < $range->[1];
+        }
+        return 0;
+    };
+
+    # Process assignments: $var = value (but not == or ===)
+    # Need to handle complex RHS with nested $vars
+    my $result = '';
+    my $pos = 0;
+
+    while ($expr =~ /\$(\w+)\s*=(?!=)/g) {
+        my $var_name = $1;
+        my $match_start = $-[0];
+        my $match_end = $+[0];
+
+        if (!$is_protected->($match_start)) {
+            # Find the end of the assignment (semicolon, comma, or closing paren/bracket at depth 0)
+            my $rhs_start = $match_end;
+            my $depth = 0;
+            my $rhs_end = length($expr);
+
+            for my $i ($rhs_start .. length($expr) - 1) {
+                my $char = substr($expr, $i, 1);
+                if ($char eq '(' || $char eq '[' || $char eq '{') {
+                    $depth++;
+                } elsif ($char eq ')' || $char eq ']' || $char eq '}') {
+                    if ($depth == 0) {
+                        $rhs_end = $i;
+                        last;
+                    }
+                    $depth--;
+                } elsif (($char eq ';' || $char eq ',') && $depth == 0) {
+                    $rhs_end = $i;
+                    last;
+                }
+            }
+
+            my $rhs = substr($expr, $rhs_start, $rhs_end - $rhs_start);
+            # Recursively transform $vars in RHS
+            $rhs = transform_dollar_vars($rhs);
+
+            $result .= substr($expr, $pos, $match_start - $pos);
+            $result .= "this.set_$var_name($rhs)";
+            $pos = $rhs_end;
+
+            # Reset regex position
+            pos($expr) = $pos;
+        }
+    }
+    $result .= substr($expr, $pos);
+    $expr = $result;
+
+    # Process reads: $var (not followed by =)
+    $expr =~ s/\$(\w+)(?!\s*=(?!=))/this.get_$1()/g;
+
+    return $expr;
+}
+
+# Add implicit this. prefix to bare method calls
+sub add_implicit_this {
+    my ($expr, $local_vars) = @_;
+    return $expr unless defined $expr;
+    $local_vars //= {};
+
+    # Track string positions to avoid transforming inside strings
+    my @protected_ranges;
+    while ($expr =~ /(['"])(?:[^\\]|\\.)*?\1/g) {
+        push @protected_ranges, [$-[0], $+[0]];
+    }
+    while ($expr =~ /`(?:[^\\`]|\\.)*`/g) {
+        push @protected_ranges, [$-[0], $+[0]];
+    }
+
+    my $is_protected = sub {
+        my ($pos) = @_;
+        for my $range (@protected_ranges) {
+            return 1 if $pos >= $range->[0] && $pos < $range->[1];
+        }
+        return 0;
+    };
+
+    # Replace bare method calls: word( but not after . or preceded by known contexts
+    my $result = '';
+    my $last_end = 0;
+
+    while ($expr =~ /\b(\w+)\s*\(/g) {
+        my $name = $1;
+        my $match_start = $-[1];
+        my $match_end = $+[0];
+
+        next if $is_protected->($match_start);
+
+        # Check what precedes this identifier
+        my $before = substr($expr, 0, $match_start);
+
+        # Skip if preceded by . (already a method call on something)
+        next if $before =~ /\.\s*$/;
+
+        # Skip if preceded by 'new '
+        next if $before =~ /\bnew\s+$/;
+
+        # Skip if preceded by 'function '
+        next if $before =~ /\bfunction\s+$/;
+
+        # Skip JS globals
+        next if $js_globals{$name};
+
+        # Skip local variables (arrow params, for loop vars)
+        next if $local_vars->{$name};
+
+        # Skip if already has this.
+        next if $before =~ /\bthis\.\s*$/;
+
+        # Add this. prefix
+        $result .= substr($expr, $last_end, $match_start - $last_end);
+        $result .= "this.$name(";
+        $last_end = $match_end;
+    }
+
+    $result .= substr($expr, $last_end);
+    return $result;
+}
+
+# Main transformation function that applies all shorthand transformations
+sub transform_expression {
+    my ($expr) = @_;
+    return $expr unless defined $expr && $expr =~ /\S/;
+
+    my $local_vars = extract_arrow_params($expr);
+    $expr = transform_dollar_vars($expr);
+    $expr = add_implicit_this($expr, $local_vars);
+    return $expr;
 }
 
 # Extract condition functions from structure, replace with indices
@@ -567,7 +761,7 @@ sub extract_conditions {
     # Handle if/elseif condition extraction
     if ($node->{tag} && ($node->{tag} eq 'if' || $node->{tag} eq 'elseif')) {
         if (exists $node->{attributes}{condition}) {
-            my $condition = $node->{attributes}{condition};
+            my $condition = transform_expression($node->{attributes}{condition});
             push @$conditions, $condition;
             $node->{attributes}{_conditionIndex} = $#$conditions;
             delete $node->{attributes}{condition};
@@ -604,7 +798,7 @@ sub extract_handlers {
     if ($node->{attributes}) {
         for my $attr (keys %{$node->{attributes}}) {
             if ($attr =~ /^on[A-Z]/ || $attr eq 'textContent') {
-                my $handler = $node->{attributes}{$attr};
+                my $handler = transform_expression($node->{attributes}{$attr});
                 push @$handlers, { event => $attr, handler => $handler };
                 $node->{attributes}{"_${attr}Index"} = $#$handlers;
                 delete $node->{attributes}{$attr};
@@ -623,7 +817,7 @@ sub extract_handlers {
             # Handle class:* bindings (class:active="condition")
             elsif ($attr =~ /^class:(.+)$/) {
                 my $class_name = $1;
-                my $condition = $node->{attributes}{$attr};
+                my $condition = transform_expression($node->{attributes}{$attr});
                 push @$handlers, { event => "class:$class_name", handler => $condition };
                 $node->{attributes}{"_class:${class_name}Index"} = $#$handlers;
                 delete $node->{attributes}{$attr};
@@ -635,6 +829,8 @@ sub extract_handlers {
                 # Wrap simple variable names in a getter function
                 if ($value !~ /^\s*\(/ && $value !~ /=>/) {
                     $value = "() => this.get_$value()";
+                } else {
+                    $value = transform_expression($value);
                 }
                 push @$handlers, { event => "style:$style_prop", handler => $value };
                 $node->{attributes}{"_style:${style_prop}Index"} = $#$handlers;
@@ -648,7 +844,7 @@ sub extract_handlers {
             # Handle dynamic function-based attributes (e.g., class="(module) => ...")
             elsif ($node->{attributes}{$attr} =~ /^\s*\(.*?\)\s*=>/ ||
                    $node->{attributes}{$attr} =~ /^\s*function\s*\(/) {
-                my $func = $node->{attributes}{$attr};
+                my $func = transform_expression($node->{attributes}{$attr});
                 push @$handlers, { event => "attr:$attr", handler => $func };
                 $node->{attributes}{"_attr:${attr}Index"} = $#$handlers;
                 delete $node->{attributes}{$attr};
@@ -680,7 +876,7 @@ sub extract_loops {
     # Handle for loop items extraction
     if ($node->{tag} && $node->{tag} eq 'for') {
         if (exists $node->{attributes}{items}) {
-            my $items = $node->{attributes}{items};
+            my $items = transform_expression($node->{attributes}{items});
             push @$loops, $items;
             $node->{attributes}{_itemsIndex} = $#$loops;
             delete $node->{attributes}{items};
@@ -818,7 +1014,7 @@ sub generate_js_classes {
         my @custom_methods;
         if ($page->{methods} && keys %{$page->{methods}}) {
             for my $method_name (sort keys %{$page->{methods}}) {
-                my $method_code = $page->{methods}{$method_name};
+                my $method_code = transform_expression($page->{methods}{$method_name});
                 push @custom_methods, "    $method_name = $method_code;";
             }
         }
@@ -827,7 +1023,7 @@ sub generate_js_classes {
         my @computed_methods;
         if ($page->{computed} && keys %{$page->{computed}}) {
             for my $computed_name (sort keys %{$page->{computed}}) {
-                my $computed_code = $page->{computed}{$computed_name};
+                my $computed_code = transform_expression($page->{computed}{$computed_name});
                 push @computed_methods, "    get_$computed_name() { return ($computed_code).call(this); }";
             }
         }
@@ -837,7 +1033,7 @@ sub generate_js_classes {
         if ($page->{watch} && keys %{$page->{watch}}) {
             my @watcher_pairs;
             for my $watch_name (sort keys %{$page->{watch}}) {
-                my $watch_code = $page->{watch}{$watch_name};
+                my $watch_code = transform_expression($page->{watch}{$watch_name});
                 push @watcher_pairs, "$watch_name: $watch_code";
             }
             $watchers_js = '{ ' . join(', ', @watcher_pairs) . ' }';
@@ -847,7 +1043,7 @@ sub generate_js_classes {
         my @lifecycle_methods;
         if ($page->{lifecycle} && keys %{$page->{lifecycle}}) {
             for my $hook_name (sort keys %{$page->{lifecycle}}) {
-                my $hook_code = $page->{lifecycle}{$hook_name};
+                my $hook_code = transform_expression($page->{lifecycle}{$hook_name});
                 push @lifecycle_methods, "    $hook_name = $hook_code;";
             }
         }
@@ -920,6 +1116,36 @@ sub generate_css {
     return join("\n", @css_blocks);
 }
 
+# Collect external CSS and JS imports from all loaded pages (with deduplication)
+sub collect_external_assets {
+    my ($loaded_pages) = @_;
+
+    my %seen_css;
+    my %seen_js;
+    my @css_files;
+    my @js_files;
+
+    for my $namespace (sort keys %$loaded_pages) {
+        my $page = $loaded_pages->{$namespace};
+
+        # Collect CSS imports
+        my $import_css = $page->{'import-css'} // [];
+        for my $css_file (@$import_css) {
+            next if $seen_css{$css_file}++;
+            push @css_files, $css_file;
+        }
+
+        # Collect JS imports
+        my $import_js = $page->{'import-js'} // [];
+        for my $js_file (@$import_js) {
+            next if $seen_js{$js_file}++;
+            push @js_files, $js_file;
+        }
+    }
+
+    return (\@css_files, \@js_files);
+}
+
 # Build full HTML document from page data
 sub build_html {
     my ($page_data, $page_name) = @_;
@@ -939,6 +1165,7 @@ sub build_html {
 
     my $js_classes = generate_js_classes($loaded_pages);
     my $css = generate_css($loaded_pages);
+    my ($external_css, $external_js) = collect_external_assets($loaded_pages);
 
     my $script = '';
     if ($js_classes) {
@@ -948,6 +1175,18 @@ sub build_html {
     my $style = '';
     if ($css) {
         $style = "<style>\n$css\n</style>";
+    }
+
+    # Generate link tags for external CSS
+    my $css_links = '';
+    for my $css_file (@$external_css) {
+        $css_links .= qq{    <link rel="stylesheet" href="$css_file">\n};
+    }
+
+    # Generate script tags for external JS
+    my $js_scripts = '';
+    for my $js_file (@$external_js) {
+        $js_scripts .= qq{    <script src="$js_file"></script>\n};
     }
 
     # Hot reload script for dev mode
@@ -997,8 +1236,8 @@ INIT
 <head>
     <meta charset="UTF-8">
     <title>$title</title>
-    $style
-    <script src="$spiderpup_src"></script>
+$css_links    $style
+$js_scripts    <script src="$spiderpup_src"></script>
     $script
     $init_script
 </head>
@@ -1046,9 +1285,16 @@ sub parse_html {
             next if $tag =~ /^!/;  # Skip comments/doctype
 
             my %attrs;
-            # Match attribute names with colons (for class:*, style:*)
-            while ($attr_str =~ /([\w:]+)="([^"]*)"/g) {
-                $attrs{$1} = $2;
+            # Match attribute names with colons and @ (for class:*, style:*, @click, etc.)
+            while ($attr_str =~ /([\w:@]+)="([^"]*)"/g) {
+                my ($attr, $value) = ($1, $2);
+                # Handle @event shorthand: @click -> onClick
+                if ($attr =~ /^@(\w+)$/) {
+                    $attr = "on" . ucfirst($1);
+                    # Wrap in arrow function if not already
+                    $value = "() => $value" unless $value =~ /^\s*\(.*?\)\s*=>/;
+                }
+                $attrs{$attr} = $value;
             }
 
             my $element = {
