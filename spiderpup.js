@@ -1,6 +1,200 @@
 const moduleRegistry = [];
 if (typeof window !== 'undefined') window.moduleRegistry = moduleRegistry;
 
+// Router for SPA navigation
+class Router {
+    routes = [];
+    currentRoute = null;
+    currentComponent = null;
+    routerViewContainer = null;
+    ownerModule = null;
+
+    constructor(routes, ownerModule) {
+        this.routes = routes || [];
+        this.ownerModule = ownerModule;
+
+        // Listen for popstate (back/forward navigation)
+        window.addEventListener('popstate', () => {
+            this.navigate(window.location.pathname, false);
+        });
+    }
+
+    setContainer(container) {
+        this.routerViewContainer = container;
+        // Navigate to current path on init
+        this.navigate(window.location.pathname, false);
+    }
+
+    navigate(path, pushState = true) {
+        // Match route
+        let matchedRoute = null;
+        let params = {};
+
+        for (const route of this.routes) {
+            const match = path.match(route.pattern);
+            if (match) {
+                matchedRoute = route;
+                // Extract params
+                for (let i = 0; i < route.params.length; i++) {
+                    params[route.params[i]] = match[i + 1];
+                }
+                break;
+            }
+        }
+
+        if (!matchedRoute) {
+            console.warn('No route matched for path:', path);
+            return;
+        }
+
+        if (pushState) {
+            window.history.pushState({}, '', path);
+        }
+
+        // Destroy current component
+        if (this.currentComponent) {
+            this.currentComponent.destroy();
+        }
+
+        // Clear container
+        if (this.routerViewContainer) {
+            while (this.routerViewContainer.firstChild) {
+                this.routerViewContainer.removeChild(this.routerViewContainer.firstChild);
+            }
+        }
+
+        // Create new component
+        const ComponentClass = matchedRoute.component;
+        this.currentComponent = new ComponentInstance(ComponentClass, params, this.ownerModule, null);
+        this.currentRoute = matchedRoute;
+
+        // Render into container
+        if (this.routerViewContainer) {
+            const [content] = this.currentComponent.render();
+            if (content) {
+                this.routerViewContainer.appendChild(content);
+            }
+        }
+    }
+}
+
+// Global router instance
+let globalRouter = null;
+
+// Transition CSS (injected once)
+const transitionStyles = `
+.sp-fade-enter { opacity: 0; }
+.sp-fade-enter-active { transition: opacity 0.3s ease; }
+.sp-fade-leave { opacity: 1; }
+.sp-fade-leave-active { opacity: 0; transition: opacity 0.3s ease; }
+.sp-slide-enter { transform: translateX(100%); }
+.sp-slide-enter-active { transition: transform 0.3s ease; }
+.sp-slide-leave { transform: translateX(0); }
+.sp-slide-leave-active { transform: translateX(-100%); transition: transform 0.3s ease; }
+`;
+
+let transitionStylesInjected = false;
+function injectTransitionStyles() {
+    if (transitionStylesInjected) return;
+    const style = document.createElement('style');
+    style.textContent = transitionStyles;
+    document.head.appendChild(style);
+    transitionStylesInjected = true;
+}
+
+// Error overlay for runtime errors
+const errorOverlayStyles = `
+.sp-error-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    font-family: monospace;
+    padding: 40px;
+    overflow: auto;
+    z-index: 99999;
+}
+.sp-error-title {
+    color: #ff6b6b;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+.sp-error-message {
+    background: #1a1a2e;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #ff6b6b;
+    white-space: pre-wrap;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+.sp-error-stack {
+    background: #16213e;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #a0a0a0;
+}
+.sp-error-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #ff6b6b;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+`;
+
+let errorOverlayInjected = false;
+function showErrorOverlay(message, stack) {
+    if (!errorOverlayInjected) {
+        const style = document.createElement('style');
+        style.textContent = errorOverlayStyles;
+        document.head.appendChild(style);
+        errorOverlayInjected = true;
+    }
+
+    // Remove existing overlay
+    const existing = document.querySelector('.sp-error-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'sp-error-overlay';
+    overlay.innerHTML = `
+        <button class="sp-error-close" onclick="this.parentElement.remove()">Dismiss</button>
+        <div class="sp-error-title">⚠️ Runtime Error</div>
+        <div class="sp-error-message">${escapeHtml(message)}</div>
+        ${stack ? `<div class="sp-error-stack">${escapeHtml(stack)}</div>` : ''}
+    `;
+    document.body.appendChild(overlay);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Global error handlers
+if (typeof window !== 'undefined') {
+    window.addEventListener('error', (event) => {
+        showErrorOverlay(event.message, event.error?.stack);
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason;
+        const message = reason?.message || String(reason);
+        const stack = reason?.stack;
+        showErrorOverlay(`Unhandled Promise Rejection: ${message}`, stack);
+    });
+}
+
 class Module {
     vars = {};
     dirty = false;
@@ -11,6 +205,11 @@ class Module {
     updatables = [];
     eventHandlers = [];
     imports = {};
+    watchers = {};
+    refs = {};
+    bindings = [];  // For two-way binding
+    classBindings = [];  // For class:* bindings
+    styleBindings = [];  // For style:* bindings
 
     constructor() {
         this.moduleId = moduleRegistry.length;
@@ -26,9 +225,14 @@ class Module {
     }
 
     set(name, value) {
-        if (this.vars[name] !== value) {
+        const oldValue = this.vars[name];
+        if (oldValue !== value) {
             this.vars[name] = value;
             this.dirty = true;
+            // Call watcher if defined
+            if (this.watchers && this.watchers[name]) {
+                this.watchers[name].call(this, value, oldValue);
+            }
         }
     }
 
@@ -41,6 +245,10 @@ class Module {
         const elements = this.buildElements(this.structure);
         for (const el of elements) {
             document.body.appendChild(el);
+        }
+        // Call onMount lifecycle hook
+        if (this.onMount) {
+            this.onMount.call(this);
         }
     }
 
@@ -60,6 +268,30 @@ class Module {
                 updatable.node.textContent = newText;
             }
         }
+        // Update two-way bindings (sync external changes to inputs)
+        for (const binding of this.bindings) {
+            const { node, varName } = binding;
+            const value = this.vars[varName];
+            if (node.type === 'checkbox') {
+                node.checked = !!value;
+            } else {
+                node.value = value ?? '';
+            }
+        }
+        // Update class bindings
+        for (const cb of this.classBindings) {
+            const { node, className, condition } = cb;
+            if (condition.call(this)) {
+                node.classList.add(className);
+            } else {
+                node.classList.remove(className);
+            }
+        }
+        // Update style bindings
+        for (const sb of this.styleBindings) {
+            const { node, styleProp, getter } = sb;
+            node.style[styleProp] = getter.call(this);
+        }
     }
 
     _registerUpdatable(node, item, ownerModuleId) {
@@ -69,11 +301,36 @@ class Module {
         }
     }
 
+    destroy() {
+        // Call onDestroy lifecycle hook
+        if (this.onDestroy) {
+            this.onDestroy.call(this);
+        }
+        // Remove event listeners
+        for (const { node, eventName, handler } of this.eventHandlers) {
+            node.removeEventListener(eventName, handler);
+        }
+        this.eventHandlers = [];
+        this.bindings = [];
+        this.classBindings = [];
+        this.styleBindings = [];
+        this.updatables = [];
+    }
+
     _interpolate(text) {
         let isUpdatable = false;
         const result = text.replace(/\{(\w+)\}/g, (match, varName) => {
             isUpdatable = true;
-            return (varName in this.vars) ? this.vars[varName] : '';
+            // Check vars first
+            if (varName in this.vars) {
+                return this.vars[varName];
+            }
+            // Check for computed property getter
+            const getterName = `get_${varName}`;
+            if (typeof this[getterName] === 'function') {
+                return this[getterName]();
+            }
+            return '';
         });
         return [result, isUpdatable];
     }
@@ -98,10 +355,62 @@ class Module {
             return [null, false];
         }
 
+        // Handle slot tag - render slot children from owner module's context
+        if (item.tag === 'slot') {
+            if (this.slotChildren && this.slotChildren.length > 0) {
+                const wrapper = document.createElement('span');
+                wrapper.setAttribute('data-slot', 'true');
+                // Render slot children using owner module's context
+                const [children] = this.ownerModule._buildChildren(this.slotChildren, this.ownerModule.moduleId);
+                for (const childNode of children) {
+                    wrapper.appendChild(childNode);
+                }
+                return [wrapper, true];
+            }
+            return [null, false];
+        }
+
+        // Handle router-view tag
+        if (item.tag === 'router-view') {
+            const container = document.createElement('div');
+            container.setAttribute('data-router-view', 'true');
+            // Initialize router if we have routes
+            if (this.routes && !globalRouter) {
+                globalRouter = new Router(this.routes, this);
+                globalRouter.setContainer(container);
+            }
+            return [container, true];
+        }
+
+        // Handle link tag (router link)
+        if (item.tag === 'link') {
+            const anchor = document.createElement('a');
+            const toPath = item.attributes?._to || '/';
+            anchor.href = toPath;
+            anchor.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (globalRouter) {
+                    globalRouter.navigate(toPath);
+                }
+            });
+            // Build children
+            const [children] = this._buildChildren(item.children || [], ownerModuleId);
+            for (const childNode of children) {
+                anchor.appendChild(childNode);
+            }
+            return [anchor, false];
+        }
+
         // Handle imported module tags
         if (this.imports[item.tag]) {
             const ImportedClass = this.imports[item.tag];
-            const componentInstance = new ComponentInstance(ImportedClass, item.attributes || {}, this, item.tag);
+            const slotChildren = item.children || [];
+            const componentInstance = new ComponentInstance(ImportedClass, item.attributes || {}, this, item.tag, slotChildren);
+
+            // Handle ref for components
+            if (item.attributes && item.attributes._ref) {
+                this.refs[item.attributes._ref] = componentInstance;
+            }
 
             // Register as updatable with parent module
             const owner = moduleRegistry[ownerModuleId];
@@ -127,6 +436,53 @@ class Module {
                     };
                     this.eventHandlers.push({ node, eventName, handler: wrappedHandler });
                     node.addEventListener(eventName, wrappedHandler);
+                }
+            } else if (attr === '_bind') {
+                // Two-way binding
+                const varName = value;
+                const module = this;
+                // Set initial value
+                if (node.type === 'checkbox') {
+                    node.checked = !!this.vars[varName];
+                } else {
+                    node.value = this.vars[varName] ?? '';
+                }
+                // Add input listener
+                const inputHandler = function(event) {
+                    const newValue = node.type === 'checkbox' ? node.checked : node.value;
+                    module.set(varName, newValue);
+                    module.refresh();
+                };
+                node.addEventListener('input', inputHandler);
+                this.eventHandlers.push({ node, eventName: 'input', handler: inputHandler });
+                // Register for refresh updates
+                this.bindings.push({ node, varName });
+            } else if (attr === '_ref') {
+                // Store ref
+                this.refs[value] = node;
+            } else if (attr.startsWith('_class:') && attr.endsWith('Index')) {
+                // Class binding
+                const className = attr.slice(7, -5); // Remove "_class:" prefix and "Index" suffix
+                const handlerInfo = this.handlers[value];
+                if (handlerInfo) {
+                    const condition = handlerInfo.handler;
+                    // Apply initial class state
+                    if (condition.call(this)) {
+                        node.classList.add(className);
+                    }
+                    // Register for refresh updates
+                    this.classBindings.push({ node, className, condition });
+                }
+            } else if (attr.startsWith('_style:') && attr.endsWith('Index')) {
+                // Style binding
+                const styleProp = attr.slice(7, -5); // Remove "_style:" prefix and "Index" suffix
+                const handlerInfo = this.handlers[value];
+                if (handlerInfo) {
+                    const getter = handlerInfo.handler;
+                    // Apply initial style
+                    node.style[styleProp] = getter.call(this);
+                    // Register for refresh updates
+                    this.styleBindings.push({ node, styleProp, getter });
                 }
             } else if (!attr.startsWith('_')) {
                 node.setAttribute(attr, value);
@@ -203,6 +559,7 @@ class Module {
         let i = startIndex;
         let head = null;
         let current = null;
+        let headTransition = null;
 
         while (i < children.length) {
             const child = children[i];
@@ -215,8 +572,14 @@ class Module {
 
             const condIndex = child.attributes?._conditionIndex;
             const condition = condIndex !== undefined ? this.conditions[condIndex] : null;
+            const transition = child.attributes?._transition || null;
 
-            const conditional = new Conditional(child.tag, condition, child.children || [], this);
+            // Store head transition for all branches
+            if (child.tag === 'if') {
+                headTransition = transition;
+            }
+
+            const conditional = new Conditional(child.tag, condition, child.children || [], this, headTransition);
 
             if (head === null) {
                 head = conditional;
@@ -248,13 +611,18 @@ class Conditional extends Module {
     rootElement = null;
     activeBranch = null;
     ownerModule = null;
+    transition = null;
 
-    constructor(branchType, condition, children, ownerModule) {
+    constructor(branchType, condition, children, ownerModule, transition = null) {
         super();
         this.branchType = branchType;
         this.condition = condition;
         this.branchChildren = children;
         this.ownerModule = ownerModule;
+        this.transition = transition;
+        if (transition) {
+            injectTransitionStyles();
+        }
     }
 
     evaluate(module) {
@@ -319,29 +687,55 @@ class Conditional extends Module {
                 }
             }
         } else {
-            // Different branch - empty the div
-            if (this.rootElement) {
-                while (this.rootElement.firstChild) {
-                    this.rootElement.removeChild(this.rootElement.firstChild);
+            // Different branch - handle transition
+            const transition = this.transition;
+
+            const doSwitch = () => {
+                // Clear old branch updatables
+                if (this.activeBranch) {
+                    this.activeBranch.updatables = [];
                 }
-            }
 
-            // Clear old branch updatables
-            if (this.activeBranch) {
-                this.activeBranch.updatables = [];
-            }
+                this.activeBranch = newBranch;
 
-            this.activeBranch = newBranch;
-
-            // Fill with new branch content if any branch is active
-            if (this.activeBranch && this.rootElement) {
-                const [children] = this.ownerModule._buildChildren(
-                    this.activeBranch.branchChildren,
-                    this.activeBranch.moduleId
-                );
-                for (const childNode of children) {
-                    this.rootElement.appendChild(childNode);
+                // Empty the div
+                if (this.rootElement) {
+                    while (this.rootElement.firstChild) {
+                        this.rootElement.removeChild(this.rootElement.firstChild);
+                    }
                 }
+
+                // Fill with new branch content if any branch is active
+                if (this.activeBranch && this.rootElement) {
+                    const [children] = this.ownerModule._buildChildren(
+                        this.activeBranch.branchChildren,
+                        this.activeBranch.moduleId
+                    );
+                    for (const childNode of children) {
+                        this.rootElement.appendChild(childNode);
+                    }
+
+                    // Apply enter transition
+                    if (transition) {
+                        this.rootElement.classList.add(`sp-${transition}-enter`);
+                        this.rootElement.classList.add(`sp-${transition}-enter-active`);
+                        requestAnimationFrame(() => {
+                            this.rootElement.classList.remove(`sp-${transition}-enter`);
+                            setTimeout(() => {
+                                this.rootElement.classList.remove(`sp-${transition}-enter-active`);
+                            }, 300);
+                        });
+                    }
+                }
+            };
+
+            // Apply leave transition if exists
+            if (transition && this.rootElement && this.rootElement.firstChild) {
+                this.rootElement.classList.add(`sp-${transition}-leave`);
+                this.rootElement.classList.add(`sp-${transition}-leave-active`);
+                setTimeout(doSwitch, 300);
+            } else {
+                doSwitch();
             }
         }
     }
@@ -364,22 +758,38 @@ class ComponentInstance extends Module {
     ownerModule = null;
     sourceClass = null;
     namespace = null;
+    slotChildren = [];
 
-    constructor(SourceClass, attributes, ownerModule, namespace) {
+    constructor(SourceClass, attributes, ownerModule, namespace, slotChildren = []) {
         super();
         this.sourceClass = SourceClass;
         this.ownerModule = ownerModule;
         this.namespace = namespace;
+        this.slotChildren = slotChildren;
 
         // Create a temporary instance to get the class properties
         const template = new SourceClass();
 
-        // Copy structure, conditions, handlers, loops, and imports from template
+        // Copy structure, conditions, handlers, loops, imports, and watchers from template
         this.structure = template.structure;
         this.conditions = template.conditions;
         this.handlers = template.handlers;
         this.loops = template.loops;
         this.imports = template.imports;
+        this.watchers = template.watchers || {};
+
+        // Copy lifecycle hooks
+        if (template.onMount) this.onMount = template.onMount;
+        if (template.onDestroy) this.onDestroy = template.onDestroy;
+
+        // Copy computed property getters from template prototype
+        const proto = Object.getPrototypeOf(template);
+        const protoProps = Object.getOwnPropertyNames(proto);
+        for (const prop of protoProps) {
+            if (prop.startsWith('get_') && typeof template[prop] === 'function') {
+                this[prop] = template[prop].bind(this);
+            }
+        }
 
         // Initialize vars from template defaults
         for (const [name, value] of Object.entries(template.vars)) {
@@ -405,6 +815,11 @@ class ComponentInstance extends Module {
         const [children] = this._buildChildren(this.structure.elements || [], this.moduleId);
         for (const childNode of children) {
             wrapper.appendChild(childNode);
+        }
+
+        // Call onMount lifecycle hook after DOM is ready
+        if (this.onMount) {
+            setTimeout(() => this.onMount.call(this), 0);
         }
 
         return [wrapper, true];
