@@ -1,0 +1,18 @@
+title: Event Bubbling Test
+
+import:
+  parent: event-parent
+
+lifecycle:
+  onMount: () => { console.log('[Root] Mounted'); this.on('item-selected', (event) => { console.log('[Root] item-selected:', event.data); this.set_lastEvent('Root caught: item-selected (id=' + event.data.id + ')'); this.refresh(); }); this.on('item-deleted', (event) => { console.log('[Root] item-deleted:', event.data); this.set_lastEvent('Root caught: item-deleted (id=' + event.data.id + ')'); this.refresh(); }); }
+
+vars:
+  lastEvent: (none)
+
+html: |
+  <div>
+    <h1>Event Bubbling Test</h1>
+    <p>Last event at root: {lastEvent}</p>
+    <hr/>
+    <parent/>
+  </div>

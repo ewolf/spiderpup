@@ -1,0 +1,29 @@
+title: Event Child
+
+vars:
+  id: 0
+  name: Item
+
+methods:
+  select: () => { console.log('[Child] Emitting item-selected'); this.emit('item-selected', { id: this.get_id(), name: this.get_name() }); }
+  remove: () => { console.log('[Child] Emitting item-deleted'); this.emit('item-deleted', { id: this.get_id() }); }
+
+css: |
+  .child-box {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin: 5px;
+    background: #f9f9f9;
+  }
+  .child-box button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
+html: |
+  <div class="child-box">
+    <strong>{name}</strong> (id: {id})
+    <button onClick="() => this.select()">Select</button>
+    <button onClick="() => this.remove()">Delete</button>
+  </div>
