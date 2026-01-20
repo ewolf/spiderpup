@@ -5,8 +5,131 @@ use warnings;
 use IO::Socket::INET;
 use JSON::PP;
 use File::Basename;
-use CSS::LESSp;
 use File::Spec;
+
+# Simple LESS compiler supporting variables, nesting, and & parent selector
+sub compile_less {
+    my ($less) = @_;
+    my %variables;
+
+    # First pass: extract variables (@name: value;)
+    while ($less =~ /(@[\w-]+)\s*:\s*([^;]+);/g) {
+        $variables{$1} = $2;
+    }
+    # Remove variable declarations
+    $less =~ s/@[\w-]+\s*:\s*[^;]+;\s*//g;
+
+    # Substitute variables
+    for my $var (keys %variables) {
+        my $val = $variables{$var};
+        $less =~ s/\Q$var\E/$val/g;
+    }
+
+    # Parse and flatten nested rules
+    return _flatten_less($less, '');
+}
+
+sub _flatten_less {
+    my ($block, $parent_selector) = @_;
+    my @output;
+    my $depth = 0;
+    my $current_selector = '';
+    my $current_block = '';
+    my $properties = '';
+    my $pos = 0;
+
+    # Tokenize: split into selector{...} chunks and properties
+    while ($block =~ /\G\s*(?:([^{};]+?)\s*\{|([^{};]+;)|\})/gc) {
+        if (defined $1) {
+            # Opening a new block with selector
+            if ($depth == 0) {
+                $current_selector = $1;
+                $current_selector =~ s/^\s+|\s+$//g;
+                $current_block = '';
+            } else {
+                $current_block .= "$1 {";
+            }
+            $depth++;
+        } elsif (defined $2) {
+            # A property
+            if ($depth == 0) {
+                $properties .= $2;
+            } elsif ($depth == 1) {
+                $current_block .= $2;
+            } else {
+                $current_block .= $2;
+            }
+        } else {
+            # Closing brace
+            $depth--;
+            if ($depth == 0 && $current_selector ne '') {
+                # Resolve full selector
+                my $full_selector;
+                if ($current_selector =~ /&/) {
+                    $full_selector = $current_selector;
+                    $full_selector =~ s/&/$parent_selector/g;
+                } elsif ($parent_selector) {
+                    $full_selector = "$parent_selector $current_selector";
+                } else {
+                    $full_selector = $current_selector;
+                }
+
+                # Extract direct properties vs nested blocks
+                my $direct_props = '';
+                my $nested = '';
+                my $inner_depth = 0;
+                my $temp = '';
+
+                for my $char (split //, $current_block) {
+                    if ($char eq '{') {
+                        $inner_depth++;
+                        $temp .= $char;
+                    } elsif ($char eq '}') {
+                        $inner_depth--;
+                        $temp .= $char;
+                        if ($inner_depth == 0) {
+                            $nested .= $temp;
+                            $temp = '';
+                        }
+                    } elsif ($inner_depth > 0) {
+                        $temp .= $char;
+                    } elsif ($char eq ';') {
+                        $direct_props .= $temp . ';';
+                        $temp = '';
+                    } else {
+                        $temp .= $char;
+                    }
+                }
+                # Remaining temp without semicolon might be selector start
+                $nested = $temp . $nested if $temp =~ /\S/;
+
+                # Output direct properties
+                if ($direct_props =~ /\S/) {
+                    push @output, "$full_selector { $direct_props }";
+                }
+
+                # Recursively process nested blocks
+                if ($nested =~ /\S/) {
+                    push @output, _flatten_less($nested, $full_selector);
+                }
+
+                $current_selector = '';
+                $current_block = '';
+            } elsif ($depth > 0) {
+                $current_block .= '}';
+            }
+        }
+    }
+
+    # Handle any top-level properties (no selector)
+    if ($properties =~ /\S/ && $parent_selector) {
+        unshift @output, "$parent_selector { $properties }";
+    } elsif ($properties =~ /\S/) {
+        unshift @output, $properties;
+    }
+
+    return join("\n", @output);
+}
 
 # Directory for page YAML files
 my $PAGES_DIR = File::Spec->catdir(dirname(__FILE__), 'pages');
@@ -300,8 +423,10 @@ sub generate_css {
 
         # Compile LESS to CSS and append
         if ($less) {
-            my @compiled = CSS::LESSp->parse($less);
-            $css .= join('', @compiled);
+            eval {
+                $css .= compile_less($less);
+            };
+            warn "LESS compilation failed for $namespace: $@" if $@;
         }
 
         next unless $css;
